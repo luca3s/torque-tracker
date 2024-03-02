@@ -139,14 +139,12 @@ impl DrawBuffer {
 
         // bot & top border
         for i in rect.left+1..rect.right {
-            println!("bot, top: {:?}", i);
             self.draw_single_char(font8x8::BLOCK_UNICODE[4].into(), (i, rect.top), inner_top_left_color, outer_color);
             self.draw_single_char(font8x8::BLOCK_UNICODE[0].into(), (i, rect.bot), inner_bot_right_color, outer_color);
         }
 
         // left & right border
         for i in rect.top+1..rect.bot {
-            println!("left, right: {:?}", i);
             self.draw_single_char(font8x8::BLOCK_UNICODE[12].into(), (rect.left, i), outer_color, inner_top_left_color);
             self.draw_single_char(font8x8::BLOCK_UNICODE[16].into(), (rect.right, i), outer_color, inner_bot_right_color);
         }
@@ -198,8 +196,8 @@ impl DrawBuffer {
     }
 }
 
-pub(crate) struct WindowState {
-    surface: Surface<'static>,
+pub(crate) struct WindowState<'window> {
+    surface: Surface<'window>,
 
     device: Device,
     queue: Queue,
@@ -215,8 +213,8 @@ pub(crate) struct WindowState {
     // draw_buffer: Box<DrawBuffer>,
 }
 
-impl WindowState {
-    async fn new(window: Window) -> Self {
+impl<'window> WindowState<'window> {
+    async fn new(window: &'window Window) -> Self {
         let size = window.inner_size();
         let instance = Instance::default();
 
@@ -284,21 +282,21 @@ impl WindowState {
             view_formats: &[],
         });
 
-        queue.write_texture(
-            ImageCopyTexture {
-                texture: &texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: TextureAspect::All,
-            },
-            &[0; WINDOW_SIZE.0 * WINDOW_SIZE.1 * 4],
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * WINDOW_SIZE.0 as u32),
-                rows_per_image: Some(WINDOW_SIZE.1 as u32),
-            },
-            texture_size,
-        );
+        // queue.write_texture(
+        //     ImageCopyTexture {
+        //         texture: &texture,
+        //         mip_level: 0,
+        //         origin: Origin3d::ZERO,
+        //         aspect: TextureAspect::All,
+        //     },
+        //     &[0; WINDOW_SIZE.0 * WINDOW_SIZE.1 * 4],
+        //     ImageDataLayout {
+        //         offset: 0,
+        //         bytes_per_row: Some(4 * WINDOW_SIZE.0 as u32),
+        //         rows_per_image: Some(WINDOW_SIZE.1 as u32),
+        //     },
+        //     texture_size,
+        // );
 
         let texure_view = texture.create_view(&TextureViewDescriptor::default());
         let texture_sampler = device.create_sampler(&SamplerDescriptor {
@@ -407,7 +405,6 @@ impl WindowState {
             diffuse_bind_group,
             streaming_texture: texture,
             texture_size,
-            // draw_buffer: Box::new(DrawBuffer::new())
         }
     }
 
@@ -421,8 +418,6 @@ impl WindowState {
     }
 
     fn render(&mut self, framebuffer: &[u8]) -> Result<(), SurfaceError> {
-        // self.render_texture();
-
         // push framebuffer to GPU-Texture
         self.queue.write_texture(
             ImageCopyTexture {
@@ -434,7 +429,7 @@ impl WindowState {
             framebuffer,
             ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * WINDOW_SIZE.0 as u32),
+                bytes_per_row: Some((PIXEL_SIZE * WINDOW_SIZE.0) as u32),
                 rows_per_image: Some(WINDOW_SIZE.1 as u32),
             },
             self.texture_size,
@@ -488,14 +483,14 @@ impl WindowState {
 }
 
 pub async fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut window_state = WindowState::new(window).await;
+    let mut window_state = WindowState::new(&window).await;
     let mut draw_buffer = DrawBuffer::new();
     let mut modifiers = Modifiers::default();
     let mut pages = AllPages::new();
 
     let ui_header = Header {};
     ui_header.draw_constant(&mut draw_buffer);
-
+    let window = &window;
     let _ = event_loop.run(move |event, elwt| match event {
         Event::WindowEvent {
             window_id: _, // can ignore because i only use one window
@@ -504,6 +499,8 @@ pub async fn run(event_loop: EventLoop<()>, window: Window) {
             WindowEvent::CloseRequested => elwt.exit(),
             WindowEvent::Resized(pyhsical_size) => {
                 window_state.resize(*pyhsical_size);
+                // on macos redraw needs to be requested after resizing
+                window.request_redraw();
             }
             WindowEvent::ScaleFactorChanged {
                 scale_factor: _,
