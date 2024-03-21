@@ -1,2 +1,2 @@
 mod help_page;
-pub mod pages;
+pub mod page;

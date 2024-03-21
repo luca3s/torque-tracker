@@ -1,10 +1,8 @@
-// use audio::AudioManager;
-// use pattern::PatternManager;
-use rendering::run;
-//
-mod rendering;
-// mod audio;
-// mod pattern;
+#![feature(slice_flatten)]
+
+use visual::event_loop::run;
+
+mod visual;
 
 fn main() {
     // env_logger::init();
