@@ -60,12 +60,11 @@ impl<'window> WindowState<'window> {
 
         let surface_caps = surface.get_capabilities(&adapter);
 
-        let surface_format = surface_caps
+        let surface_format = *surface_caps
             .formats
             .iter()
-            .copied()
             .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
+            .unwrap_or(&surface_caps.formats[0]);
 
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
@@ -77,10 +76,8 @@ impl<'window> WindowState<'window> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2, // default
         };
-        surface.configure(&device, &config);
 
-        // let softbuffer: [u8; WINDOW_SIZE.0 * WINDOW_SIZE.1 * 4] =
-        //     [0; WINDOW_SIZE.0 * WINDOW_SIZE.1 * 4];
+        surface.configure(&device, &config);
 
         let texture_size = Extent3d {
             width: WINDOW_SIZE.0 as u32,
@@ -98,22 +95,6 @@ impl<'window> WindowState<'window> {
             label: Some("Streaming Texture"),
             view_formats: &[],
         });
-
-        // queue.write_texture(
-        //     ImageCopyTexture {
-        //         texture: &texture,
-        //         mip_level: 0,
-        //         origin: Origin3d::ZERO,
-        //         aspect: TextureAspect::All,
-        //     },
-        //     &[0; WINDOW_SIZE.0 * WINDOW_SIZE.1 * 4],
-        //     ImageDataLayout {
-        //         offset: 0,
-        //         bytes_per_row: Some(4 * WINDOW_SIZE.0 as u32),
-        //         rows_per_image: Some(WINDOW_SIZE.1 as u32),
-        //     },
-        //     texture_size,
-        // );
 
         let texure_view = texture.create_view(&TextureViewDescriptor::default());
         let texture_sampler = device.create_sampler(&SamplerDescriptor {
@@ -194,6 +175,7 @@ impl<'window> WindowState<'window> {
                     write_mask: ColorWrites::ALL,
                 })],
             }),
+            
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
