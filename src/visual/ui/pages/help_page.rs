@@ -1,10 +1,10 @@
 use crate::visual::{
+    coordinates::CharRect,
     draw_buffer::DrawBuffer,
     ui::widgets::{
         button::Button,
         widget::{NextWidget, Widget},
     },
-    utility::CharRect,
 };
 
 use super::page::Page;
@@ -68,7 +68,7 @@ impl HelpPage {
     pub fn new() -> Self {
         let quit_button = Button::new(
             "quit1",
-            CharRect::new(30, 33, 0, 10),
+            CharRect::new(30, 32, 2, 10),
             NextWidget::default(),
             || println!("quit"),
         );

@@ -10,11 +10,11 @@ use super::{
     ui::{
         header::Header,
         pages::page::{AllPages, Page},
-    }, utility::CharRect,
+    },
 };
 
-pub async fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut window_state = WindowState::new(&window).await;
+pub fn run(event_loop: EventLoop<()>, window: Window) {
+    let mut window_state = pollster::block_on(WindowState::new(&window));
     let mut draw_buffer = DrawBuffer::new();
     let mut modifiers = Modifiers::default();
     let mut pages = AllPages::new();
@@ -45,7 +45,7 @@ pub async fn run(event_loop: EventLoop<()>, window: Window) {
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
                 pages.draw(&mut draw_buffer);
-                draw_buffer.draw_rect(2, CharRect::new(15, 15, 1, 1));
+                // draw_buffer.draw_rect(2, CharRect::new(15, 15, 1, 1));
                 // push the framebuffer into GPU and render it onto the screen
                 match window_state.render(&draw_buffer.framebuffer) {
                     Ok(_) => {}

@@ -1,6 +1,6 @@
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::visual::{draw_buffer::DrawBuffer, utility::CharRect};
+use crate::visual::{coordinates::CharRect, draw_buffer::DrawBuffer};
 
 use super::widget::{NextWidget, Widget};
 
@@ -14,8 +14,8 @@ pub struct Button {
 
 impl Widget for Button {
     fn draw(&self, buffer: &mut DrawBuffer, selected: bool) {
-        let string_offset: u8 = {
-            let half_string = self.text.len() as u8 / 2;
+        let string_offset = {
+            let half_string = self.text.len() / 2;
             if self.text.len() % 2 == 0 {
                 half_string - 1
             } else {
@@ -23,34 +23,31 @@ impl Widget for Button {
             }
         };
 
-        buffer.draw_rect(
-            2,
-            CharRect::new(self.rect.top(), self.rect.bot(), self.rect.left(), self.rect.right())
-        );
-        
-        buffer.draw_box(self.rect, self.pressed);
+        // buffer.draw_rect(Self::BACKGROUND_COLOR, self.rect);
+
+        // buffer.draw_box(self.rect, self.pressed);
 
         // new box drawing, is probably better but still needs work
-        // let colors = match self.pressed {
-        //     true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
-        //     false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
-        // };
-
-        // buffer.draw_box_new(self.rect, Self::BACKGROUND_COLOR, colors.0, colors.1);
-
-        let text_color = match self.pressed || selected {
-            true => 11,
-            false => 0,
+        let colors = match self.pressed {
+            true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
+            false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
         };
-        buffer.draw_string(
-            self.text,
-            (
-                ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
-                (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
-            ),
-            text_color,
-            2,
-        )
+
+        buffer.draw_box(self.rect, Self::BACKGROUND_COLOR, colors.0, colors.1);
+
+        // let text_color = match self.pressed || selected {
+        //     true => 11,
+        //     false => 0,
+        // };
+        // buffer.draw_string(
+        //     self.text,
+        //     (
+        //         ((self.rect.right - self.rect.left) / 2 + self.rect.left) - string_offset,
+        //         (self.rect.bot - self.rect.top) / 2 + self.rect.top,
+        //     ),
+        //     text_color,
+        //     Self::BACKGROUND_COLOR,
+        // )
     }
 
     fn process_input(
@@ -121,10 +118,10 @@ impl Button {
         next_widget: NextWidget,
         cb: impl Fn() + 'static,
     ) -> Self {
-        assert!(
-            rect.bot() - rect.top() >= 3,
-            "buttons needs to be at least 3 rows high"
-        );
+        // assert!(
+        //     rect.bot() - rect.top() >= 3,
+        //     "buttons needs to be at least 3 rows high"
+        // );
         Button {
             text,
             rect,

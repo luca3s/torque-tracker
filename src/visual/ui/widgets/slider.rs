@@ -2,7 +2,7 @@ use std::ops::{AddAssign, Deref, SubAssign};
 
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::visual::{draw_buffer::DrawBuffer, utility::CharRect};
+use crate::visual::{coordinates::CharRect, draw_buffer::DrawBuffer};
 
 use super::widget::{NextWidget, Widget};
 

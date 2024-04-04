@@ -12,7 +12,7 @@ use wgpu::{
 };
 use winit::window::Window;
 
-use super::utility::{PIXEL_SIZE, WINDOW_SIZE};
+use super::coordinates::{PIXEL_SIZE, WINDOW_SIZE};
 
 pub(crate) struct WindowState<'window> {
     surface: Surface<'window>,

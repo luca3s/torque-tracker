@@ -1,13 +1,10 @@
-use crate::visual::{draw_buffer::DrawBuffer, utility::CharRect};
+use crate::visual::{coordinates::CharRect, draw_buffer::DrawBuffer};
 
 pub struct Header {}
 
 impl Header {
     pub fn draw_constant(&self, buffer: &mut DrawBuffer) {
-        buffer.draw_rect(
-            2,
-            CharRect::new(0, 11, 0, 80),
-        );
+        buffer.draw_rect(2, CharRect::new(0, 11, 0, 79));
         buffer.draw_string("Rust Tracker", (34, 1), 0, 2);
         buffer.draw_string("Song Name", (2, 3), 0, 2);
         buffer.draw_string("File Name", (2, 4), 0, 2);
