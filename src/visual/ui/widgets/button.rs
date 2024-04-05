@@ -23,31 +23,41 @@ impl Widget for Button {
             }
         };
 
-        // buffer.draw_rect(Self::BACKGROUND_COLOR, self.rect);
+        buffer.draw_rect(
+            Self::BACKGROUND_COLOR,
+            CharRect {
+                top: self.rect.top + 1,
+                bot: self.rect.bot - 1,
+                left: self.rect.left + 1,
+                right: self.rect.right - 1,
+            },
+        );
 
-        // buffer.draw_box(self.rect, self.pressed);
-
-        // new box drawing, is probably better but still needs work
-        let colors = match self.pressed {
+        let box_colors = match self.pressed {
             true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
             false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
         };
 
-        buffer.draw_box(self.rect, Self::BACKGROUND_COLOR, colors.0, colors.1);
+        buffer.draw_box(
+            self.rect,
+            Self::BACKGROUND_COLOR,
+            box_colors.0,
+            box_colors.1,
+        );
 
-        // let text_color = match self.pressed || selected {
-        //     true => 11,
-        //     false => 0,
-        // };
-        // buffer.draw_string(
-        //     self.text,
-        //     (
-        //         ((self.rect.right - self.rect.left) / 2 + self.rect.left) - string_offset,
-        //         (self.rect.bot - self.rect.top) / 2 + self.rect.top,
-        //     ),
-        //     text_color,
-        //     Self::BACKGROUND_COLOR,
-        // )
+        let text_color = match self.pressed || selected {
+            true => 11,
+            false => 0,
+        };
+        buffer.draw_string(
+            self.text,
+            (
+                ((self.rect.right - self.rect.left) / 2 + self.rect.left) - string_offset,
+                (self.rect.bot - self.rect.top) / 2 + self.rect.top,
+            ),
+            text_color,
+            Self::BACKGROUND_COLOR,
+        )
     }
 
     fn process_input(
@@ -118,10 +128,11 @@ impl Button {
         next_widget: NextWidget,
         cb: impl Fn() + 'static,
     ) -> Self {
-        // assert!(
-        //     rect.bot() - rect.top() >= 3,
-        //     "buttons needs to be at least 3 rows high"
-        // );
+        // is 3 rows high, because bot and top are inclusive
+        assert!(
+            rect.bot - rect.top >= 2,
+            "buttons needs to be at least 3 rows high"
+        );
         Button {
             text,
             rect,

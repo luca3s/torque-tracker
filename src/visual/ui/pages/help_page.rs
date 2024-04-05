@@ -67,7 +67,7 @@ impl Page for HelpPage {
 impl HelpPage {
     pub fn new() -> Self {
         let quit_button = Button::new(
-            "quit1",
+            "quit",
             CharRect::new(30, 32, 2, 10),
             NextWidget::default(),
             || println!("quit"),

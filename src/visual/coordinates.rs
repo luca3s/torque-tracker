@@ -7,9 +7,10 @@ pub const WINDOW_SIZE: (usize, usize) = (FONT_SIZE * 80, FONT_SIZE * 50);
 /// bytes per pixel
 pub const PIXEL_SIZE: usize = 4;
 /// bytes per pixel line
-pub const LINE_SIZE: usize = PIXEL_SIZE * WINDOW_SIZE.0;
+// pub const LINE_SIZE: usize = WINDOW_SIZE.0;
+// pub const LINE_SIZE: usize = PIXEL_SIZE * WINDOW_SIZE.0;
 /// bytes per Character line
-pub const CHAR_LINE_SIZE: usize = LINE_SIZE * FONT_SIZE;
+// pub const CHAR_LINE_SIZE: usize = LINE_SIZE * FONT_SIZE;
 
 /// CharRect as well as PixelRect uses all values inclusive, meaning the borders are included
 #[derive(Clone, Copy)]

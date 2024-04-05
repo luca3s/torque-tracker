@@ -28,4 +28,8 @@ impl Palette {
     pub fn get_extended_color(&self, color: usize) -> [u8; PIXEL_SIZE] {
         [self.0[color][0], self.0[color][1], self.0[color][2], 0]
     }
+
+    pub fn get_packed_color(&self, color: usize) -> u32 {
+        bytemuck::cast([self.0[color][0], self.0[color][1], self.0[color][2], 0])
+    }
 }

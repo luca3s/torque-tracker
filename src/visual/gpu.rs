@@ -175,7 +175,7 @@ impl<'window> WindowState<'window> {
                     write_mask: ColorWrites::ALL,
                 })],
             }),
-            
+
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
@@ -216,7 +216,7 @@ impl<'window> WindowState<'window> {
         }
     }
 
-    pub fn render(&mut self, framebuffer: &[u8]) -> Result<(), SurfaceError> {
+    pub fn render(&mut self, framebuffer: &[u32]) -> Result<(), SurfaceError> {
         // push framebuffer to GPU-Texture
         self.queue.write_texture(
             ImageCopyTexture {
@@ -225,7 +225,7 @@ impl<'window> WindowState<'window> {
                 origin: Origin3d::ZERO,
                 aspect: TextureAspect::All,
             },
-            framebuffer,
+            bytemuck::cast_slice(framebuffer),
             ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some((PIXEL_SIZE * WINDOW_SIZE.0) as u32),
