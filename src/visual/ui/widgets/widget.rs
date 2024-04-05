@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use winit::event::{KeyEvent, Modifiers};
 
 use crate::visual::draw_buffer::DrawBuffer;
@@ -7,14 +9,6 @@ pub trait Widget {
     /// returns a Some(usize) if the next widget gets selected
     fn process_input(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> Option<usize>;
 }
-
-// enum NextCommand {
-//     Left,
-//     Right,
-//     Top,
-//     Bot,
-//     Tab,
-// }
 
 #[derive(Default)]
 pub struct NextWidget {
@@ -26,14 +20,17 @@ pub struct NextWidget {
     pub shift_tab: Option<usize>,
 }
 
-// impl NextWidget {
-//     fn get(&self, cmd: &NextCommand) -> Option<usize> {
-//         match cmd {
-//             NextCommand::Left => self.left,
-//             NextCommand::Right => self.right,
-//             NextCommand::Top => self.top,
-//             NextCommand::Bot => self.bot,
-//             NextCommand::Tab => self.tab,
-//         }
-//     }
-// }
+// type needed due to limitation in type system. see: https://lucumr.pocoo.org/2022/1/7/as-any-hack/
+pub trait WidgetAny: Any + Widget {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Any + Widget> WidgetAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}

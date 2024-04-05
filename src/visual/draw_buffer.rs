@@ -1,19 +1,19 @@
 use super::{
-    coordinates::{CharRect, PixelRect, FONT_SIZE, PIXEL_SIZE, WINDOW_SIZE},
-    palettes::Palette,
+    coordinates::{CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
+    palettes::{Palette, RGB10A2},
 };
 use font8x8::UnicodeFonts;
 
 pub(crate) struct DrawBuffer {
-    pub framebuffer: [u32; WINDOW_SIZE.0 * WINDOW_SIZE.1],
-    color_palette: Palette,
+    pub framebuffer: [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+    color_palette: Palette<RGB10A2>,
 }
 
 impl DrawBuffer {
     pub fn new() -> Self {
         Self {
-            framebuffer: [0; WINDOW_SIZE.0 * WINDOW_SIZE.1],
-            color_palette: Palette::CAMOUFLAGE,
+            framebuffer: [[0; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+            color_palette: Palette::CAMOUFLAGE.into(),
         }
     }
 
@@ -26,16 +26,16 @@ impl DrawBuffer {
     ) {
         // this is the top_left pixel
         let position = (position.0 * FONT_SIZE, position.1 * FONT_SIZE);
-        let fg_color = self.color_palette.get_packed_color(fg_color);
-        let bg_color = self.color_palette.get_packed_color(bg_color);
+        let fg_color = self.color_palette.get_raw(fg_color);
+        let bg_color = self.color_palette.get_raw(bg_color);
         for (y, line) in char_data.iter().enumerate() {
             for x in 0..8 {
                 let color = match (line >> x) & 1 == 1 {
                     true => fg_color,
                     false => bg_color,
                 };
-                let pixel = position.0 + x + ((position.1 + y) * WINDOW_SIZE.0);
-                self.framebuffer[pixel] = color;
+                // let pixel = position.0 + x + ((position.1 + y) * WINDOW_SIZE.0);
+                self.framebuffer[position.1 + y][position.0 + x] = color;
             }
         }
     }
@@ -69,44 +69,37 @@ impl DrawBuffer {
         const SPACE_FROM_BORDER: usize = FONT_SIZE - BOX_THICKNESS;
 
         let pixel_rect = PixelRect::from(char_rect);
-        let background_color = self.color_palette.get_packed_color(background_color);
-        let top_left_color = self.color_palette.get_packed_color(top_left_color);
-        let bot_right_color = self.color_palette.get_packed_color(bot_right_color);
+        let background_color = self.color_palette.get_raw(background_color);
+        let top_left_color = self.color_palette.get_raw(top_left_color);
+        let bot_right_color = self.color_palette.get_raw(bot_right_color);
 
         // all pixel lines except those in top and bottom char line
         for y in (pixel_rect.top + FONT_SIZE)..=(pixel_rect.bot - FONT_SIZE) {
             // left side foreground
             for x in (pixel_rect.left + SPACE_FROM_BORDER)..(pixel_rect.left + FONT_SIZE) {
-                let pixel = x + (y * WINDOW_SIZE.0);
-                self.framebuffer[pixel] = top_left_color;
+                self.framebuffer[y][x] = top_left_color;
             }
             // left side background
             for x in pixel_rect.left..(pixel_rect.left + SPACE_FROM_BORDER) {
-                let pixel = x + (y * WINDOW_SIZE.0);
-                self.framebuffer[pixel] = background_color;
+                self.framebuffer[y][x] = background_color;
             }
 
             // need the plus ones, as the '..' would need to be exclusive on the low and inclusive on the high, which i dont know how to do
             for x in (pixel_rect.right - FONT_SIZE + 1)..(pixel_rect.right - SPACE_FROM_BORDER + 1)
             {
-                let pixel = x + (y * WINDOW_SIZE.0);
-                self.framebuffer[pixel] = bot_right_color;
+                self.framebuffer[y][x] = bot_right_color;
             }
             // right side background
             for x in (pixel_rect.right - SPACE_FROM_BORDER + 1)..=pixel_rect.right {
-                let pixel = x + (y * WINDOW_SIZE.0);
-                self.framebuffer[pixel] = background_color;
+                self.framebuffer[y][x] = background_color;
             }
         }
-
-        let (lines, remainer) = self.framebuffer.as_chunks_mut::<{ WINDOW_SIZE.0 }>();
-        assert!(remainer.is_empty());
 
         // top char line
         for y in pixel_rect.top..(pixel_rect.top + FONT_SIZE) {
             if y < pixel_rect.top + SPACE_FROM_BORDER {
                 for x in pixel_rect.horizontal_range() {
-                    lines[y][x] = background_color;
+                    self.framebuffer[y][x] = background_color;
                 }
             } else {
                 for x in pixel_rect.left..=pixel_rect.right {
@@ -123,7 +116,7 @@ impl DrawBuffer {
                         bot_right_color
                     };
 
-                    lines[y][x] = color;
+                    self.framebuffer[y][x] = color;
                 }
             }
         }
@@ -133,9 +126,7 @@ impl DrawBuffer {
             // does the top 'SPACE_FROM_BORDER' rows in background color
             if y > pixel_rect.bot - SPACE_FROM_BORDER {
                 for x in pixel_rect.horizontal_range() {
-                    // lines[y][x * PIXEL_SIZE..(x * PIXEL_SIZE) + PIXEL_SIZE]
-                    //     .copy_from_slice(&background_color);
-                    lines[y][x] = background_color;
+                    self.framebuffer[y][x] = background_color;
                 }
             } else {
                 for x in pixel_rect.horizontal_range() {
@@ -149,8 +140,7 @@ impl DrawBuffer {
                         bot_right_color
                     };
 
-                    // lines[y][x * PIXEL_SIZE..(x * PIXEL_SIZE) + PIXEL_SIZE].copy_from_slice(&color);
-                    lines[y][x] = color;
+                    self.framebuffer[y][x] = color;
                 }
             }
         }
@@ -164,24 +154,16 @@ impl DrawBuffer {
 
     // draw rects between character lines
     fn draw_pixel_rect(&mut self, color: usize, rect: PixelRect) {
-        let color = self.color_palette.get_packed_color(color);
+        let color = self.color_palette.get_raw(color);
 
-        let (lines, remainder) = self.framebuffer.as_chunks_mut::<{WINDOW_SIZE.0}>();
-        assert!(remainder.is_empty());
-
-        for line in &mut lines[rect.top..=rect.bot] {
+        for line in &mut self.framebuffer[rect.top..=rect.bot] {
             line[rect.left..=rect.right].fill(color);
         }
     }
 
     fn mark_char(&mut self, position: (usize, usize)) {
         let pixel = position.0 + 4 + ((position.1 + 4) * WINDOW_SIZE.0);
-        self.framebuffer[pixel] = self.color_palette.get_packed_color(1);
-    }
-
-    pub fn clear(&mut self, color: usize) {
-        let color = self.color_palette.get_packed_color(color);
-        // could maybe be better with nightly feature 'slice_as_chunks'
-        self.framebuffer.fill(color);
+        self.framebuffer[(position.1 + 4) * WINDOW_SIZE.0][position.0 + 4] =
+            self.color_palette.get_raw(1);
     }
 }

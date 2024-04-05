@@ -1,39 +1,37 @@
+use std::any::Any;
+
 use crate::visual::{
     coordinates::CharRect,
     draw_buffer::DrawBuffer,
     ui::widgets::{
         button::Button,
-        widget::{NextWidget, Widget},
+        widget::{NextWidget, Widget, WidgetAny},
     },
 };
 
 use super::page::Page;
 
-enum HelpPageWidget {
-    Button(Button),
-}
+// impl Widget for HelpPageWidget {
+//     fn draw(&self, buffer: &mut DrawBuffer, selected: bool) {
+//         match self {
+//             HelpPageWidget::Button(b) => b.draw(buffer, selected),
+//         }
+//     }
 
-impl Widget for HelpPageWidget {
-    fn draw(&self, buffer: &mut DrawBuffer, selected: bool) {
-        match self {
-            HelpPageWidget::Button(b) => b.draw(buffer, selected),
-        }
-    }
-
-    fn process_input(
-        &mut self,
-        modifiers: &winit::event::Modifiers,
-        key_event: &winit::event::KeyEvent,
-    ) -> Option<usize> {
-        match self {
-            HelpPageWidget::Button(b) => b.process_input(modifiers, key_event),
-        }
-    }
-}
+//     fn process_input(
+//         &mut self,
+//         modifiers: &winit::event::Modifiers,
+//         key_event: &winit::event::KeyEvent,
+//     ) -> Option<usize> {
+//         match self {
+//             HelpPageWidget::Button(b) => b.process_input(modifiers, key_event),
+//         }
+//     }
+// }
 
 pub struct HelpPage {
     active_widget: usize,
-    ui_widgets: Box<[HelpPageWidget]>,
+    ui_widgets: [Box<dyn WidgetAny>; 1],
 }
 
 impl Page for HelpPage {
@@ -73,7 +71,7 @@ impl HelpPage {
             || println!("quit"),
         );
         Self {
-            ui_widgets: Box::new([HelpPageWidget::Button(quit_button)]),
+            ui_widgets: [Box::new(quit_button)],
             active_widget: 0,
         }
     }

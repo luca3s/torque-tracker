@@ -47,7 +47,7 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
                 pages.draw(&mut draw_buffer);
                 // draw_buffer.draw_rect(2, CharRect::new(15, 15, 1, 1));
                 // push the framebuffer into GPU and render it onto the screen
-                match window_state.render(&draw_buffer.framebuffer) {
+                match window_state.render(draw_buffer.framebuffer.flatten()) {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => window_state.resize(window_state.size),
                     Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),

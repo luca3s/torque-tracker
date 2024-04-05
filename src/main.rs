@@ -1,4 +1,4 @@
-#![feature(slice_as_chunks)]
+#![feature(slice_flatten)]
 
 use visual::event_loop::run;
 

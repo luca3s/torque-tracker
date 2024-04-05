@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 pub const FONT_SIZE: usize = 8;
 /// window size in characters
 pub const WINDOW_SIZE: (usize, usize) = (FONT_SIZE * 80, FONT_SIZE * 50);
-/// bytes per pixel
+/// bytes per pixel, mainly used to setup GPU as otherwise i use a u32 for one pixel
 pub const PIXEL_SIZE: usize = 4;
 /// bytes per pixel line
 // pub const LINE_SIZE: usize = WINDOW_SIZE.0;

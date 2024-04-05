@@ -90,7 +90,7 @@ impl<'window> WindowState<'window> {
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8Unorm,
+            format: TextureFormat::Rgb10a2Unorm,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             label: Some("Streaming Texture"),
             view_formats: &[],

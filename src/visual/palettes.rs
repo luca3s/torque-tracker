@@ -1,11 +1,42 @@
-use super::coordinates::PIXEL_SIZE;
+use bit_struct::u10;
 
-type Color = [u8; 3];
-// pub type Palette = [Color; 16];
-pub struct Palette([Color; 16]);
+const PALETTE_SIZE: usize = 16;
 
-impl Palette {
-    pub const CAMOUFLAGE: Palette = Palette([
+pub type RGB8 = [u8; 3];
+// pub type RGBA8 = [u8; 4];
+
+// for RGB10A2 structure see: https://developer.apple.com/documentation/metal/mtlpixelformat/rgb10a2unorm
+// bit_field macro takes fields from high to low, thats why its ordered like that and not like the name would suggest
+bit_struct::bit_struct! {
+    pub struct RGB10A2(u32) {
+        alpha: bit_struct::u2,
+        blue: bit_struct::u10,
+        green: bit_struct::u10,
+        red: bit_struct::u10,
+    }
+}
+
+impl From<RGB8> for RGB10A2 {
+    /// sets Alpha to 0
+    fn from(value: RGB8) -> Self {
+        // unwraps are okay because its u8 * 4 which results in a u10
+        // in between its a u16 but it is from(u8), so it never panics
+        // maybe i can later use unsafe instead
+        // multiply by 4 because: 4 * 2^8 = 2^10
+        RGB10A2::new(
+            bit_struct::u2!(0),
+            u10::new(u16::from(value[2]) * 4).unwrap(),
+            u10::new(u16::from(value[1]) * 4).unwrap(),
+            u10::new(u16::from(value[0]) * 4).unwrap(),
+        )
+    }
+}
+
+pub struct Palette<Color>([Color; PALETTE_SIZE]);
+
+// only needed, because its easier to set u8 color values than u10 by hand, so i store them in u8 and convert to RGB10A2
+impl Palette<RGB8> {
+    pub const CAMOUFLAGE: Palette<RGB8> = Palette([
         [0, 0, 0],
         [124, 88, 68],
         [180, 148, 120],
@@ -24,12 +55,33 @@ impl Palette {
         [52, 48, 44],
     ]);
 
-    /// returns Color as used by the GPU in the Framebuffer, opacity set to 0
-    pub fn get_extended_color(&self, color: usize) -> [u8; PIXEL_SIZE] {
-        [self.0[color][0], self.0[color][1], self.0[color][2], 0]
-    }
+    // pub fn get(&self, index: usize) -> RGB8 {
+    //     self.0[index]
+    // }
 
-    pub fn get_packed_color(&self, color: usize) -> u32 {
-        bytemuck::cast([self.0[color][0], self.0[color][1], self.0[color][2], 0])
+    // /// sets alpha value to 0
+    // pub fn get_extended_color(&self, color: usize) -> RGBA8 {
+    //     [self.0[color][0], self.0[color][1], self.0[color][2], 0]
+    // }
+
+    // /// returns Color as used by the GPU in the Framebuffer, opacity set to 0
+    // pub fn get_packed_color(&self, color: usize) -> u32 {
+    //     bytemuck::cast([self.0[color][0], self.0[color][1], self.0[color][2], 0])
+    // }
+}
+
+impl Palette<RGB10A2> {
+    // pub fn get(&self, index: usize) -> RGB10A2 {
+    //     self.0[index]
+    // }
+
+    pub fn get_raw(&self, index: usize) -> u32 {
+        self.0[index].raw()
+    }
+}
+
+impl From<Palette<RGB8>> for Palette<RGB10A2> {
+    fn from(value: Palette<RGB8>) -> Self {
+        Self(value.0.map(RGB10A2::from))
     }
 }
