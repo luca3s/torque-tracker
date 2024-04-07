@@ -25,12 +25,12 @@ impl Widget for Button {
 
         buffer.draw_rect(
             Self::BACKGROUND_COLOR,
-            CharRect {
-                top: self.rect.top + 1,
-                bot: self.rect.bot - 1,
-                left: self.rect.left + 1,
-                right: self.rect.right - 1,
-            },
+            CharRect::new(
+                self.rect.top() + 1,
+                self.rect.bot() - 1,
+                self.rect.left() + 1,
+                self.rect.right() - 1,
+            ),
         );
 
         let box_colors = match self.pressed {
@@ -52,8 +52,8 @@ impl Widget for Button {
         buffer.draw_string(
             self.text,
             (
-                ((self.rect.right - self.rect.left) / 2 + self.rect.left) - string_offset,
-                (self.rect.bot - self.rect.top) / 2 + self.rect.top,
+                ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
+                (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
             ),
             text_color,
             Self::BACKGROUND_COLOR,
@@ -130,7 +130,7 @@ impl Button {
     ) -> Self {
         // is 3 rows high, because bot and top are inclusive
         assert!(
-            rect.bot - rect.top >= 2,
+            rect.bot() - rect.top() >= 2,
             "buttons needs to be at least 3 rows high"
         );
         Button {

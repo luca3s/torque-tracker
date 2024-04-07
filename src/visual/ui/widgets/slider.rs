@@ -1,8 +1,13 @@
-use std::ops::{AddAssign, Deref, SubAssign};
+use std::{
+    ops::{AddAssign, Deref, SubAssign},
+};
 
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::visual::{coordinates::CharRect, draw_buffer::DrawBuffer};
+use crate::visual::{
+    coordinates::{CharRect, PixelRect, FONT_SIZE},
+    draw_buffer::DrawBuffer,
+};
 
 use super::widget::{NextWidget, Widget};
 
@@ -13,8 +18,11 @@ pub struct BoundNumber<const MIN: i16, const MAX: i16> {
 impl<const MIN: i16, const MAX: i16> AddAssign<i16> for BoundNumber<MIN, MAX> {
     fn add_assign(&mut self, rhs: i16) {
         let new = self.inner.saturating_add(rhs);
+        // need to check both low and high bound as you can add a negative number
         if new > MAX {
             self.inner = MAX;
+        } else if new < MIN {
+            self.inner = MIN;
         } else {
             self.inner = new;
         }
@@ -24,7 +32,10 @@ impl<const MIN: i16, const MAX: i16> AddAssign<i16> for BoundNumber<MIN, MAX> {
 impl<const MIN: i16, const MAX: i16> SubAssign<i16> for BoundNumber<MIN, MAX> {
     fn sub_assign(&mut self, rhs: i16) {
         let new = self.inner.saturating_sub(rhs);
-        if new < MIN {
+        // need to check both low and high bound as you can sub a negative number
+        if new > MAX {
+            self.inner = MAX;
+        } else if new < MIN {
             self.inner = MIN;
         } else {
             self.inner = new;
@@ -41,32 +52,106 @@ impl<const MIN: i16, const MAX: i16> Deref for BoundNumber<MIN, MAX> {
 }
 
 impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
-    pub const fn new(mut value: i16) -> Self {
+    // sets inner to MIN or MAX if its out of bounds
+    pub const fn new(value: i16) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
         if value > MAX {
-            value = MAX;
+            Self { inner: MAX }
         } else if value < MIN {
-            value = MIN;
+            Self { inner: MIN }
+        } else {
+            Self { inner: value }
         }
+    }
 
+    pub const unsafe fn new_unchecked(value: i16) -> Self {
+        // fine to call in unchecked, because this is a compile time check
+        assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
         Self { inner: value }
+    }
+
+    pub fn set(&mut self, value: i16) {
+        if value > MAX {
+            self.inner = MAX
+        } else if value < MIN {
+            self.inner = MIN;
+        } else {
+            self.inner = value;
+        }
+    }
+
+    pub unsafe fn set_unchecked(&mut self, value: i16) {
+        self.inner = value;
+    }
+
+    // dont need any arguments as MIN and MAX are compile time known
+    pub const fn get_middle() -> i16 {
+        MIN + (MAX / 2)
     }
 }
 
+/// Slider needs more Space then is specified in Rect as it draws the current value with an offset of 2 right to the box.
+/// currently this always draws 3 chars, but this can only take values between -99 and 999. If values outside of that are needed, this implementation needs to change
 pub struct Slider<const MIN: i16, const MAX: i16> {
     pub number: BoundNumber<MIN, MAX>,
-
-    rect: CharRect,
+    position: (usize, usize),
+    width: usize,
     next_widget: NextWidget,
     callback: Box<dyn Fn(i16)>,
 }
 
 impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
-    fn draw(&self, buffer: &mut DrawBuffer, selected: bool) {
+    fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
+        const BACKGROUND_COLOR: usize = 0;
+        const CURSOR_COLOR: usize = 1;
+        const CURSOR_SELECTED_COLOR: usize = 2;
+
+        const CURSOR_WIDTH: usize = 4;
         // let pixel_width: i16 = (self.rect.right - self.rect.left).into() * FONT_SIZE;
         // let amount_values = MAX - MIN;
         // let single_value
-        todo!()
+
+        draw_buffer.draw_string(&format!("{:03}", *self.number), (self.position.0 + self.width + 2, self.position.1), 1, 2);
+
+        draw_buffer.draw_rect(
+            BACKGROUND_COLOR,
+            CharRect::new(
+                self.position.1,
+                self.position.1,
+                self.position.0,
+                self.position.0 + self.width,
+            ),
+        );
+
+        // shift value scale. this is the new MAX
+        // MIN -> MAX => 0 -> (MAX-MIN)
+        let num_possible_values = usize::from(MAX.abs_diff(MIN));
+
+        // shift value scale as shown below
+        // MIN -> MAX => 0 -> (MAX-MIN)
+        let value = usize::from(self.number.abs_diff(MIN));
+
+        let cursor_pos = if MAX == MIN {
+            0
+        } else {
+            // + 1 makes it have a border on the left side
+            1 + value * (self.width * FONT_SIZE + 1) / num_possible_values
+        };
+        let color = match selected {
+            true => CURSOR_SELECTED_COLOR,
+            false => CURSOR_COLOR,
+        };
+
+        let cursor_pixel_rect = PixelRect::new(
+            // +1 to have a space above
+            (self.position.1 * FONT_SIZE) + 1,
+            // -2 to make if have a 1. not go into the next line and 2. have a empty row below
+            (self.position.1 * FONT_SIZE) + (FONT_SIZE - 2),
+            (self.position.0 * FONT_SIZE) + cursor_pos + CURSOR_WIDTH,
+            (self.position.0 * FONT_SIZE) + cursor_pos,
+        );
+
+        draw_buffer.draw_pixel_rect(color, cursor_pixel_rect);
     }
 
     fn process_input(
@@ -75,22 +160,51 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         key_event: &winit::event::KeyEvent,
     ) -> Option<usize> {
         if key_event.state.is_pressed() {
-            if key_event.logical_key == Key::Named(NamedKey::ArrowRight) {
-                if modifiers.state() == ModifiersState::SHIFT {
-                    self.number += 4;
-                    (self.callback)(*self.number);
-                } else if modifiers.state().is_empty() {
-                    self.number += 1;
+            // move the slider
+            // change the internal value and call the callback
+            // this seems stupid but allows to reduce code duplication
+            if key_event.logical_key == Key::Named(NamedKey::ArrowRight)
+                || key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
+            {
+                // existance of this bracket allows us to only call the callback if the value really was changed
+                'move_slider: {
+                    let direction = if key_event.logical_key == Key::Named(NamedKey::ArrowRight) {
+                        // the number is at its max, so increasing it doesnt do anything so we break here
+                        if *self.number == MAX {
+                            break 'move_slider;
+                        }
+                        1
+                    } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft) {
+                        // analog to the ArrowRight branch
+                        if *self.number == MIN {
+                            break 'move_slider;
+                        }
+                        -1
+                    } else {
+                        // unreachable as the outer if has already checked this. could be changed to unsafe_unreachable
+                        unreachable!()
+                    };
+
+                    // sets amount according to the modifiers like the original. why the original SchismTracker behaves like this i don't know
+                    // only reason i can imagine is that if you know the behaviour you can move quite quickly through a slider
+                    let amount = {
+                        let mut amount = 1;
+                        if modifiers.state().shift_key() {
+                            amount *= 4;
+                        }
+                        if modifiers.state().super_key() {
+                            amount *= 2;
+                        }
+                        if modifiers.state().alt_key() {
+                            amount *= 8;
+                        }
+                        amount
+                    };
+
+                    self.number += amount * direction;
                     (self.callback)(*self.number);
                 }
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft) {
-                if modifiers.state() == ModifiersState::SHIFT {
-                    self.number -= 4;
-                    (self.callback)(*self.number);
-                } else {
-                    self.number -= 1;
-                    (self.callback)(*self.number);
-                }
+            // go to next widget
             } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
                 && modifiers.state().is_empty()
             {
@@ -105,6 +219,7 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                 } else if modifiers.state() == ModifiersState::SHIFT {
                     return self.next_widget.shift_tab;
                 }
+            // set the value directly, by opening a pop-up
             } else if let Some(text) = &key_event.text {
                 if text.chars().all(|c| c.is_ascii_digit()) {
                     todo!("open dialog window to input a value")
@@ -116,17 +231,33 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
 }
 
 impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
+    /// next_widget left and right must be None, because they cant be called
     pub fn new(
         inital_value: i16,
-        rect: CharRect,
+        position: (usize, usize),
+        width: usize,
         next_widget: NextWidget,
         callback: impl Fn(i16) + 'static,
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
+        // panic is fine, because this object only is generated with compile time values
+        assert!(
+            next_widget.left.is_none(),
+            "cant access it, because left moves the slider"
+        );
+        assert!(
+            next_widget.right.is_none(),
+            "cant access it, because right moves the slider"
+        );
+        // just put them here so i remember this limitation of the current implementation in the future
+        // if this ever fails the code that draws the current value right of the slider needs to be made aware of the lenght needed and not just draw 3 chars
+        assert!(MIN >= -99, "draw implementation needs to be redone");
+        assert!(MAX <= 999, "draw implementation needs to be redone");
 
         Self {
             number: BoundNumber::new(inital_value),
-            rect,
+            position,
+            width,
             next_widget,
             callback: Box::new(callback),
         }

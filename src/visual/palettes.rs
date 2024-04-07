@@ -54,27 +54,9 @@ impl Palette<RGB8> {
         [88, 64, 60],
         [52, 48, 44],
     ]);
-
-    // pub fn get(&self, index: usize) -> RGB8 {
-    //     self.0[index]
-    // }
-
-    // /// sets alpha value to 0
-    // pub fn get_extended_color(&self, color: usize) -> RGBA8 {
-    //     [self.0[color][0], self.0[color][1], self.0[color][2], 0]
-    // }
-
-    // /// returns Color as used by the GPU in the Framebuffer, opacity set to 0
-    // pub fn get_packed_color(&self, color: usize) -> u32 {
-    //     bytemuck::cast([self.0[color][0], self.0[color][1], self.0[color][2], 0])
-    // }
 }
 
 impl Palette<RGB10A2> {
-    // pub fn get(&self, index: usize) -> RGB10A2 {
-    //     self.0[index]
-    // }
-
     pub fn get_raw(&self, index: usize) -> u32 {
         self.0[index].raw()
     }

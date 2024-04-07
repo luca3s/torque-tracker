@@ -1,4 +1,4 @@
-#![feature(slice_flatten)]
+#![feature(slice_flatten)] // needed to flatten the framebuffer before sending it to the GPU
 
 use visual::event_loop::run;
 

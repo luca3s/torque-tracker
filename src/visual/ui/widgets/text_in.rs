@@ -4,7 +4,7 @@ use super::widget::{NextWidget, Widget};
 
 /// text has max_len of the rect that was given, because the text_in cannot scroll
 /// use text_in_scroll for that
-struct TextIn {
+pub struct TextIn {
     rect: CharRect,
     text: String,
     next_widget: NextWidget,
@@ -14,7 +14,7 @@ struct TextIn {
 
 impl Widget for TextIn {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
-        draw_buffer.draw_string(&self.text, (self.rect.left, self.rect.top), 1, 0);
+        draw_buffer.draw_string(&self.text, (self.rect.left(), self.rect.top()), 1, 0);
         if selected {
             // still needs to draw the cursor when selected
         }
@@ -41,7 +41,7 @@ impl TextIn {
     pub fn new(rect: CharRect, next_widget: NextWidget, cb: impl Fn(&mut str) + 'static) -> Self {
         TextIn {
             rect,
-            text: String::with_capacity(rect.right - rect.left),
+            text: String::with_capacity(rect.right() - rect.left()),
             next_widget,
             callback: Box::new(cb),
             cursor_pos: 0,

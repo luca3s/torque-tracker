@@ -74,42 +74,43 @@ impl DrawBuffer {
         let bot_right_color = self.color_palette.get_raw(bot_right_color);
 
         // all pixel lines except those in top and bottom char line
-        for y in (pixel_rect.top + FONT_SIZE)..=(pixel_rect.bot - FONT_SIZE) {
+        for y in (pixel_rect.top() + FONT_SIZE)..=(pixel_rect.bot() - FONT_SIZE) {
             // left side foreground
-            for x in (pixel_rect.left + SPACE_FROM_BORDER)..(pixel_rect.left + FONT_SIZE) {
+            for x in (pixel_rect.left() + SPACE_FROM_BORDER)..(pixel_rect.left() + FONT_SIZE) {
                 self.framebuffer[y][x] = top_left_color;
             }
             // left side background
-            for x in pixel_rect.left..(pixel_rect.left + SPACE_FROM_BORDER) {
+            for x in pixel_rect.left()..(pixel_rect.left() + SPACE_FROM_BORDER) {
                 self.framebuffer[y][x] = background_color;
             }
 
             // need the plus ones, as the '..' would need to be exclusive on the low and inclusive on the high, which i dont know how to do
-            for x in (pixel_rect.right - FONT_SIZE + 1)..(pixel_rect.right - SPACE_FROM_BORDER + 1)
+            for x in
+                (pixel_rect.right() - FONT_SIZE + 1)..(pixel_rect.right() - SPACE_FROM_BORDER + 1)
             {
                 self.framebuffer[y][x] = bot_right_color;
             }
             // right side background
-            for x in (pixel_rect.right - SPACE_FROM_BORDER + 1)..=pixel_rect.right {
+            for x in (pixel_rect.right() - SPACE_FROM_BORDER + 1)..=pixel_rect.right() {
                 self.framebuffer[y][x] = background_color;
             }
         }
 
         // top char line
-        for y in pixel_rect.top..(pixel_rect.top + FONT_SIZE) {
-            if y < pixel_rect.top + SPACE_FROM_BORDER {
+        for y in pixel_rect.top()..(pixel_rect.top() + FONT_SIZE) {
+            if y < pixel_rect.top() + SPACE_FROM_BORDER {
                 for x in pixel_rect.horizontal_range() {
                     self.framebuffer[y][x] = background_color;
                 }
             } else {
-                for x in pixel_rect.left..=pixel_rect.right {
-                    let color = if x < pixel_rect.left + SPACE_FROM_BORDER
-                        || x > pixel_rect.right - SPACE_FROM_BORDER
+                for x in pixel_rect.left()..=pixel_rect.right() {
+                    let color = if x < pixel_rect.left() + SPACE_FROM_BORDER
+                        || x > pixel_rect.right() - SPACE_FROM_BORDER
                     {
                         background_color
-                    } else if x < pixel_rect.right
+                    } else if x < pixel_rect.right()
                         - SPACE_FROM_BORDER
-                        - (y - (pixel_rect.top + SPACE_FROM_BORDER))
+                        - (y - (pixel_rect.top() + SPACE_FROM_BORDER))
                     {
                         top_left_color
                     } else {
@@ -122,19 +123,19 @@ impl DrawBuffer {
         }
 
         // bottom char line
-        for y in (pixel_rect.bot - FONT_SIZE + 1)..=pixel_rect.bot {
+        for y in (pixel_rect.bot() - FONT_SIZE + 1)..=pixel_rect.bot() {
             // does the top 'SPACE_FROM_BORDER' rows in background color
-            if y > pixel_rect.bot - SPACE_FROM_BORDER {
+            if y > pixel_rect.bot() - SPACE_FROM_BORDER {
                 for x in pixel_rect.horizontal_range() {
                     self.framebuffer[y][x] = background_color;
                 }
             } else {
                 for x in pixel_rect.horizontal_range() {
-                    let color = if x < pixel_rect.left + SPACE_FROM_BORDER
-                        || x > pixel_rect.right - SPACE_FROM_BORDER
+                    let color = if x < pixel_rect.left() + SPACE_FROM_BORDER
+                        || x > pixel_rect.right() - SPACE_FROM_BORDER
                     {
                         background_color
-                    } else if x < pixel_rect.left + (pixel_rect.bot - y) {
+                    } else if x < pixel_rect.left() + (pixel_rect.bot() - y) {
                         top_left_color
                     } else {
                         bot_right_color
@@ -153,12 +154,18 @@ impl DrawBuffer {
     }
 
     // draw rects between character lines
-    fn draw_pixel_rect(&mut self, color: usize, rect: PixelRect) {
+    pub fn draw_pixel_rect(&mut self, color: usize, rect: PixelRect) {
         let color = self.color_palette.get_raw(color);
 
-        for line in &mut self.framebuffer[rect.top..=rect.bot] {
-            line[rect.left..=rect.right].fill(color);
+        for line in &mut self.framebuffer[rect.top()..=rect.bot()] {
+            line[rect.left()..=rect.right()].fill(color);
         }
+
+        // for y in rect.top..=rect.bot {
+        //     for x in rect.left..=rect.right {
+        //         self.framebuffer[y][x] = color;
+        //     }
+        // }
     }
 
     fn mark_char(&mut self, position: (usize, usize)) {

@@ -18,3 +18,13 @@ pollster = "0.3.0"
 wgpu = "0.19.3"
 winit = "0.29.15"
 bit-struct = {version = "0.3.2", default-features = false} # used for packing the color format for the GPU. deactivate dafault cause i dont need serde
+
+[profile.dev]
+debug = 0
+panic = "unwind"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

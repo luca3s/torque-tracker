@@ -3,28 +3,34 @@ use std::ops::RangeInclusive;
 /// font size in pixel. font is a square
 pub const FONT_SIZE: usize = 8;
 /// window size in characters
-pub const WINDOW_SIZE: (usize, usize) = (FONT_SIZE * 80, FONT_SIZE * 50);
+pub const WINDOW_SIZE_CHARS: (usize, usize) = (80, 50);
+/// window size in pixel
+pub const WINDOW_SIZE: (usize, usize) = (
+    FONT_SIZE * WINDOW_SIZE_CHARS.0,
+    FONT_SIZE * WINDOW_SIZE_CHARS.1,
+);
 /// bytes per pixel, mainly used to setup GPU as otherwise i use a u32 for one pixel
 pub const PIXEL_SIZE: usize = 4;
-/// bytes per pixel line
-// pub const LINE_SIZE: usize = WINDOW_SIZE.0;
-// pub const LINE_SIZE: usize = PIXEL_SIZE * WINDOW_SIZE.0;
-/// bytes per Character line
-// pub const CHAR_LINE_SIZE: usize = LINE_SIZE * FONT_SIZE;
 
 /// CharRect as well as PixelRect uses all values inclusive, meaning the borders are included
 #[derive(Clone, Copy)]
 pub struct CharRect {
-    pub top: usize,
-    pub bot: usize,
-    pub left: usize,
-    pub right: usize,
+    top: usize,
+    bot: usize,
+    left: usize,
+    right: usize,
 }
 
 impl CharRect {
-    pub fn new(top: usize, bot: usize, left: usize, right: usize) -> Self {
+    pub const PAGE_AREA: Self = Self::new(11, WINDOW_SIZE_CHARS.1 - 1, 0, WINDOW_SIZE_CHARS.0 - 1);
+    pub const HEADER_AREA: Self = Self::new(0, 10, 0, WINDOW_SIZE_CHARS.0 - 1);
+
+    pub const fn new(top: usize, bot: usize, left: usize, right: usize) -> Self {
         assert!(top <= bot, "top needs to be smaller than bot");
         assert!(left <= right, "left needs to be smaller than right");
+        assert!(bot < WINDOW_SIZE_CHARS.1, "lower than window bounds");
+        assert!(right < WINDOW_SIZE_CHARS.0, "right out of window bounds");
+
         Self {
             top,
             bot,
@@ -32,15 +38,28 @@ impl CharRect {
             left,
         }
     }
+
+    pub fn top(&self) -> usize {
+        self.top
+    }
+    pub fn bot(&self) -> usize {
+        self.bot
+    }
+    pub fn right(&self) -> usize {
+        self.right
+    }
+    pub fn left(&self) -> usize {
+        self.left
+    }
 }
 
 /// PixelRect as well as CharRect uses all values inclusive, meaning the borders are included
 #[derive(Debug, Clone, Copy)]
 pub struct PixelRect {
-    pub top: usize,
-    pub bot: usize,
-    pub right: usize,
-    pub left: usize,
+    top: usize,
+    bot: usize,
+    right: usize,
+    left: usize,
 }
 
 impl From<CharRect> for PixelRect {
@@ -55,11 +74,41 @@ impl From<CharRect> for PixelRect {
 }
 
 impl PixelRect {
+    pub fn new(top: usize, bot: usize, right: usize, left: usize) -> Self {
+        assert!(top <= bot, "top needs to be smaller than bot");
+        assert!(left <= right, "left needs to be smaller than right");
+        assert!(bot < WINDOW_SIZE.1, "lower than window bounds");
+        assert!(right < WINDOW_SIZE.0, "right out of window bounds");
+
+        Self {
+            top,
+            bot,
+            right,
+            left,
+        }
+    }
+
     pub fn vertical_range(&self) -> RangeInclusive<usize> {
         RangeInclusive::new(self.top, self.bot)
     }
 
     pub fn horizontal_range(&self) -> RangeInclusive<usize> {
         RangeInclusive::new(self.left, self.right)
+    }
+
+    pub fn top(&self) -> usize {
+        self.top
+    }
+
+    pub fn bot(&self) -> usize {
+        self.bot
+    }
+
+    pub fn right(&self) -> usize {
+        self.right
+    }
+
+    pub fn left(&self) -> usize {
+        self.left
     }
 }

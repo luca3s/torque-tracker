@@ -1,6 +1,7 @@
 use winit::{
     event::{Event, Modifiers, WindowEvent},
     event_loop::EventLoop,
+    keyboard::{Key, ModifiersState, NamedKey},
     window::Window,
 };
 
@@ -9,7 +10,7 @@ use super::{
     gpu::WindowState,
     ui::{
         header::Header,
-        pages::page::{AllPages, Page},
+        pages::page::{AllPages, Page, PagesEnum},
     },
 };
 
@@ -21,13 +22,14 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
 
     let ui_header = Header {};
     ui_header.draw_constant(&mut draw_buffer);
-    // pages.draw_constant(&mut draw_buffer);
+
     let window = &window;
     let _ = event_loop.run(move |event, elwt| match event {
         Event::WindowEvent {
             window_id: _, // can ignore because i only use one window
             ref event,
         } => match event {
+            // as soon as pop-up windows are working here should be a pop-up check, before exiting
             WindowEvent::CloseRequested => elwt.exit(),
             WindowEvent::Resized(pyhsical_size) => {
                 window_state.resize(*pyhsical_size);
@@ -45,7 +47,8 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
                 pages.draw(&mut draw_buffer);
-                // draw_buffer.draw_rect(2, CharRect::new(15, 15, 1, 1));
+                println!("redraw");
+                window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
                 match window_state.render(draw_buffer.framebuffer.flatten()) {
                     Ok(_) => {}
@@ -60,8 +63,26 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
                 is_synthetic,
             } => {
                 if !is_synthetic {
-                    pages.process_key_event(&modifiers, event);
-                    window.request_redraw();
+                    if event.logical_key == Key::Named(NamedKey::F1) {
+                        pages.switch_page(PagesEnum::Help);
+                        window.request_redraw();
+                        println!("open help page");
+                    } else if event.logical_key == Key::Named(NamedKey::F5) {
+                        if modifiers.state() == ModifiersState::SHIFT {
+                            println!("open preferences page")
+                        } else if modifiers.state().is_empty() {
+                            println!("open info page");
+                        }
+                    } else if event.logical_key == Key::Named(NamedKey::F12) {
+                        if modifiers.state().is_empty() {
+                            pages.switch_page(PagesEnum::SongDirectoryConfig);
+                            window.request_redraw();
+                        }
+                    } else {
+                        pages.process_key_event(&modifiers, event);
+                        // maybe do this more efficently by only requesting when actually something changes
+                        window.request_redraw();
+                    }
                 }
             }
             // not sure if i need it just to make sure i always have all current modifiers to be used with keyboard events
@@ -69,6 +90,8 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
             _ => {}
         },
         Event::UserEvent(()) => (),
+        // runs before updating the screen again, so the pages are on current state, currently panics
+        // Event::NewEvents(_) => pages.update(),
         _ => {}
     });
 }
