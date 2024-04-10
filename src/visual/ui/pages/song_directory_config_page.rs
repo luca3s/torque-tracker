@@ -1,8 +1,9 @@
 use crate::visual::{
-    coordinates::CharRect,
+    coordinates::{CharRect, CharPosition},
     ui::widgets::{
         button::Button,
         slider::Slider,
+        text_in::TextIn,
         widget::{NextWidget, WidgetAny},
     },
 };
@@ -31,9 +32,9 @@ impl Page for SongDirectoryConfigPage {
         draw_buffer.draw_rect(BACKGROUND_COLOR, CharRect::PAGE_AREA);
         // draw_buffer.draw_box(CharRect::new(top, bot, left, right), background_color, top_left_color, bot_right_color)
 
-        draw_buffer.draw_string("Song Variables", (33, 13), 3, 2);
+        draw_buffer.draw_string("Song Variables", CharPosition::new(33, 13), 3, 2);
 
-        draw_buffer.draw_string("Song Name", (7, 16), 0, 2);
+        draw_buffer.draw_string("Song Name", CharPosition::new(7, 16), 0, 2);
         draw_buffer.draw_box(
             CharRect::new(15, 17, 16, 43),
             BACKGROUND_COLOR,
@@ -41,8 +42,8 @@ impl Page for SongDirectoryConfigPage {
             BOTRIGHT_COLOR,
         );
 
-        draw_buffer.draw_string("Initial Tempo", (3, 19), 0, 2);
-        draw_buffer.draw_string("Initial Speed", (3, 20), 0, 2);
+        draw_buffer.draw_string("Initial Tempo", CharPosition::new(3, 19), 0, 2);
+        draw_buffer.draw_string("Initial Speed", CharPosition::new(3, 20), 0, 2);
         draw_buffer.draw_box(
             CharRect::new(18, 21, 16, 50),
             BACKGROUND_COLOR,
@@ -50,11 +51,11 @@ impl Page for SongDirectoryConfigPage {
             BOTRIGHT_COLOR,
         );
 
-        draw_buffer.draw_string("Global Volume", (3, 23), 0, 2);
-        draw_buffer.draw_string("Mixing Volume", (3, 24), 0, 2);
-        draw_buffer.draw_string("Seperation", (6, 25), 0, 2);
-        draw_buffer.draw_string("Old Effects", (5, 26), 0, 2);
-        draw_buffer.draw_string("Compatible Gxx", (2, 27), 0, 2);
+        draw_buffer.draw_string("Global Volume", CharPosition::new(3, 23), 0, 2);
+        draw_buffer.draw_string("Mixing Volume", CharPosition::new(3, 24), 0, 2);
+        draw_buffer.draw_string("Seperation", CharPosition::new(6, 25), 0, 2);
+        draw_buffer.draw_string("Old Effects", CharPosition::new(5, 26), 0, 2);
+        draw_buffer.draw_string("Compatible Gxx", CharPosition::new(2, 27), 0, 2);
         draw_buffer.draw_box(
             CharRect::new(22, 28, 16, 34),
             BACKGROUND_COLOR,
@@ -62,17 +63,17 @@ impl Page for SongDirectoryConfigPage {
             BOTRIGHT_COLOR,
         );
 
-        draw_buffer.draw_string("Control", (9, 30), 0, 2);
+        draw_buffer.draw_string("Control", CharPosition::new(9, 30), 0, 2);
 
-        draw_buffer.draw_string("Playback", (8, 33), 0, 2);
+        draw_buffer.draw_string("Playback", CharPosition::new(8, 33), 0, 2);
 
-        draw_buffer.draw_string("Pitch Slides", (4, 36), 0, 2);
+        draw_buffer.draw_string("Pitch Slides", CharPosition::new(4, 36), 0, 2);
 
-        draw_buffer.draw_string("Directories", (34, 40), 3, 2);
+        draw_buffer.draw_string("Directories", CharPosition::new(34, 40), 3, 2);
 
-        draw_buffer.draw_string("Module", (6, 42), 0, 2);
-        draw_buffer.draw_string("Sample", (6, 43), 0, 2);
-        draw_buffer.draw_string("Instrument", (2, 44), 0, 2);
+        draw_buffer.draw_string("Module", CharPosition::new(6, 42), 0, 2);
+        draw_buffer.draw_string("Sample", CharPosition::new(6, 43), 0, 2);
+        draw_buffer.draw_string("Instrument", CharPosition::new(2, 44), 0, 2);
         draw_buffer.draw_box(
             CharRect::new(41, 45, 12, 78),
             BACKGROUND_COLOR,
@@ -102,29 +103,122 @@ impl Page for SongDirectoryConfigPage {
 }
 
 impl SongDirectoryConfigPage {
-    const WIDGET_COUNT: usize = 2;
+    const WIDGET_COUNT: usize = 7;
+    const SONG_NAME: usize = 0;
+
     pub fn new() -> Self {
-        let save_buttons = Button::new(
+        // widget 0
+        let song_name = TextIn::new(
+            CharPosition::new(17, 16),
+            25,
+            NextWidget {
+                down: Some(1),
+                ..Default::default()
+            },
+            |s| println!("new song name: {}", s),
+        );
+
+        // widget 1
+        let inital_tempo: Slider<31, 255> = Slider::new(
+            125,
+            CharPosition::new(17, 19),
+            32,
+            NextWidget {
+                up: Some(0),
+                shift_tab: Some(0),
+                down: Some(2),
+                tab: Some(2),
+                ..Default::default()
+            },
+            |value| println!("initial tempo set to: {}", value),
+        );
+        // widget 2
+        let initial_speed: Slider<1, 255> = Slider::new(
+            6,
+            CharPosition::new(17, 20),
+            32,
+            NextWidget {
+                up: Some(1),
+                shift_tab: Some(1),
+                down: Some(3),
+                tab: Some(3),
+                ..Default::default()
+            },
+            |value| println!("initial speed set to: {}", value),
+        );
+        // widget 3
+        let global_volume: Slider<0, 128> = Slider::new(
+            128,
+            CharPosition::new(17, 23),
+            16,
+            NextWidget {
+                up: Some(2),
+                shift_tab: Some(2),
+                down: Some(4),
+                tab: Some(4),
+                ..Default::default()
+            },
+            |value| println!("gloabl volume set to: {}", value),
+        );
+        // widget 4
+        let mixing_volume: Slider<0, 128> = Slider::new(
+            48,
+            CharPosition::new(17, 24),
+            16,
+            NextWidget {
+                up: Some(3),
+                shift_tab: Some(3),
+                down: Some(5),
+                tab: Some(5),
+                ..Default::default()
+            },
+            |value| println!("mixing volume set to: {}", value),
+        );
+        // widget 5
+        let seperation: Slider<0, 128> = Slider::new(
+            48,
+            CharPosition::new(17, 25),
+            16,
+            NextWidget {
+                up: Some(4),
+                shift_tab: Some(4),
+                down: Some(6),
+                tab: Some(6),
+                ..Default::default()
+            },
+            |value| println!("seperation set to: {}", value),
+        );
+
+        // widget 6
+        let save_button = Button::new(
             "Save all Preferences",
             CharRect::new(46, 48, 28, 51),
             NextWidget {
-                up: Some(1),
+                up: Some(5),
+                shift_tab: Some(5),
                 ..Default::default()
             },
             || println!("save preferences"),
         );
-        let global_volume: Slider<0, 128> =
-            Slider::new(2, (17, 23), 16,
-            NextWidget {
-                down: Some(0),
-                ..Default::default()
-            }, |value| {
-                println!("gloabl volume set to: {}", value)
-            });
-
         Self {
-            widgets: [Box::new(save_buttons), Box::new(global_volume)],
+            widgets: [
+                Box::new(song_name),
+                Box::new(inital_tempo),
+                Box::new(initial_speed),
+                Box::new(global_volume),
+                Box::new(mixing_volume),
+                Box::new(seperation),
+                Box::new(save_button),
+            ],
             selected_widget: 0,
         }
+    }
+
+    pub fn get_song_name(&self) -> &str {
+        (*self.widgets[Self::SONG_NAME])
+            .as_any()
+            .downcast_ref::<TextIn>()
+            .unwrap()
+            .get_string()
     }
 }

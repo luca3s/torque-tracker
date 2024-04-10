@@ -1,24 +1,28 @@
 use winit::{
     event::{Event, Modifiers, WindowEvent},
-    event_loop::EventLoop,
     keyboard::{Key, ModifiersState, NamedKey},
     window::Window,
 };
 
 use super::{
     draw_buffer::DrawBuffer,
-    gpu::WindowState,
+    gpu::GPUState,
     ui::{
         header::Header,
         pages::page::{AllPages, Page, PagesEnum},
     },
 };
 
-pub fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut window_state = pollster::block_on(WindowState::new(&window));
+pub fn run() {
+    let event_loop = winit::event_loop::EventLoop::new().unwrap();
+    event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+    let window = Window::new(&event_loop).unwrap();
+
+    let mut gpu_state = pollster::block_on(GPUState::new(&window));
+
     let mut draw_buffer = DrawBuffer::new();
     let mut modifiers = Modifiers::default();
-    let mut pages = AllPages::new();
+    let mut ui_pages = AllPages::new();
 
     let ui_header = Header {};
     ui_header.draw_constant(&mut draw_buffer);
@@ -32,7 +36,7 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
             // as soon as pop-up windows are working here should be a pop-up check, before exiting
             WindowEvent::CloseRequested => elwt.exit(),
             WindowEvent::Resized(pyhsical_size) => {
-                window_state.resize(*pyhsical_size);
+                gpu_state.resize(*pyhsical_size);
                 // on macos redraw needs to be requested after resizing
                 window.request_redraw();
             }
@@ -46,13 +50,14 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
             }
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
-                pages.draw(&mut draw_buffer);
+                ui_pages.draw(&mut draw_buffer);
                 println!("redraw");
+                // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
-                match window_state.render(draw_buffer.framebuffer.flatten()) {
+                match gpu_state.render(draw_buffer.framebuffer.flatten()) {
                     Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => window_state.resize(window_state.size),
+                    Err(wgpu::SurfaceError::Lost) => gpu_state.resize(gpu_state.size),
                     Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
                     Err(e) => eprint!("{:?}", e),
                 }
@@ -64,7 +69,7 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
             } => {
                 if !is_synthetic {
                     if event.logical_key == Key::Named(NamedKey::F1) {
-                        pages.switch_page(PagesEnum::Help);
+                        ui_pages.switch_page(PagesEnum::Help);
                         window.request_redraw();
                         println!("open help page");
                     } else if event.logical_key == Key::Named(NamedKey::F5) {
@@ -75,11 +80,11 @@ pub fn run(event_loop: EventLoop<()>, window: Window) {
                         }
                     } else if event.logical_key == Key::Named(NamedKey::F12) {
                         if modifiers.state().is_empty() {
-                            pages.switch_page(PagesEnum::SongDirectoryConfig);
+                            ui_pages.switch_page(PagesEnum::SongDirectoryConfig);
                             window.request_redraw();
                         }
                     } else {
-                        pages.process_key_event(&modifiers, event);
+                        ui_pages.process_key_event(&modifiers, event);
                         // maybe do this more efficently by only requesting when actually something changes
                         window.request_redraw();
                     }

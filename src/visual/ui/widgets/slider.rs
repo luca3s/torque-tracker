@@ -1,11 +1,9 @@
-use std::{
-    ops::{AddAssign, Deref, SubAssign},
-};
+use std::ops::{AddAssign, Deref, SubAssign};
 
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
 use crate::visual::{
-    coordinates::{CharRect, PixelRect, FONT_SIZE},
+    coordinates::{CharRect, PixelRect, FONT_SIZE, CharPosition, WINDOW_SIZE},
     draw_buffer::DrawBuffer,
 };
 
@@ -94,7 +92,7 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
 /// currently this always draws 3 chars, but this can only take values between -99 and 999. If values outside of that are needed, this implementation needs to change
 pub struct Slider<const MIN: i16, const MAX: i16> {
     pub number: BoundNumber<MIN, MAX>,
-    position: (usize, usize),
+    position: CharPosition,
     width: usize,
     next_widget: NextWidget,
     callback: Box<dyn Fn(i16)>,
@@ -111,15 +109,20 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         // let amount_values = MAX - MIN;
         // let single_value
 
-        draw_buffer.draw_string(&format!("{:03}", *self.number), (self.position.0 + self.width + 2, self.position.1), 1, 2);
+        draw_buffer.draw_string(
+            &format!("{:03}", *self.number),
+            self.position + (self.width + 2, 0),
+            1,
+            2,
+        );
 
         draw_buffer.draw_rect(
             BACKGROUND_COLOR,
             CharRect::new(
-                self.position.1,
-                self.position.1,
-                self.position.0,
-                self.position.0 + self.width,
+                self.position.y(),
+                self.position.y(),
+                self.position.x(),
+                self.position.x() + self.width,
             ),
         );
 
@@ -134,7 +137,8 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         let cursor_pos = if MAX == MIN {
             0
         } else {
-            // + 1 makes it have a border on the left side
+            // first + 1 makes it have a border on the left side
+            // rest mostly stole from original source code
             1 + value * (self.width * FONT_SIZE + 1) / num_possible_values
         };
         let color = match selected {
@@ -144,11 +148,11 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
 
         let cursor_pixel_rect = PixelRect::new(
             // +1 to have a space above
-            (self.position.1 * FONT_SIZE) + 1,
+            (self.position.y() * FONT_SIZE) + 1,
             // -2 to make if have a 1. not go into the next line and 2. have a empty row below
-            (self.position.1 * FONT_SIZE) + (FONT_SIZE - 2),
-            (self.position.0 * FONT_SIZE) + cursor_pos + CURSOR_WIDTH,
-            (self.position.0 * FONT_SIZE) + cursor_pos,
+            (self.position.y() * FONT_SIZE) + (FONT_SIZE - 2),
+            (self.position.x() * FONT_SIZE) + cursor_pos + CURSOR_WIDTH,
+            (self.position.x() * FONT_SIZE) + cursor_pos,
         );
 
         draw_buffer.draw_pixel_rect(color, cursor_pixel_rect);
@@ -159,73 +163,76 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
     ) -> Option<usize> {
-        if key_event.state.is_pressed() {
-            // move the slider
-            // change the internal value and call the callback
-            // this seems stupid but allows to reduce code duplication
-            if key_event.logical_key == Key::Named(NamedKey::ArrowRight)
-                || key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
-            {
-                // existance of this bracket allows us to only call the callback if the value really was changed
-                'move_slider: {
-                    let direction = if key_event.logical_key == Key::Named(NamedKey::ArrowRight) {
-                        // the number is at its max, so increasing it doesnt do anything so we break here
-                        if *self.number == MAX {
-                            break 'move_slider;
-                        }
-                        1
-                    } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft) {
-                        // analog to the ArrowRight branch
-                        if *self.number == MIN {
-                            break 'move_slider;
-                        }
-                        -1
-                    } else {
-                        // unreachable as the outer if has already checked this. could be changed to unsafe_unreachable
-                        unreachable!()
-                    };
+        if !key_event.state.is_pressed() {
+            return None;
+        }
 
-                    // sets amount according to the modifiers like the original. why the original SchismTracker behaves like this i don't know
-                    // only reason i can imagine is that if you know the behaviour you can move quite quickly through a slider
-                    let amount = {
-                        let mut amount = 1;
-                        if modifiers.state().shift_key() {
-                            amount *= 4;
-                        }
-                        if modifiers.state().super_key() {
-                            amount *= 2;
-                        }
-                        if modifiers.state().alt_key() {
-                            amount *= 8;
-                        }
-                        amount
-                    };
+        // move the slider
+        // change the internal value and call the callback
+        // this seems stupid but allows to reduce code duplication
+        if key_event.logical_key == Key::Named(NamedKey::ArrowRight)
+            || key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
+        {
+            // existance of this bracket allows us to only call the callback if the value really was changed
+            'move_slider: {
+                let direction = if key_event.logical_key == Key::Named(NamedKey::ArrowRight) {
+                    // the number is at its max, so increasing it doesnt do anything so we break here
+                    if *self.number == MAX {
+                        break 'move_slider;
+                    }
+                    1
+                } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft) {
+                    // analog to the ArrowRight branch
+                    if *self.number == MIN {
+                        break 'move_slider;
+                    }
+                    -1
+                } else {
+                    // unreachable as the outer if has already checked this. could be changed to unsafe_unreachable
+                    unreachable!()
+                };
 
-                    self.number += amount * direction;
-                    (self.callback)(*self.number);
-                }
-            // go to next widget
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
-                && modifiers.state().is_empty()
-            {
-                return self.next_widget.down;
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp)
-                && modifiers.state().is_empty()
-            {
-                return self.next_widget.up;
-            } else if key_event.logical_key == Key::Named(NamedKey::Tab) {
-                if modifiers.state().is_empty() {
-                    return self.next_widget.tab;
-                } else if modifiers.state() == ModifiersState::SHIFT {
-                    return self.next_widget.shift_tab;
-                }
-            // set the value directly, by opening a pop-up
-            } else if let Some(text) = &key_event.text {
-                if text.chars().all(|c| c.is_ascii_digit()) {
-                    todo!("open dialog window to input a value")
-                }
+                // sets amount according to the modifiers like the original. why the original SchismTracker behaves like this i don't know
+                // only reason i can imagine is that if you know the behaviour you can move quite quickly through a slider
+                let amount = {
+                    let mut amount = 1;
+                    if modifiers.state().shift_key() {
+                        amount *= 4;
+                    }
+                    if modifiers.state().super_key() {
+                        amount *= 2;
+                    }
+                    if modifiers.state().alt_key() {
+                        amount *= 8;
+                    }
+                    amount
+                };
+
+                self.number += amount * direction;
+                (self.callback)(*self.number);
+            }
+        // go to next widget
+        } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
+            && modifiers.state().is_empty()
+        {
+            return self.next_widget.down;
+        } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp)
+            && modifiers.state().is_empty()
+        {
+            return self.next_widget.up;
+        } else if key_event.logical_key == Key::Named(NamedKey::Tab) {
+            if modifiers.state().is_empty() {
+                return self.next_widget.tab;
+            } else if modifiers.state() == ModifiersState::SHIFT {
+                return self.next_widget.shift_tab;
+            }
+        // set the value directly, by opening a pop-up
+        } else if let Some(text) = &key_event.text {
+            if text.chars().all(|c| c.is_ascii_digit()) {
+                todo!("open dialog window to input a value")
             }
         }
+
         None
     }
 }
@@ -234,25 +241,22 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
     /// next_widget left and right must be None, because they cant be called
     pub fn new(
         inital_value: i16,
-        position: (usize, usize),
+        position: CharPosition,
         width: usize,
         next_widget: NextWidget,
         callback: impl Fn(i16) + 'static,
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
         // panic is fine, because this object only is generated with compile time values
-        assert!(
-            next_widget.left.is_none(),
-            "cant access it, because left moves the slider"
-        );
-        assert!(
-            next_widget.right.is_none(),
-            "cant access it, because right moves the slider"
-        );
+        assert!(next_widget.left.is_none());
+        assert!(next_widget.right.is_none());
         // just put them here so i remember this limitation of the current implementation in the future
         // if this ever fails the code that draws the current value right of the slider needs to be made aware of the lenght needed and not just draw 3 chars
         assert!(MIN >= -99, "draw implementation needs to be redone");
         assert!(MAX <= 999, "draw implementation needs to be redone");
+
+        // need right from the slider additional space to display the current value
+        assert!(position.x() + width + 5 < WINDOW_SIZE.0);
 
         Self {
             number: BoundNumber::new(inital_value),

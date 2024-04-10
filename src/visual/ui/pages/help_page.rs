@@ -1,5 +1,5 @@
 use crate::visual::{
-    coordinates::CharRect,
+    coordinates::{CharRect, CharPosition},
     draw_buffer::DrawBuffer,
     ui::widgets::{
         button::Button,
@@ -54,12 +54,10 @@ impl HelpPage {
             NextWidget::default(),
             || println!("quit"),
         );
-        let mut text_in = TextIn::new(
-            CharRect::new(26, 27, 3, 12),
-            NextWidget::default(),
-            |new_text| println!("text changed to {new_text}"),
-        );
-        text_in.set_string("test");
+        let mut text_in = TextIn::new(CharPosition::new(3, 26), 12, NextWidget::default(), |new_text| {
+            println!("text changed to {new_text}")
+        });
+        text_in.set_string("test").unwrap();
 
         Self {
             widgets: [Box::new(quit_button), Box::new(text_in)],

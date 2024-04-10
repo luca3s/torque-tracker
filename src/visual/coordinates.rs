@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::ops::{RangeInclusive, Add, Mul};
 
 /// font size in pixel. font is a square
 pub const FONT_SIZE: usize = 8;
@@ -39,6 +39,18 @@ impl CharRect {
         }
     }
 
+    // pub const fn from_pos(x: usize, y: usize) -> Self {
+    //     assert!(y < WINDOW_SIZE_CHARS.1, "lower than window bounds");
+    //     assert!(x < WINDOW_SIZE_CHARS.0, "right out of window bounds");
+
+    //     Self {
+    //         top: y,
+    //         bot: y,
+    //         left: x,
+    //         right: x,
+    //     }
+    // }
+
     pub fn top(&self) -> usize {
         self.top
     }
@@ -51,6 +63,23 @@ impl CharRect {
     pub fn left(&self) -> usize {
         self.left
     }
+
+    pub fn width(&self) -> usize {
+        self.right - self.left
+    }
+}
+
+// impl From<(usize, usize)> for CharRect {
+//     fn from(value: (usize, usize)) -> Self {
+//         Self::from_pos(value.0, value.1)
+//     }
+// }
+
+/// uncheck conversion, because CharPosition is a safe type
+impl From<CharPosition> for CharRect {
+    fn from(value: CharPosition) -> Self {
+        Self { top: value.y, bot: value.y, left: value.x, right: value.x }
+    }
 }
 
 /// PixelRect as well as CharRect uses all values inclusive, meaning the borders are included
@@ -62,19 +91,8 @@ pub struct PixelRect {
     left: usize,
 }
 
-impl From<CharRect> for PixelRect {
-    fn from(value: CharRect) -> Self {
-        Self {
-            top: value.top * FONT_SIZE,
-            bot: (value.bot * FONT_SIZE) + FONT_SIZE - 1,
-            right: (value.right * FONT_SIZE) + FONT_SIZE - 1,
-            left: value.left * FONT_SIZE,
-        }
-    }
-}
-
 impl PixelRect {
-    pub fn new(top: usize, bot: usize, right: usize, left: usize) -> Self {
+    pub const fn new(top: usize, bot: usize, right: usize, left: usize) -> Self {
         assert!(top <= bot, "top needs to be smaller than bot");
         assert!(left <= right, "left needs to be smaller than right");
         assert!(bot < WINDOW_SIZE.1, "lower than window bounds");
@@ -110,5 +128,71 @@ impl PixelRect {
 
     pub fn left(&self) -> usize {
         self.left
+    }
+}
+
+/// unchecked conversion because CharRect is a safe type
+impl From<CharRect> for PixelRect {
+    fn from(value: CharRect) -> Self {
+        Self {
+            top: value.top * FONT_SIZE,
+            bot: (value.bot * FONT_SIZE) + FONT_SIZE - 1,
+            right: (value.right * FONT_SIZE) + FONT_SIZE - 1,
+            left: value.left * FONT_SIZE,
+        }
+    }
+}
+
+/// unchecked conversion, because CharPosition is a safe type
+impl From<CharPosition> for PixelRect {
+    fn from(value: CharPosition) -> Self {
+        Self::from(CharRect::from(value))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CharPosition{
+    x: usize,
+    y: usize
+}
+
+impl CharPosition {
+    pub const fn new(x: usize, y: usize) -> Self {
+        assert!(y < WINDOW_SIZE.0);
+        assert!(x < WINDOW_SIZE.1);
+
+        Self { x, y }
+    }
+
+    pub fn x(&self) -> usize {
+        self.x
+    }
+
+    pub fn y(&self) -> usize {
+        self.y
+    }
+}
+
+impl Add for CharPosition {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl Add<(usize, usize)> for CharPosition {
+    type Output = Self;
+
+    fn add(self, rhs: (usize, usize)) -> Self::Output {
+        Self::new(self.x + rhs.0, self.y + rhs.0)
+    }
+}
+
+impl Mul<usize> for CharPosition {
+    type Output = Self;
+
+    fn mul(self, rhs: usize) -> Self::Output {
+        Self::new(self.x * rhs, self.y * rhs)
     }
 }

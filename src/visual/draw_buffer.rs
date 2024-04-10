@@ -1,5 +1,5 @@
 use super::{
-    coordinates::{CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
+    coordinates::{CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE, CharPosition},
     palettes::{Palette, RGB10A2},
 };
 use font8x8::UnicodeFonts;
@@ -20,12 +20,12 @@ impl DrawBuffer {
     pub fn draw_char(
         &mut self,
         char_data: [u8; 8],
-        position: (usize, usize),
+        position: CharPosition,
         fg_color: usize,
         bg_color: usize,
     ) {
         // this is the top_left pixel
-        let position = (position.0 * FONT_SIZE, position.1 * FONT_SIZE);
+        let position = (position.x() * FONT_SIZE, position.y() * FONT_SIZE);
         let fg_color = self.color_palette.get_raw(fg_color);
         let bg_color = self.color_palette.get_raw(bg_color);
         for (y, line) in char_data.iter().enumerate() {
@@ -43,18 +43,44 @@ impl DrawBuffer {
     pub fn draw_string(
         &mut self,
         string: &str,
-        position: (usize, usize),
+        position: CharPosition,
         fg_color: usize,
         bg_color: usize,
     ) {
         for (num, char) in string.char_indices() {
             self.draw_char(
                 font8x8::BASIC_FONTS.get(char).unwrap(),
-                (position.0 + num, position.1),
+                position + (num, 0),
                 fg_color,
                 bg_color,
             );
+            // self.draw_char(
+            //     font8x8::BASIC_FONTS.get(char).unwrap(),
+            //     (position.0 + num, position.1),
+            //     fg_color,
+            //     bg_color,
+            // );
         }
+    }
+
+    pub fn draw_string_length(
+        &mut self,
+        string: &str,
+        position: CharPosition,
+        lenght: usize,
+        fg_color: usize,
+        bg_color: usize,
+    ) {
+        self.draw_string(string, position, fg_color, bg_color);
+        self.draw_rect(
+            bg_color,
+            CharRect::new(
+                position.y(),
+                position.y(),
+                position.x() + string.len(),
+                position.x() + lenght,
+            ),
+        );
     }
 
     pub fn draw_box(
@@ -168,9 +194,8 @@ impl DrawBuffer {
         // }
     }
 
-    fn mark_char(&mut self, position: (usize, usize)) {
-        let pixel = position.0 + 4 + ((position.1 + 4) * WINDOW_SIZE.0);
-        self.framebuffer[(position.1 + 4) * WINDOW_SIZE.0][position.0 + 4] =
+    fn mark_char(&mut self, position: CharPosition) {
+        self.framebuffer[(position.y() + 4) * WINDOW_SIZE.0][position.x() + 4] =
             self.color_palette.get_raw(1);
     }
 }

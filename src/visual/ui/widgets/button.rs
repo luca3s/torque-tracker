@@ -1,6 +1,6 @@
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::visual::{coordinates::CharRect, draw_buffer::DrawBuffer};
+use crate::visual::{coordinates::{CharRect, CharPosition}, draw_buffer::DrawBuffer};
 
 use super::widget::{NextWidget, Widget};
 
@@ -51,7 +51,7 @@ impl Widget for Button {
         };
         buffer.draw_string(
             self.text,
-            (
+            CharPosition::new(
                 ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
                 (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
             ),
