@@ -91,7 +91,7 @@ impl DrawBuffer {
         bot_right_color: usize,
     ) {
         // needs to be between 0 and FONT_SIZE
-        const BOX_THICKNESS: usize = 2;
+        const BOX_THICKNESS: usize = 1;
         const SPACE_FROM_BORDER: usize = FONT_SIZE - BOX_THICKNESS;
 
         let pixel_rect = PixelRect::from(char_rect);
@@ -186,12 +186,6 @@ impl DrawBuffer {
         for line in &mut self.framebuffer[rect.top()..=rect.bot()] {
             line[rect.left()..=rect.right()].fill(color);
         }
-
-        // for y in rect.top..=rect.bot {
-        //     for x in rect.left..=rect.right {
-        //         self.framebuffer[y][x] = color;
-        //     }
-        // }
     }
 
     fn mark_char(&mut self, position: CharPosition) {

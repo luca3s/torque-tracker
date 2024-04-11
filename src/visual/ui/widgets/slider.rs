@@ -212,7 +212,7 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                 (self.callback)(*self.number);
             }
         // set the value directly, by opening a pop-up
-        } else if let Some(text) = &key_event.text {
+        } else if let Key::Character(text) = &key_event.logical_key {
             if text.chars().all(|c| c.is_ascii_digit()) {
                 todo!("open dialog window to input a value")
             }

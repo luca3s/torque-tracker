@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
@@ -21,7 +19,7 @@ pub struct Toggle<T: Copy> {
 
 impl<T: Copy> Widget for Toggle<T> {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
-        let str = self.variants[self.state].1.deref();
+        let str = self.variants[self.state].1;
         draw_buffer.draw_rect(
             0,
             CharRect::new(
@@ -43,7 +41,10 @@ impl<T: Copy> Widget for Toggle<T> {
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
     ) -> Option<usize> {
-        if key_event.logical_key == Key::Named(NamedKey::Space) && modifiers.state().is_empty() && key_event.state.is_pressed() {
+        if key_event.logical_key == Key::Named(NamedKey::Space)
+            && modifiers.state().is_empty()
+            && key_event.state.is_pressed()
+        {
             self.next();
             (*self.cb)(self.variants[self.state].0);
         } else {

@@ -51,7 +51,6 @@ pub fn run() {
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
                 ui_pages.draw(&mut draw_buffer);
-                println!("redraw");
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen

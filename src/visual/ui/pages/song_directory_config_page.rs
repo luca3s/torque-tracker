@@ -1,3 +1,5 @@
+use std::{cell::Cell, rc::Rc};
+
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
     ui::widgets::{
@@ -5,11 +7,30 @@ use crate::visual::{
         slider::Slider,
         text_in::TextIn,
         toggle::Toggle,
+        toggle_button::ToggleButton,
         widget::{NextWidget, WidgetAny},
     },
 };
 
 use super::page::Page;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Control {
+    Instruments,
+    Samples,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Playback {
+    Stereo,
+    Mono,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum PitchSlides {
+    Linear,
+    Amiga,
+}
 
 pub struct SongDirectoryConfigPage {
     widgets: [Box<dyn WidgetAny>; Self::WIDGET_COUNT],
@@ -104,7 +125,7 @@ impl Page for SongDirectoryConfigPage {
 }
 
 impl SongDirectoryConfigPage {
-    const WIDGET_COUNT: usize = 9;
+    const WIDGET_COUNT: usize = 15;
     const SONG_NAME: usize = 0;
     const OLD_EFFECTS: usize = 6;
     const COMPATIBLE_GXX: usize = 7;
@@ -116,6 +137,7 @@ impl SongDirectoryConfigPage {
             25,
             NextWidget {
                 down: Some(1),
+                tab: Some(1),
                 ..Default::default()
             },
             |s| println!("new song name: {}", s),
@@ -224,13 +246,117 @@ impl SongDirectoryConfigPage {
             |onoff| println!("Compatible Gxx: {}", onoff),
         );
 
+        let control_rc = Rc::new(Cell::new(Control::Samples));
         // widget 8
+        let instruments_button: ToggleButton<Control> = ToggleButton::new(
+            "Instruments",
+            CharRect::new(29, 31, 16, 30),
+            NextWidget {
+                left: Some(9),
+                right: Some(9),
+                up: Some(7),
+                down: Some(10),
+                tab: Some(9),
+                shift_tab: Some(7),
+            },
+            Control::Instruments,
+            control_rc.clone(),
+            |_| println!("Instruments activated"),
+        );
+
+        // widget 9
+        let samples_button: ToggleButton<Control> = ToggleButton::new(
+            "Samples",
+            CharRect::new(29, 31, 31, 45),
+            NextWidget {
+                left: Some(8),
+                right: Some(8),
+                up: Some(7),
+                down: Some(10),
+                tab: Some(8),
+                shift_tab: Some(8),
+            },
+            Control::Samples,
+            control_rc,
+            |_| println!("Samples activated"),
+        );
+
+        let stereo_mono_rs = Rc::new(Cell::new(Playback::Stereo));
+        // widget 10
+        let stereo_button: ToggleButton<Playback> = ToggleButton::new(
+            "Stereo",
+            CharRect::new(32, 34, 16, 30),
+            NextWidget {
+                left: Some(11),
+                right: Some(11),
+                up: Some(8),
+                down: Some(12),
+                tab: Some(11),
+                shift_tab: Some(11),
+            },
+            Playback::Stereo,
+            stereo_mono_rs.clone(),
+            |_| println!("stereo activated"),
+        );
+
+        // widget 11
+        let mono_button: ToggleButton<Playback> = ToggleButton::new(
+            "Mono",
+            CharRect::new(32, 34, 31, 45),
+            NextWidget {
+                left: Some(10),
+                right: Some(10),
+                up: Some(9),
+                down: Some(13),
+                tab: Some(10),
+                shift_tab: Some(10),
+            },
+            Playback::Mono,
+            stereo_mono_rs,
+            |_| println!("stereo activated"),
+        );
+
+        let pitch_slides_rc = Rc::new(Cell::new(PitchSlides::Linear));
+        // widget 12
+        let linear_slides_button: ToggleButton<PitchSlides> = ToggleButton::new(
+            "Linear",
+            CharRect::new(35, 37, 16, 30),
+            NextWidget {
+                left: Some(13),
+                right: Some(13),
+                up: Some(10),
+                down: Some(14),
+                tab: Some(13),
+                shift_tab: Some(13),
+            },
+            PitchSlides::Linear,
+            pitch_slides_rc.clone(),
+            |_| println!("pitch slides set to linear"),
+        );
+        // widget 13
+        let amiga_slides_button: ToggleButton<PitchSlides> = ToggleButton::new(
+            "Amiga",
+            CharRect::new(35, 37, 31, 45),
+            NextWidget {
+                left: Some(12),
+                right: Some(12),
+                up: Some(11),
+                down: Some(14),
+                tab: Some(12),
+                shift_tab: Some(12),
+            },
+            PitchSlides::Amiga,
+            pitch_slides_rc,
+            |_| println!("set to amiga pitch slide"),
+        );
+
+        // widget 14
         let save_button = Button::new(
             "Save all Preferences",
             CharRect::new(46, 48, 28, 51),
             NextWidget {
-                up: Some(7),
-                shift_tab: Some(7),
+                up: Some(8),
+                shift_tab: Some(8),
                 ..Default::default()
             },
             || println!("save preferences"),
@@ -245,6 +371,12 @@ impl SongDirectoryConfigPage {
                 Box::new(seperation),
                 Box::new(old_effect),
                 Box::new(compatible_gxx),
+                Box::new(instruments_button),
+                Box::new(samples_button),
+                Box::new(stereo_button),
+                Box::new(mono_button),
+                Box::new(linear_slides_button),
+                Box::new(amiga_slides_button),
                 Box::new(save_button),
             ],
             selected_widget: 0,

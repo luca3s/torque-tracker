@@ -17,50 +17,7 @@ pub struct Button {
 
 impl Widget for Button {
     fn draw(&self, buffer: &mut DrawBuffer, selected: bool) {
-        let string_offset = {
-            let half_string = self.text.len() / 2;
-            if self.text.len() % 2 == 0 {
-                half_string - 1
-            } else {
-                half_string
-            }
-        };
-
-        buffer.draw_rect(
-            Self::BACKGROUND_COLOR,
-            CharRect::new(
-                self.rect.top() + 1,
-                self.rect.bot() - 1,
-                self.rect.left() + 1,
-                self.rect.right() - 1,
-            ),
-        );
-
-        let box_colors = match self.pressed {
-            true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
-            false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
-        };
-
-        buffer.draw_box(
-            self.rect,
-            Self::BACKGROUND_COLOR,
-            box_colors.0,
-            box_colors.1,
-        );
-
-        let text_color = match self.pressed || selected {
-            true => 11,
-            false => 0,
-        };
-        buffer.draw_string(
-            self.text,
-            CharPosition::new(
-                ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
-                (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
-            ),
-            text_color,
-            Self::BACKGROUND_COLOR,
-        )
+        self.draw_overwrite_pressed(buffer, selected, false);
     }
 
     fn process_input(
@@ -83,37 +40,15 @@ impl Widget for Button {
                     }
                     self.pressed = false;
                 }
-            // change focus, cant do the NextWidget call, because i need to remove the self.pressed flag
-            } else if key_event.logical_key == Key::Named(NamedKey::Tab)
-                && key_event.state.is_pressed()
-            {
-                if modifiers.state() == ModifiersState::SHIFT {
-                    self.pressed = false;
-                    return self.next_widget.shift_tab;
-                } else if modifiers.state().is_empty() {
-                    self.pressed = false;
-                    return self.next_widget.tab;
+            // if focus is changed stop being pressed
+            } else {
+                match self.next_widget.process_key_event(key_event, modifiers) {
+                    Some(next) => {
+                        self.pressed = false;
+                        return Some(next);
+                    }
+                    None => return None,
                 }
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowRight)
-                && modifiers.state().is_empty()
-            {
-                self.pressed = false;
-                return self.next_widget.right;
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
-                && modifiers.state().is_empty()
-            {
-                self.pressed = false;
-                return self.next_widget.left;
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp)
-                && modifiers.state().is_empty()
-            {
-                self.pressed = false;
-                return self.next_widget.up;
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
-                && modifiers.state().is_empty()
-            {
-                self.pressed = false;
-                return self.next_widget.down;
             }
         }
         None
@@ -143,5 +78,54 @@ impl Button {
             pressed: false,
             next_widget,
         }
+    }
+
+    /// pressed = argument || self.pressed
+    pub fn draw_overwrite_pressed(&self, buffer: &mut DrawBuffer, selected: bool, pressed: bool) {
+        let string_offset = {
+            let half_string = self.text.len() / 2;
+            if self.text.len() % 2 == 0 {
+                half_string - 1
+            } else {
+                half_string
+            }
+        };
+
+        // fill behind the text
+        buffer.draw_rect(
+            Self::BACKGROUND_COLOR,
+            CharRect::new(
+                self.rect.top() + 1,
+                self.rect.bot() - 1,
+                self.rect.left() + 1,
+                self.rect.right() - 1,
+            ),
+        );
+
+        let box_colors = match pressed || self.pressed {
+            true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
+            false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
+        };
+
+        buffer.draw_box(
+            self.rect,
+            Self::BACKGROUND_COLOR,
+            box_colors.0,
+            box_colors.1,
+        );
+
+        let text_color = match selected {
+            true => 11,
+            false => 0,
+        };
+        buffer.draw_string(
+            self.text,
+            CharPosition::new(
+                ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
+                (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
+            ),
+            text_color,
+            Self::BACKGROUND_COLOR,
+        )
     }
 }
