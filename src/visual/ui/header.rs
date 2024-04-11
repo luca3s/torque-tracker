@@ -1,4 +1,7 @@
-use crate::visual::{coordinates::{CharRect, CharPosition}, draw_buffer::DrawBuffer};
+use crate::visual::{
+    coordinates::{CharPosition, CharRect},
+    draw_buffer::DrawBuffer,
+};
 
 pub struct Header {}
 
@@ -13,8 +16,18 @@ impl Header {
         buffer.draw_string("Row", CharPosition::new(8, 7), 0, 2);
         buffer.draw_string("Speed/Tempo", CharPosition::new(38, 4), 0, 2);
         buffer.draw_string("Octave", CharPosition::new(43, 5), 0, 2);
-        buffer.draw_string("F1...Help       F9.....Load", CharPosition::new(21, 6), 0, 2);
-        buffer.draw_string("ESC..Main Menu  F5/F8..Play / Stop", CharPosition::new(21, 7), 0, 2);
+        buffer.draw_string(
+            "F1...Help       F9.....Load",
+            CharPosition::new(21, 6),
+            0,
+            2,
+        );
+        buffer.draw_string(
+            "ESC..Main Menu  F5/F8..Play / Stop",
+            CharPosition::new(21, 7),
+            0,
+            2,
+        );
         buffer.draw_string("Time", CharPosition::new(63, 9), 0, 2);
         buffer.draw_string("/", CharPosition::new(15, 5), 1, 0);
         buffer.draw_string("/", CharPosition::new(15, 6), 1, 0);

@@ -1,8 +1,11 @@
-use ascii::{AsciiString, AsciiChar};
+use ascii::{AsciiChar, AsciiString};
 use font8x8::UnicodeFonts;
 use winit::keyboard::{Key, NamedKey};
 
-use crate::visual::{coordinates::{CharRect, CharPosition, WINDOW_SIZE}, draw_buffer::DrawBuffer};
+use crate::visual::{
+    coordinates::{CharPosition, CharRect, WINDOW_SIZE},
+    draw_buffer::DrawBuffer,
+};
 
 use super::widget::{NextWidget, Widget};
 
@@ -87,7 +90,7 @@ impl Widget for TextIn {
             // make sure i only got one char. dont know why i should get more than one
             // if this ever panics switch to a loop implementation above
             assert!(char_iter.next().is_none());
-        } else if  key_event.logical_key == Key::Named(NamedKey::Space) {
+        } else if key_event.logical_key == Key::Named(NamedKey::Space) {
             self.insert_char(AsciiChar::Space);
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
             && modifiers.state().is_empty()
@@ -129,20 +132,8 @@ impl Widget for TextIn {
                 }
             }
         // next widget
-        } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
-            && modifiers.state().is_empty()
-        {
-            return self.next_widget.down;
-        } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp)
-            && modifiers.state().is_empty()
-        {
-            return self.next_widget.up;
-        } else if key_event.logical_key == Key::Named(NamedKey::Tab) {
-            if modifiers.state().shift_key() {
-                return self.next_widget.shift_tab;
-            } else if modifiers.state().is_empty() {
-                return self.next_widget.tab;
-            }
+        } else {
+            return self.next_widget.process_key_event(key_event, modifiers);
         }
         None
     }
@@ -167,7 +158,10 @@ impl TextIn {
         }
     }
 
-    pub fn set_string<'a >(&mut self, new_str: &'a str) -> Result<(), ascii::FromAsciiError<&'a str>>{
+    pub fn set_string<'a>(
+        &mut self,
+        new_str: &'a str,
+    ) -> Result<(), ascii::FromAsciiError<&'a str>> {
         self.text = AsciiString::from_ascii(new_str)?;
         Ok(())
     }
@@ -182,7 +176,7 @@ impl TextIn {
         }
         self.text.insert(self.cursor_pos - 1, char);
         self.text.truncate(self.width);
-        
+
         (self.callback)(self.text.as_str());
     }
 }

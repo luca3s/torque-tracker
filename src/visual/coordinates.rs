@@ -1,4 +1,4 @@
-use std::ops::{RangeInclusive, Add, Mul};
+use std::ops::{Add, Mul, RangeInclusive};
 
 /// font size in pixel. font is a square
 pub const FONT_SIZE: usize = 8;
@@ -78,7 +78,12 @@ impl CharRect {
 /// uncheck conversion, because CharPosition is a safe type
 impl From<CharPosition> for CharRect {
     fn from(value: CharPosition) -> Self {
-        Self { top: value.y, bot: value.y, left: value.x, right: value.x }
+        Self {
+            top: value.y,
+            bot: value.y,
+            left: value.x,
+            right: value.x,
+        }
     }
 }
 
@@ -151,9 +156,9 @@ impl From<CharPosition> for PixelRect {
 }
 
 #[derive(Clone, Copy)]
-pub struct CharPosition{
+pub struct CharPosition {
     x: usize,
-    y: usize
+    y: usize,
 }
 
 impl CharPosition {

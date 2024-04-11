@@ -1,6 +1,9 @@
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::visual::{coordinates::{CharRect, CharPosition}, draw_buffer::DrawBuffer};
+use crate::visual::{
+    coordinates::{CharPosition, CharRect},
+    draw_buffer::DrawBuffer,
+};
 
 use super::widget::{NextWidget, Widget};
 
@@ -80,7 +83,7 @@ impl Widget for Button {
                     }
                     self.pressed = false;
                 }
-                // change focus
+            // change focus, cant do the NextWidget call, because i need to remove the self.pressed flag
             } else if key_event.logical_key == Key::Named(NamedKey::Tab)
                 && key_event.state.is_pressed()
             {

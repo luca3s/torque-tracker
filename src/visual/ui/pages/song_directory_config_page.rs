@@ -1,9 +1,10 @@
 use crate::visual::{
-    coordinates::{CharRect, CharPosition},
+    coordinates::{CharPosition, CharRect},
     ui::widgets::{
         button::Button,
         slider::Slider,
         text_in::TextIn,
+        toggle::Toggle,
         widget::{NextWidget, WidgetAny},
     },
 };
@@ -103,8 +104,10 @@ impl Page for SongDirectoryConfigPage {
 }
 
 impl SongDirectoryConfigPage {
-    const WIDGET_COUNT: usize = 7;
+    const WIDGET_COUNT: usize = 9;
     const SONG_NAME: usize = 0;
+    const OLD_EFFECTS: usize = 6;
+    const COMPATIBLE_GXX: usize = 7;
 
     pub fn new() -> Self {
         // widget 0
@@ -190,12 +193,44 @@ impl SongDirectoryConfigPage {
         );
 
         // widget 6
+        let old_effect: Toggle<bool> = Toggle::new(
+            CharPosition::new(17, 26),
+            16,
+            NextWidget {
+                left: Some(5),
+                right: Some(7),
+                up: Some(5),
+                down: Some(7),
+                tab: Some(7),
+                shift_tab: Some(5),
+            },
+            &[(false, "Off"), (true, "On")],
+            |onoff| println!("Old Effects: {}", onoff),
+        );
+
+        // widget 7
+        let compatible_gxx: Toggle<bool> = Toggle::new(
+            CharPosition::new(17, 27),
+            16,
+            NextWidget {
+                left: Some(6),
+                right: Some(8),
+                up: Some(6),
+                down: Some(8),
+                tab: Some(8),
+                shift_tab: Some(6),
+            },
+            &[(false, "Off"), (true, "On")],
+            |onoff| println!("Compatible Gxx: {}", onoff),
+        );
+
+        // widget 8
         let save_button = Button::new(
             "Save all Preferences",
             CharRect::new(46, 48, 28, 51),
             NextWidget {
-                up: Some(5),
-                shift_tab: Some(5),
+                up: Some(7),
+                shift_tab: Some(7),
                 ..Default::default()
             },
             || println!("save preferences"),
@@ -208,6 +243,8 @@ impl SongDirectoryConfigPage {
                 Box::new(global_volume),
                 Box::new(mixing_volume),
                 Box::new(seperation),
+                Box::new(old_effect),
+                Box::new(compatible_gxx),
                 Box::new(save_button),
             ],
             selected_widget: 0,
@@ -220,5 +257,21 @@ impl SongDirectoryConfigPage {
             .downcast_ref::<TextIn>()
             .unwrap()
             .get_string()
+    }
+
+    pub fn get_old_effects_state(&self) -> bool {
+        (*self.widgets[Self::OLD_EFFECTS])
+            .as_any()
+            .downcast_ref::<Toggle<bool>>()
+            .unwrap()
+            .get_variant()
+    }
+
+    pub fn get_compatible_gxx_state(&self) -> bool {
+        (*self.widgets[Self::COMPATIBLE_GXX])
+            .as_any()
+            .downcast_ref::<Toggle<bool>>()
+            .unwrap()
+            .get_variant()
     }
 }

@@ -3,7 +3,7 @@ use std::ops::{AddAssign, Deref, SubAssign};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
 use crate::visual::{
-    coordinates::{CharRect, PixelRect, FONT_SIZE, CharPosition, WINDOW_SIZE},
+    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
     draw_buffer::DrawBuffer,
 };
 
@@ -211,26 +211,13 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                 self.number += amount * direction;
                 (self.callback)(*self.number);
             }
-        // go to next widget
-        } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
-            && modifiers.state().is_empty()
-        {
-            return self.next_widget.down;
-        } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp)
-            && modifiers.state().is_empty()
-        {
-            return self.next_widget.up;
-        } else if key_event.logical_key == Key::Named(NamedKey::Tab) {
-            if modifiers.state().is_empty() {
-                return self.next_widget.tab;
-            } else if modifiers.state() == ModifiersState::SHIFT {
-                return self.next_widget.shift_tab;
-            }
         // set the value directly, by opening a pop-up
         } else if let Some(text) = &key_event.text {
             if text.chars().all(|c| c.is_ascii_digit()) {
                 todo!("open dialog window to input a value")
             }
+        } else {
+            return self.next_widget.process_key_event(key_event, modifiers);
         }
 
         None

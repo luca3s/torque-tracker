@@ -1,5 +1,5 @@
 use super::{
-    coordinates::{CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE, CharPosition},
+    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
     palettes::{Palette, RGB10A2},
 };
 use font8x8::UnicodeFonts;

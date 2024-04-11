@@ -1,6 +1,9 @@
 use std::any::Any;
 
-use winit::event::{KeyEvent, Modifiers};
+use winit::{
+    event::{KeyEvent, Modifiers},
+    keyboard::{Key, ModifiersState, NamedKey},
+};
 
 use crate::visual::draw_buffer::DrawBuffer;
 
@@ -34,4 +37,37 @@ pub struct NextWidget {
     pub down: Option<usize>,
     pub tab: Option<usize>,
     pub shift_tab: Option<usize>,
+}
+
+impl NextWidget {
+    /// supposed to be called from Widgets, that own a NextWidget after catching their custom KeyEvents to pick a return
+    pub fn process_key_event(&self, key_event: &KeyEvent, modifiers: &Modifiers) -> Option<usize> {
+        if !key_event.state.is_pressed() {
+            return None;
+        }
+
+        if key_event.logical_key == Key::Named(NamedKey::ArrowUp) && modifiers.state().is_empty() {
+            self.up
+        } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
+            && modifiers.state().is_empty()
+        {
+            self.down
+        } else if key_event.logical_key == Key::Named(NamedKey::ArrowRight)
+            && modifiers.state().is_empty()
+        {
+            self.right
+        } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
+            && modifiers.state().is_empty()
+        {
+            self.left
+        } else if key_event.logical_key == Key::Named(NamedKey::Tab) {
+            if modifiers.state() == ModifiersState::SHIFT {
+                self.shift_tab
+            } else {
+                self.tab
+            }
+        } else {
+            None
+        }
+    }
 }
