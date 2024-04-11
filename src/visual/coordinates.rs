@@ -185,7 +185,7 @@ impl Add<(usize, usize)> for CharPosition {
     type Output = Self;
 
     fn add(self, rhs: (usize, usize)) -> Self::Output {
-        Self::new(self.x + rhs.0, self.y + rhs.0)
+        Self::new(self.x + rhs.0, self.y + rhs.1)
     }
 }
 
