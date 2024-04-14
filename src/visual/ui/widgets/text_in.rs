@@ -23,29 +23,12 @@ pub struct TextIn {
 
 impl Widget for TextIn {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
+        const TEXT_COLOR: usize = 2;
         if selected {
             // if the cursor is inside the text
             if self.text.len() < self.cursor_pos {
-                let mut chars = self.text.chars();
-                for x in 0..self.width {
-                    match chars.next() {
-                        Some(ascii_char) => {
-                            let (fg_color, bg_color) =
-                                if self.cursor_pos == x { (0, 3) } else { (1, 0) };
-                            draw_buffer.draw_char(
-                                font8x8::BASIC_FONTS.get(ascii_char.into()).unwrap(),
-                                self.pos + (x, 0),
-                                fg_color,
-                                bg_color,
-                            );
-                        }
-
-                        None => draw_buffer.draw_rect(0, CharRect::from(self.pos + (x, 0))),
-                    }
-                    // let (fg_color, bg_color) = if self.cursor_pos == i { (0, 3) } else { (1, 0) };
-                }
                 self.text.chars().enumerate().for_each(|(i, ascii_char)| {
-                    let (fg_color, bg_color) = if self.cursor_pos == i { (0, 3) } else { (1, 0) };
+                    let (fg_color, bg_color) = if self.cursor_pos == i { (0, 3) } else { (TEXT_COLOR, 0) };
                     draw_buffer.draw_char(
                         font8x8::BASIC_FONTS.get(ascii_char.into()).unwrap(),
                         self.pos + (i, 0),
@@ -54,7 +37,7 @@ impl Widget for TextIn {
                     );
                 });
             } else {
-                draw_buffer.draw_string_length(self.text.as_str(), self.pos, self.width, 1, 0);
+                draw_buffer.draw_string_length(self.text.as_str(), self.pos, self.width, TEXT_COLOR, 0);
                 draw_buffer.draw_rect(
                     3,
                     CharRect::new(

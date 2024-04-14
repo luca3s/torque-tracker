@@ -101,8 +101,8 @@ pub struct Slider<const MIN: i16, const MAX: i16> {
 impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
         const BACKGROUND_COLOR: usize = 0;
-        const CURSOR_COLOR: usize = 1;
-        const CURSOR_SELECTED_COLOR: usize = 2;
+        const CURSOR_COLOR: usize = 2;
+        const CURSOR_SELECTED_COLOR: usize = 3;
 
         const CURSOR_WIDTH: usize = 4;
         // let pixel_width: i16 = (self.rect.right - self.rect.left).into() * FONT_SIZE;

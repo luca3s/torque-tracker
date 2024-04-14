@@ -47,8 +47,8 @@ impl Page for SongDirectoryConfigPage {
 
     fn draw_constant(&mut self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
         const BACKGROUND_COLOR: usize = 2;
-        const TOPLEFT_COLOR: usize = 3;
-        const BOTRIGHT_COLOR: usize = 1;
+        const TOPLEFT_COLOR: usize = 1;
+        const BOTRIGHT_COLOR: usize = 3;
 
         // fill complete page
         draw_buffer.draw_rect(BACKGROUND_COLOR, CharRect::PAGE_AREA);
