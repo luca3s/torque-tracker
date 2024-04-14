@@ -8,7 +8,7 @@ use crate::visual::{
     },
 };
 
-use super::page::Page;
+use super::page::{Page, PageResponce};
 
 pub struct HelpPage {
     selected_widget: usize,
@@ -33,13 +33,14 @@ impl Page for HelpPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) {
+    ) -> PageResponce {
         let next_widget = self.widgets[self.selected_widget].process_input(modifiers, key_event);
         if let Some(next) = next_widget {
             // can panic here, because all involved values should be compile time
             assert!(next < Self::WIDGET_COUNT);
             self.selected_widget = next;
         }
+        PageResponce::RedrawRequested
     }
 }
 

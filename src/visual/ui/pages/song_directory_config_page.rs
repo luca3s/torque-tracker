@@ -1,5 +1,7 @@
 use std::{cell::Cell, rc::Rc};
 
+use winit::event_loop::EventLoopProxy;
+
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
     ui::widgets::{
@@ -9,10 +11,10 @@ use crate::visual::{
         toggle::Toggle,
         toggle_button::ToggleButton,
         widget::{NextWidget, WidgetAny},
-    },
+    }, event_loop::CustomWinitEvent,
 };
 
-use super::page::Page;
+use super::page::{Page, PageResponce};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Control {
@@ -114,13 +116,14 @@ impl Page for SongDirectoryConfigPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) {
+    ) -> PageResponce {
         let next_widget = self.widgets[self.selected_widget].process_input(modifiers, key_event);
         if let Some(next) = next_widget {
             // can panic here, because all involved values should be compile time
             assert!(next < Self::WIDGET_COUNT);
             self.selected_widget = next;
         }
+        PageResponce::RedrawRequested
     }
 }
 
@@ -130,7 +133,7 @@ impl SongDirectoryConfigPage {
     const OLD_EFFECTS: usize = 6;
     const COMPATIBLE_GXX: usize = 7;
 
-    pub fn new() -> Self {
+    pub fn new(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
         // widget 0
         let song_name = TextIn::new(
             CharPosition::new(17, 16),
@@ -155,6 +158,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(2),
                 ..Default::default()
             },
+            event_loop_proxy.clone(),
             |value| println!("initial tempo set to: {}", value),
         );
         // widget 2
@@ -169,6 +173,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(3),
                 ..Default::default()
             },
+            event_loop_proxy.clone(),
             |value| println!("initial speed set to: {}", value),
         );
         // widget 3
@@ -183,6 +188,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(4),
                 ..Default::default()
             },
+            event_loop_proxy.clone(),
             |value| println!("gloabl volume set to: {}", value),
         );
         // widget 4
@@ -197,6 +203,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(5),
                 ..Default::default()
             },
+            event_loop_proxy.clone(),
             |value| println!("mixing volume set to: {}", value),
         );
         // widget 5
@@ -211,6 +218,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(6),
                 ..Default::default()
             },
+            event_loop_proxy.clone(),
             |value| println!("seperation set to: {}", value),
         );
 
@@ -272,7 +280,7 @@ impl SongDirectoryConfigPage {
                 left: Some(8),
                 right: Some(8),
                 up: Some(7),
-                down: Some(10),
+                down: Some(11),
                 tab: Some(8),
                 shift_tab: Some(8),
             },

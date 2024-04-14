@@ -1,5 +1,6 @@
 use winit::{
     event::{Event, Modifiers, WindowEvent},
+    event_loop::EventLoopBuilder,
     keyboard::{Key, ModifiersState, NamedKey},
     window::Window,
 };
@@ -8,13 +9,20 @@ use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
+        dialog::dialog::{Dialog, DialogState},
         header::Header,
-        pages::page::{AllPages, Page, PagesEnum},
+        pages::page::{AllPages, Page},
     },
 };
 
+pub enum CustomWinitEvent<'page> {
+    OpenDialog(&'page mut dyn Dialog),
+}
+
 pub fn run() {
-    let event_loop = winit::event_loop::EventLoop::new().unwrap();
+    let event_loop = winit::event_loop::EventLoopBuilder::<CustomWinitEvent>::with_user_event()
+        .build()
+        .unwrap();
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
     let window = Window::new(&event_loop).unwrap();
 
@@ -22,7 +30,8 @@ pub fn run() {
 
     let mut draw_buffer = DrawBuffer::new();
     let mut modifiers = Modifiers::default();
-    let mut ui_pages = AllPages::new();
+    let mut ui_pages = AllPages::new(event_loop.create_proxy());
+    let mut dialog_state = DialogState::new();
 
     let ui_header = Header {};
     ui_header.draw_constant(&mut draw_buffer);
@@ -51,6 +60,8 @@ pub fn run() {
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
                 ui_pages.draw(&mut draw_buffer);
+
+                dialog_state.draw(&mut draw_buffer);
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
@@ -66,26 +77,29 @@ pub fn run() {
                 event,
                 is_synthetic,
             } => {
-                if !is_synthetic {
-                    if event.logical_key == Key::Named(NamedKey::F1) {
-                        ui_pages.switch_page(PagesEnum::Help);
-                        window.request_redraw();
-                        println!("open help page");
-                    } else if event.logical_key == Key::Named(NamedKey::F5) {
-                        if modifiers.state() == ModifiersState::SHIFT {
-                            println!("open preferences page")
-                        } else if modifiers.state().is_empty() {
-                            println!("open info page");
-                        }
-                    } else if event.logical_key == Key::Named(NamedKey::F12) {
-                        if modifiers.state().is_empty() {
-                            ui_pages.switch_page(PagesEnum::SongDirectoryConfig);
+                if *is_synthetic {
+                    return;
+                }
+
+                if let Some(dialog) = dialog_state.active_dialog_mut() {
+                    match dialog.process_input(event, &modifiers) {
+                        super::ui::dialog::dialog::DialogResponse::Close => {
+                            dialog_state.close_dialog();
+                            // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
+                            ui_pages.request_draw_const();
                             window.request_redraw();
                         }
-                    } else {
-                        ui_pages.process_key_event(&modifiers, event);
-                        // maybe do this more efficently by only requesting when actually something changes
-                        window.request_redraw();
+                        super::ui::dialog::dialog::DialogResponse::RequestRedraw => {
+                            window.request_redraw()
+                        }
+                        super::ui::dialog::dialog::DialogResponse::None => (),
+                    }
+                } else {
+                    match ui_pages.process_key_event(&modifiers, event) {
+                        super::ui::pages::page::PageResponce::RedrawRequested => {
+                            window.request_redraw()
+                        }
+                        super::ui::pages::page::PageResponce::None => (),
                     }
                 }
             }
@@ -93,7 +107,9 @@ pub fn run() {
             WindowEvent::ModifiersChanged(new_modifiers) => modifiers = *new_modifiers,
             _ => {}
         },
-        Event::UserEvent(()) => (),
+        Event::UserEvent(event) => match event {
+            CustomWinitEvent::OpenDialog(pop_up) => dialog_state.open_dialog(pop_up),
+        },
         // runs before updating the screen again, so the pages are on current state, currently panics
         // Event::NewEvents(_) => pages.update(),
         _ => {}

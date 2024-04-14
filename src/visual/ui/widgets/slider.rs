@@ -1,10 +1,10 @@
-use std::ops::{AddAssign, Deref, SubAssign};
+use std::{ops::{AddAssign, Deref, SubAssign}, sync::mpsc::{Receiver, SyncSender}};
 
-use winit::keyboard::{Key, ModifiersState, NamedKey};
+use winit::{keyboard::{Key, ModifiersState, NamedKey}, event_loop::EventLoopProxy};
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
-    draw_buffer::DrawBuffer,
+    draw_buffer::DrawBuffer, event_loop::CustomWinitEvent, ui::dialog::slider_dialog::SliderDialog,
 };
 
 use super::widget::{NextWidget, Widget};
@@ -68,7 +68,8 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
         Self { inner: value }
     }
 
-    pub fn set(&mut self, value: i16) {
+    /// sets to MAX or MIN when the value is out of bounds
+    pub fn set_saturating(&mut self, value: i16) {
         if value > MAX {
             self.inner = MAX
         } else if value < MIN {
@@ -80,6 +81,17 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
 
     pub unsafe fn set_unchecked(&mut self, value: i16) {
         self.inner = value;
+    }
+
+    /// returns a Err if the value was out of bounds
+    pub fn try_set(&mut self, value: i16) -> Result<(), i16> {
+        if MIN < value || value < MAX {
+            // could also use set_unchecked, as i already checked it
+            self.set_saturating(value);
+            Ok(())
+        } else {
+            Err(value)
+        }
     }
 
     // dont need any arguments as MIN and MAX are compile time known
@@ -95,6 +107,8 @@ pub struct Slider<const MIN: i16, const MAX: i16> {
     position: CharPosition,
     width: usize,
     next_widget: NextWidget,
+    event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
+    dialog: SliderDialog,
     callback: Box<dyn Fn(i16)>,
 }
 
@@ -213,9 +227,16 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
             }
         // set the value directly, by opening a pop-up
         } else if let Key::Character(text) = &key_event.logical_key {
-            if text.chars().all(|c| c.is_ascii_digit()) {
-                todo!("open dialog window to input a value")
+            let mut chars = text.chars();
+            if let Some(next_char) = chars.next() {
+                if next_char.is_ascii_digit() {
+                    self.dialog.start_dialog(next_char);
+                    self.event_loop_proxy.send_event(CustomWinitEvent::OpenDialog(&mut self.dialog));
+                    println!("open Dialog to input directly");
+                }
             }
+            // should only be one. in any case i only want one
+            assert!(chars.next().is_none());
         } else {
             return self.next_widget.process_key_event(key_event, modifiers);
         }
@@ -231,6 +252,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
         position: CharPosition,
         width: usize,
         next_widget: NextWidget,
+        event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
         callback: impl Fn(i16) + 'static,
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
@@ -250,6 +272,8 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
             position,
             width,
             next_widget,
+            event_loop_proxy,
+            dialog: SliderDialog::new(),
             callback: Box::new(callback),
         }
     }

@@ -51,20 +51,20 @@ impl CharRect {
     //     }
     // }
 
-    pub fn top(&self) -> usize {
+    pub const fn top(&self) -> usize {
         self.top
     }
-    pub fn bot(&self) -> usize {
+    pub const fn bot(&self) -> usize {
         self.bot
     }
-    pub fn right(&self) -> usize {
+    pub const fn right(&self) -> usize {
         self.right
     }
-    pub fn left(&self) -> usize {
+    pub const fn left(&self) -> usize {
         self.left
     }
 
-    pub fn width(&self) -> usize {
+    pub const fn width(&self) -> usize {
         self.right - self.left
     }
 }
@@ -111,27 +111,27 @@ impl PixelRect {
         }
     }
 
-    pub fn vertical_range(&self) -> RangeInclusive<usize> {
+    pub const fn vertical_range(&self) -> RangeInclusive<usize> {
         RangeInclusive::new(self.top, self.bot)
     }
 
-    pub fn horizontal_range(&self) -> RangeInclusive<usize> {
+    pub const fn horizontal_range(&self) -> RangeInclusive<usize> {
         RangeInclusive::new(self.left, self.right)
     }
 
-    pub fn top(&self) -> usize {
+    pub const fn top(&self) -> usize {
         self.top
     }
 
-    pub fn bot(&self) -> usize {
+    pub const fn bot(&self) -> usize {
         self.bot
     }
 
-    pub fn right(&self) -> usize {
+    pub const fn right(&self) -> usize {
         self.right
     }
 
-    pub fn left(&self) -> usize {
+    pub const fn left(&self) -> usize {
         self.left
     }
 }
@@ -169,11 +169,11 @@ impl CharPosition {
         Self { x, y }
     }
 
-    pub fn x(&self) -> usize {
+    pub const fn x(&self) -> usize {
         self.x
     }
 
-    pub fn y(&self) -> usize {
+    pub const fn y(&self) -> usize {
         self.y
     }
 }

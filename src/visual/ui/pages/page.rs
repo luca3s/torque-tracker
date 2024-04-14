@@ -1,6 +1,9 @@
-use winit::event::{KeyEvent, Modifiers};
+use winit::{
+    event::{KeyEvent, Modifiers},
+    keyboard::{Key, ModifiersState, NamedKey}, event_loop::EventLoopProxy,
+};
 
-use crate::visual::draw_buffer::DrawBuffer;
+use crate::visual::{draw_buffer::DrawBuffer, event_loop::CustomWinitEvent};
 
 use super::{help_page::HelpPage, song_directory_config_page::SongDirectoryConfigPage};
 
@@ -11,7 +14,12 @@ pub trait Page {
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer);
 
     fn update(&mut self);
-    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent);
+    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponce;
+}
+
+pub enum PageResponce {
+    RedrawRequested,
+    None,
 }
 
 pub enum PagesEnum {
@@ -56,21 +64,40 @@ impl Page for AllPages {
         self.song_directory_config.update()
     }
 
-    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) {
-        match self.current {
-            PagesEnum::Help => self.help.process_key_event(modifiers, key_event),
-            PagesEnum::SongDirectoryConfig => self
-                .song_directory_config
-                .process_key_event(modifiers, key_event),
+    // add key_events for changing pages here
+    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponce {
+        if key_event.logical_key == Key::Named(NamedKey::F1) {
+            self.switch_page(PagesEnum::Help);
+            println!("open help page");
+            PageResponce::RedrawRequested
+        } else if key_event.logical_key == Key::Named(NamedKey::F5) {
+            if modifiers.state() == ModifiersState::SHIFT {
+                println!("open preferences page")
+            } else if modifiers.state().is_empty() {
+                println!("open info page");
+            }
+            return PageResponce::None;
+        } else if key_event.logical_key == Key::Named(NamedKey::F12) && modifiers.state().is_empty()
+        {
+            self.switch_page(PagesEnum::SongDirectoryConfig);
+            return PageResponce::RedrawRequested;
+        } else {
+            // make the current page handle the event
+            return match self.current {
+                PagesEnum::Help => self.help.process_key_event(modifiers, key_event),
+                PagesEnum::SongDirectoryConfig => self
+                    .song_directory_config
+                    .process_key_event(modifiers, key_event),
+            };
         }
     }
 }
 
 impl AllPages {
-    pub fn new() -> Self {
+    pub fn new(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
         AllPages {
             help: HelpPage::new(),
-            song_directory_config: SongDirectoryConfigPage::new(),
+            song_directory_config: SongDirectoryConfigPage::new(event_loop_proxy),
             current: PagesEnum::SongDirectoryConfig,
             const_draw_needed: true,
         }
@@ -78,6 +105,10 @@ impl AllPages {
 
     pub fn switch_page(&mut self, new_page: PagesEnum) {
         self.current = new_page;
+        self.request_draw_const();
+    }
+
+    pub fn request_draw_const(&mut self) {
         self.const_draw_needed = true;
     }
 }
