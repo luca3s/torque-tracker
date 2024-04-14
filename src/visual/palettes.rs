@@ -1,34 +1,24 @@
-use bit_struct::u10;
-
 const PALETTE_SIZE: usize = 16;
 
 pub type RGB8 = [u8; 3];
-// pub type RGBA8 = [u8; 4];
 
 // for RGB10A2 structure see: https://developer.apple.com/documentation/metal/mtlpixelformat/rgb10a2unorm
-// bit_field macro takes fields from high to low, thats why its ordered like that and not like the name would suggest
-bit_struct::bit_struct! {
-    pub struct RGB10A2(u32) {
-        alpha: bit_struct::u2,
-        blue: bit_struct::u10,
-        green: bit_struct::u10,
-        red: bit_struct::u10,
-    }
-}
+pub struct RGB10A2(u32);
 
 impl From<RGB8> for RGB10A2 {
-    /// sets Alpha to 0
     fn from(value: RGB8) -> Self {
-        // unwraps are okay because its u8 * 4 which results in a u10
-        // in between its a u16 but it is from(u8), so it never panics
-        // maybe i can later use unsafe instead
-        // multiply by 4 because: 4 * 2^8 = 2^10
-        RGB10A2::new(
-            bit_struct::u2!(0),
-            u10::new(u16::from(value[2]) * 4).unwrap(),
-            u10::new(u16::from(value[1]) * 4).unwrap(),
-            u10::new(u16::from(value[0]) * 4).unwrap(),
-        )
+        let mut storage: u32 = 0;
+        
+        let blue: u32 = (u32::from(value[2]) * 4) << 20;
+        storage += blue;
+        
+        let green: u32 = (u32::from(value[1]) * 4) << 10;
+        storage += green;
+
+        let red: u32 = u32::from(value[0]) * 4;
+        storage += red;
+
+        Self(storage)
     }
 }
 
@@ -58,7 +48,7 @@ impl Palette<RGB8> {
 
 impl Palette<RGB10A2> {
     pub fn get_raw(&self, index: usize) -> u32 {
-        self.0[index].raw()
+        self.0[index].0
     }
 }
 

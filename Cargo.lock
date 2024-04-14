@@ -7,7 +7,6 @@ name = "RustRacker"
 version = "0.1.0"
 dependencies = [
  "ascii",
- "bit-struct",
  "bytemuck",
  "font8x8",
  "pollster",
@@ -138,15 +137,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0700ddab506f33b20a03b13996eccd309a48e5ff77d0d95926aa0210fb4e95f1"
 dependencies = [
  "bit-vec",
-]
-
-[[package]]
-name = "bit-struct"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "270fbbb014407467f7a2c9b1fa0b74057d5cbc452f18bac3bb5aad601e590521"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
