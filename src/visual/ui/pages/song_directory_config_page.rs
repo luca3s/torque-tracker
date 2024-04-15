@@ -4,17 +4,18 @@ use winit::event_loop::EventLoopProxy;
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
+    event_loop::CustomWinitEvent,
     ui::widgets::{
         button::Button,
         slider::Slider,
         text_in::TextIn,
         toggle::Toggle,
         toggle_button::ToggleButton,
-        widget::{NextWidget, WidgetAny},
-    }, event_loop::CustomWinitEvent,
+        widget::{NextWidget, RequestRedraw, WidgetAny, WidgetResponse},
+    },
 };
 
-use super::page::{Page, PageResponce};
+use super::page::{Page, PageResponse};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Control {
@@ -108,22 +109,31 @@ impl Page for SongDirectoryConfigPage {
         // draw_buffer.draw_rect(0, CharRect::new(20, 26, 27, 33));
     }
 
-    fn update(&mut self) {
-        todo!()
+    fn update(&mut self) -> RequestRedraw {
+        let mut result = false;
+
+        for widget in self.widgets.iter_mut() {
+            if widget.update() {
+                result = true;
+            }
+        }
+        result
     }
 
     fn process_key_event(
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> PageResponce {
-        let next_widget = self.widgets[self.selected_widget].process_input(modifiers, key_event);
-        if let Some(next) = next_widget {
-            // can panic here, because all involved values should be compile time
-            assert!(next < Self::WIDGET_COUNT);
-            self.selected_widget = next;
+    ) -> PageResponse {
+        match self.widgets[self.selected_widget].process_input(modifiers, key_event) {
+            WidgetResponse::SwitchFocus(next) => {
+                assert!(next < Self::WIDGET_COUNT);
+                self.selected_widget = next;
+                PageResponse::RequestRedraw
+            }
+            WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
+            WidgetResponse::None => PageResponse::None,
         }
-        PageResponce::RedrawRequested
     }
 }
 

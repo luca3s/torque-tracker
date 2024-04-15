@@ -1,9 +1,12 @@
 use winit::{
     event::{KeyEvent, Modifiers},
-    keyboard::{Key, ModifiersState, NamedKey}, event_loop::EventLoopProxy,
+    event_loop::EventLoopProxy,
+    keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::visual::{draw_buffer::DrawBuffer, event_loop::CustomWinitEvent};
+use crate::visual::{
+    draw_buffer::DrawBuffer, event_loop::CustomWinitEvent, ui::widgets::widget::RequestRedraw,
+};
 
 use super::{help_page::HelpPage, song_directory_config_page::SongDirectoryConfigPage};
 
@@ -13,12 +16,12 @@ pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer);
 
-    fn update(&mut self);
-    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponce;
+    fn update(&mut self) -> RequestRedraw;
+    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse;
 }
 
-pub enum PageResponce {
-    RedrawRequested,
+pub enum PageResponse {
+    RequestRedraw,
     None,
 }
 
@@ -59,28 +62,32 @@ impl Page for AllPages {
 
     // different from the other functions as this updates all pages, so they are on the current state if they need to be rendered now
     // unsure if this is the best way to do it, the audio API needs to be worked out more to decide
-    fn update(&mut self) {
-        self.help.update();
-        self.song_directory_config.update()
+    fn update(&mut self) -> RequestRedraw {
+        let help = self.help.update();
+        let song_directory_config = self.song_directory_config.update();
+        match self.current {
+            PagesEnum::Help => help,
+            PagesEnum::SongDirectoryConfig => song_directory_config,
+        }
     }
 
     // add key_events for changing pages here
-    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponce {
+    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse {
         if key_event.logical_key == Key::Named(NamedKey::F1) {
             self.switch_page(PagesEnum::Help);
             println!("open help page");
-            PageResponce::RedrawRequested
+            PageResponse::RequestRedraw
         } else if key_event.logical_key == Key::Named(NamedKey::F5) {
             if modifiers.state() == ModifiersState::SHIFT {
                 println!("open preferences page")
             } else if modifiers.state().is_empty() {
                 println!("open info page");
             }
-            return PageResponce::None;
+            return PageResponse::None;
         } else if key_event.logical_key == Key::Named(NamedKey::F12) && modifiers.state().is_empty()
         {
             self.switch_page(PagesEnum::SongDirectoryConfig);
-            return PageResponce::RedrawRequested;
+            return PageResponse::RequestRedraw;
         } else {
             // make the current page handle the event
             return match self.current {

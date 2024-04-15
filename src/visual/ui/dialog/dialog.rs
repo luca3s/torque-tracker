@@ -13,11 +13,11 @@ pub trait Dialog {
     fn process_input(&mut self, key_event: &KeyEvent, modifiers: &Modifiers) -> DialogResponse;
 }
 
-pub struct DialogState<'page> {
-    stack: Vec<&'page mut dyn Dialog>,
+pub struct DialogState {
+    stack: Vec<Box<dyn Dialog>>,
 }
 
-impl<'page> DialogState<'page> {
+impl DialogState {
     pub fn new() -> Self {
         // try to match the capacity to the actually used maximum depth
         Self {
@@ -27,7 +27,7 @@ impl<'page> DialogState<'page> {
 
     pub fn active_dialog_mut(&mut self) -> Option<&mut dyn Dialog> {
         match self.stack.last_mut() {
-            Some(dialog) => Some(*dialog),
+            Some(dialog) => Some(dialog.as_mut()),
             None => None,
         }
     }
@@ -36,8 +36,8 @@ impl<'page> DialogState<'page> {
         self.stack.len() > 0
     }
 
-    pub fn open_dialog(&mut self, value: &'page mut dyn Dialog) {
-        self.stack.push(value);
+    pub fn open_dialog(&mut self, dialog: Box<dyn Dialog>) {
+        self.stack.push(dialog);
     }
 
     pub fn close_dialog(&mut self) {
@@ -46,6 +46,7 @@ impl<'page> DialogState<'page> {
 
     /// draws all currently open dialogs
     pub fn draw(&self, draw_buffer: &mut DrawBuffer) {
+        println!("draw dialogs");
         self.stack
             .iter()
             .for_each(|dialog| dialog.draw(draw_buffer));

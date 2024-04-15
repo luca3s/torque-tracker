@@ -5,7 +5,7 @@ use crate::visual::{
     draw_buffer::DrawBuffer,
 };
 
-use super::widget::{NextWidget, Widget};
+use super::widget::{NextWidget, Widget, WidgetResponse};
 
 pub struct Toggle<T: Copy> {
     pos: CharPosition,
@@ -40,17 +40,20 @@ impl<T: Copy> Widget for Toggle<T> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> Option<usize> {
+    ) -> WidgetResponse {
         if key_event.logical_key == Key::Named(NamedKey::Space)
             && modifiers.state().is_empty()
             && key_event.state.is_pressed()
         {
             self.next();
             (*self.cb)(self.variants[self.state].0);
+            return WidgetResponse::RequestRedraw;
         } else {
-            return self.next_widget.process_key_event(key_event, modifiers);
+            return self
+                .next_widget
+                .process_key_event(key_event, modifiers)
+                .into();
         }
-        None
     }
 }
 

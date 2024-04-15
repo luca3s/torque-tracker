@@ -8,10 +8,10 @@ pub struct RGB10A2(u32);
 impl From<RGB8> for RGB10A2 {
     fn from(value: RGB8) -> Self {
         let mut storage: u32 = 0;
-        
+
         let blue: u32 = (u32::from(value[2]) * 4) << 20;
         storage += blue;
-        
+
         let green: u32 = (u32::from(value[1]) * 4) << 10;
         storage += green;
 

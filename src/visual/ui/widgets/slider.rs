@@ -1,13 +1,23 @@
-use std::{ops::{AddAssign, Deref, SubAssign}, sync::mpsc::{Receiver, SyncSender}};
+use std::{
+    cell::{OnceCell, RefCell},
+    ops::{AddAssign, Deref, SubAssign},
+    rc::Rc,
+    sync::mpsc::{Receiver, SyncSender},
+};
 
-use winit::{keyboard::{Key, ModifiersState, NamedKey}, event_loop::EventLoopProxy};
+use winit::{
+    event_loop::EventLoopProxy,
+    keyboard::{Key, NamedKey},
+};
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
-    draw_buffer::DrawBuffer, event_loop::CustomWinitEvent, ui::dialog::slider_dialog::SliderDialog,
+    draw_buffer::DrawBuffer,
+    event_loop::CustomWinitEvent,
+    ui::dialog::slider_dialog::SliderDialog,
 };
 
-use super::widget::{NextWidget, Widget};
+use super::widget::{NextWidget, RequestRedraw, Widget, WidgetResponse};
 
 pub struct BoundNumber<const MIN: i16, const MAX: i16> {
     inner: i16,
@@ -85,9 +95,8 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
 
     /// returns a Err if the value was out of bounds
     pub fn try_set(&mut self, value: i16) -> Result<(), i16> {
-        if MIN < value || value < MAX {
-            // could also use set_unchecked, as i already checked it
-            self.set_saturating(value);
+        if MIN < value && value < MAX {
+            self.inner = value;
             Ok(())
         } else {
             Err(value)
@@ -108,7 +117,7 @@ pub struct Slider<const MIN: i16, const MAX: i16> {
     width: usize,
     next_widget: NextWidget,
     event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
-    dialog: SliderDialog,
+    dialog_return: Rc<OnceCell<i16>>,
     callback: Box<dyn Fn(i16)>,
 }
 
@@ -119,9 +128,6 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         const CURSOR_SELECTED_COLOR: usize = 3;
 
         const CURSOR_WIDTH: usize = 4;
-        // let pixel_width: i16 = (self.rect.right - self.rect.left).into() * FONT_SIZE;
-        // let amount_values = MAX - MIN;
-        // let single_value
 
         draw_buffer.draw_string(
             &format!("{:03}", *self.number),
@@ -172,13 +178,21 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         draw_buffer.draw_pixel_rect(color, cursor_pixel_rect);
     }
 
+    fn update(&mut self) -> RequestRedraw {
+        if let Some(value) = self.dialog_return.get() {
+            self.number.try_set(*value).is_ok()
+        } else {
+            false
+        }
+    }
+
     fn process_input(
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> Option<usize> {
+    ) -> WidgetResponse {
         if !key_event.state.is_pressed() {
-            return None;
+            return WidgetResponse::None;
         }
 
         // move the slider
@@ -224,24 +238,37 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
 
                 self.number += amount * direction;
                 (self.callback)(*self.number);
+                return WidgetResponse::RequestRedraw;
             }
         // set the value directly, by opening a pop-up
         } else if let Key::Character(text) = &key_event.logical_key {
             let mut chars = text.chars();
             if let Some(next_char) = chars.next() {
                 if next_char.is_ascii_digit() {
-                    self.dialog.start_dialog(next_char);
-                    self.event_loop_proxy.send_event(CustomWinitEvent::OpenDialog(&mut self.dialog));
-                    println!("open Dialog to input directly");
+                    // reset the Cell to its empty state
+                    if let Some(inner) = Rc::get_mut(&mut self.dialog_return) {
+                        inner.take();
+                    } else {
+                        // if i am not the only holder of the Rc at this point some Dialog didnt get cleaned up
+                        panic!();
+                    }
+                    let dialog = SliderDialog::new(next_char, self.dialog_return.clone());
+                    let _ = self
+                        .event_loop_proxy
+                        .send_event(CustomWinitEvent::OpenDialog(Box::new(dialog)));
+                    return WidgetResponse::RequestRedraw;
                 }
             }
             // should only be one. in any case i only want one
             assert!(chars.next().is_none());
         } else {
-            return self.next_widget.process_key_event(key_event, modifiers);
+            return self
+                .next_widget
+                .process_key_event(key_event, modifiers)
+                .into();
         }
 
-        None
+        WidgetResponse::None
     }
 }
 
@@ -273,7 +300,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
             width,
             next_widget,
             event_loop_proxy,
-            dialog: SliderDialog::new(),
+            dialog_return: Rc::new(OnceCell::new()),
             callback: Box::new(callback),
         }
     }

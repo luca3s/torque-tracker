@@ -5,7 +5,7 @@ use crate::visual::{
     draw_buffer::DrawBuffer,
 };
 
-use super::widget::{NextWidget, Widget};
+use super::widget::{NextWidget, Widget, WidgetResponse};
 
 pub struct Button {
     text: &'static str,
@@ -24,13 +24,14 @@ impl Widget for Button {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> Option<usize> {
+    ) -> WidgetResponse {
         if !key_event.repeat {
             if key_event.logical_key == Key::Named(NamedKey::Space)
                 || key_event.logical_key == Key::Named(NamedKey::Enter)
             {
                 if key_event.state.is_pressed() {
                     self.pressed = true;
+                    return WidgetResponse::RequestRedraw;
                 } else {
                     // only call the callback on a release event if the button was pressed in before
                     // meaning if the user pressed the key, then changed focus to another button and then releases
@@ -39,19 +40,20 @@ impl Widget for Button {
                         (self.callback)();
                     }
                     self.pressed = false;
+                    return WidgetResponse::RequestRedraw;
                 }
             // if focus is changed stop being pressed
             } else {
                 match self.next_widget.process_key_event(key_event, modifiers) {
                     Some(next) => {
                         self.pressed = false;
-                        return Some(next);
+                        return WidgetResponse::SwitchFocus(next);
                     }
-                    None => return None,
+                    None => return WidgetResponse::None,
                 }
             }
         }
-        None
+        WidgetResponse::None
     }
 }
 

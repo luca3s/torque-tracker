@@ -4,7 +4,7 @@ use crate::visual::coordinates::CharRect;
 
 use super::{
     button::Button,
-    widget::{NextWidget, Widget},
+    widget::{NextWidget, Widget, WidgetResponse},
 };
 
 // dont need to store a callback as it gets pushed into the inner button callback
@@ -25,7 +25,7 @@ impl<T: Copy + PartialEq> Widget for ToggleButton<T> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> Option<usize> {
+    ) -> WidgetResponse {
         self.button.process_input(modifiers, key_event)
     }
 }

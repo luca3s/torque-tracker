@@ -4,11 +4,11 @@ use crate::visual::{
     ui::widgets::{
         button::Button,
         text_in::TextIn,
-        widget::{NextWidget, WidgetAny},
+        widget::{NextWidget, RequestRedraw, WidgetAny, WidgetResponse},
     },
 };
 
-use super::page::{Page, PageResponce};
+use super::page::{Page, PageResponse};
 
 pub struct HelpPage {
     selected_widget: usize,
@@ -27,20 +27,26 @@ impl Page for HelpPage {
         draw_buffer.draw_rect(0, CharRect::PAGE_AREA);
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) -> RequestRedraw {
+        false
+    }
 
     fn process_key_event(
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> PageResponce {
-        let next_widget = self.widgets[self.selected_widget].process_input(modifiers, key_event);
-        if let Some(next) = next_widget {
-            // can panic here, because all involved values should be compile time
-            assert!(next < Self::WIDGET_COUNT);
-            self.selected_widget = next;
+    ) -> PageResponse {
+        let response = self.widgets[self.selected_widget].process_input(modifiers, key_event);
+        match response {
+            WidgetResponse::SwitchFocus(next) => {
+                // can panic here, because all involved values should be compile time
+                assert!(next < Self::WIDGET_COUNT);
+                self.selected_widget = next;
+                PageResponse::RequestRedraw
+            }
+            WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
+            WidgetResponse::None => PageResponse::None,
         }
-        PageResponce::RedrawRequested
     }
 }
 

@@ -7,10 +7,32 @@ use winit::{
 
 use crate::visual::draw_buffer::DrawBuffer;
 
+pub type RequestRedraw = bool;
+
 pub trait Widget {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool);
     /// returns a Some(usize) if the next widget gets selected
-    fn process_input(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> Option<usize>;
+    fn process_input(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> WidgetResponse;
+
+    fn update(&mut self) -> RequestRedraw {
+        false
+    }
+}
+
+// SwitchFocus also has to request a redraw
+pub enum WidgetResponse {
+    SwitchFocus(usize),
+    RequestRedraw,
+    None,
+}
+
+impl From<Option<usize>> for WidgetResponse {
+    fn from(value: Option<usize>) -> Self {
+        match value {
+            Some(num) => Self::SwitchFocus(num),
+            None => Self::None,
+        }
+    }
 }
 
 // type needed due to limitation in type system. see: https://lucumr.pocoo.org/2022/1/7/as-any-hack/
