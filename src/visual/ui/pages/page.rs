@@ -25,6 +25,7 @@ pub enum PageResponse {
     None,
 }
 
+#[derive(Clone, Copy)]
 pub enum PagesEnum {
     Help,
     SongDirectoryConfig,
@@ -110,8 +111,8 @@ impl AllPages {
         }
     }
 
-    pub fn switch_page(&mut self, new_page: PagesEnum) {
-        self.current = new_page;
+    pub fn switch_page(&mut self, next_page: PagesEnum) {
+        self.current = next_page;
         self.request_draw_const();
     }
 

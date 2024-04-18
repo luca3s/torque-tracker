@@ -172,7 +172,7 @@ impl<'window> GPUState<'window> {
                     // 4.
                     format: config.format,
                     blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
+                    write_mask: ColorWrites::COLOR,
                 })],
             }),
 

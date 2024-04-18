@@ -1,9 +1,11 @@
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::visual::draw_buffer::DrawBuffer;
+use crate::visual::{draw_buffer::DrawBuffer, ui::pages::page::PagesEnum};
 
 pub enum DialogResponse {
     RequestRedraw,
+    // should also close all Dialogs
+    SwitchToPage(PagesEnum),
     Close,
     None,
 }
@@ -44,9 +46,12 @@ impl DialogState {
         self.stack.pop();
     }
 
+    pub fn close_all(&mut self) {
+        self.stack.clear();
+    }
+
     /// draws all currently open dialogs
     pub fn draw(&self, draw_buffer: &mut DrawBuffer) {
-        println!("draw dialogs");
         self.stack
             .iter()
             .for_each(|dialog| dialog.draw(draw_buffer));

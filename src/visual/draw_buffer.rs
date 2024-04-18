@@ -71,6 +71,8 @@ impl DrawBuffer {
         fg_color: usize,
         bg_color: usize,
     ) {
+        // either this or cut off the str
+        assert!(lenght >= string.len());
         self.draw_string(string, position, fg_color, bg_color);
         self.draw_rect(
             bg_color,

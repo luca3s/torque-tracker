@@ -10,13 +10,13 @@ impl From<RGB8> for RGB10A2 {
         let mut storage: u32 = 0;
 
         let blue: u32 = (u32::from(value[2]) * 4) << 20;
-        storage += blue;
+        storage |= blue;
 
         let green: u32 = (u32::from(value[1]) * 4) << 10;
-        storage += green;
+        storage |= green;
 
         let red: u32 = u32::from(value[0]) * 4;
-        storage += red;
+        storage |= red;
 
         Self(storage)
     }

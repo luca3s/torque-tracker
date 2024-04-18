@@ -5,11 +5,16 @@ use winit::{
     window::Window,
 };
 
+use crate::main;
+
 use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
-        dialog::dialog::{Dialog, DialogResponse, DialogState},
+        dialog::{
+            dialog::{Dialog, DialogResponse, DialogState},
+            page_menu::PageMenu,
+        },
         header::Header,
         pages::page::{AllPages, Page, PageResponse},
     },
@@ -24,13 +29,15 @@ pub fn run() {
         .build()
         .unwrap();
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+    let event_loop_proxy = event_loop.create_proxy();
+
     let window = Window::new(&event_loop).unwrap();
 
     let mut gpu_state = pollster::block_on(GPUState::new(&window));
 
     let mut draw_buffer = DrawBuffer::new();
     let mut modifiers = Modifiers::default();
-    let mut ui_pages = AllPages::new(event_loop.create_proxy());
+    let mut ui_pages = AllPages::new(event_loop_proxy.clone());
     let mut dialog_state = DialogState::new();
 
     let ui_header = Header {};
@@ -93,8 +100,20 @@ pub fn run() {
                         }
                         DialogResponse::RequestRedraw => window.request_redraw(),
                         DialogResponse::None => (),
+                        DialogResponse::SwitchToPage(page) => {
+                            dialog_state.close_all();
+                            ui_pages.switch_page(page);
+                            window.request_redraw();
+                        },
                     }
                 } else {
+                    if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
+                    {
+                        let main_menu = PageMenu::main(event_loop_proxy.clone());
+                        let _ = event_loop_proxy
+                            .send_event(CustomWinitEvent::OpenDialog(Box::new(main_menu)));
+                    }
+
                     match ui_pages.process_key_event(&modifiers, event) {
                         PageResponse::RequestRedraw => window.request_redraw(),
                         PageResponse::None => (),

@@ -1,8 +1,7 @@
 use std::{
-    cell::{OnceCell, RefCell},
+    cell::OnceCell,
     ops::{AddAssign, Deref, SubAssign},
     rc::Rc,
-    sync::mpsc::{Receiver, SyncSender},
 };
 
 use winit::{
@@ -11,7 +10,7 @@ use winit::{
 };
 
 use crate::visual::{
-    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
+    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
     event_loop::CustomWinitEvent,
     ui::dialog::slider_dialog::SliderDialog,
@@ -179,11 +178,14 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
     }
 
     fn update(&mut self) -> RequestRedraw {
-        if let Some(value) = self.dialog_return.get() {
-            self.number.try_set(*value).is_ok()
-        } else {
-            false
+        // fails if a dialog is open
+        if let Some(cell) = Rc::get_mut(&mut self.dialog_return) {
+            // succeeds once after the dialog is closed
+            if let Some(value) = cell.take() {
+                return self.number.try_set(value).is_ok();
+            }
         }
+        false
     }
 
     fn process_input(
@@ -292,7 +294,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
         assert!(MAX <= 999, "draw implementation needs to be redone");
 
         // need right from the slider additional space to display the current value
-        assert!(position.x() + width + 5 < WINDOW_SIZE.0);
+        assert!(position.x() + width + 5 < WINDOW_SIZE_CHARS.0);
 
         Self {
             number: BoundNumber::new(inital_value),

@@ -84,14 +84,14 @@ impl Button {
 
     /// pressed = argument || self.pressed
     pub fn draw_overwrite_pressed(&self, buffer: &mut DrawBuffer, selected: bool, pressed: bool) {
-        let string_offset = {
-            let half_string = self.text.len() / 2;
-            if self.text.len() % 2 == 0 {
-                half_string - 1
-            } else {
-                half_string
-            }
-        };
+        // let string_offset = {
+        //     let half_string = self.text.len() / 2;
+        //     if self.text.len() % 2 == 0 {
+        //         half_string - 1
+        //     } else {
+        //         half_string
+        //     }
+        // };
 
         // fill behind the text
         buffer.draw_rect(
@@ -123,7 +123,8 @@ impl Button {
         buffer.draw_string(
             self.text,
             CharPosition::new(
-                ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
+                // ((self.rect.right() - self.rect.left()) / 2 + self.rect.left()) - string_offset,
+                self.rect.left() + 2,
                 (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
             ),
             text_color,

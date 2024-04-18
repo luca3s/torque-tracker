@@ -34,22 +34,10 @@ impl CharRect {
         Self {
             top,
             bot,
-            right,
             left,
+            right,
         }
     }
-
-    // pub const fn from_pos(x: usize, y: usize) -> Self {
-    //     assert!(y < WINDOW_SIZE_CHARS.1, "lower than window bounds");
-    //     assert!(x < WINDOW_SIZE_CHARS.0, "right out of window bounds");
-
-    //     Self {
-    //         top: y,
-    //         bot: y,
-    //         left: x,
-    //         right: x,
-    //     }
-    // }
 
     pub const fn top(&self) -> usize {
         self.top
@@ -62,6 +50,10 @@ impl CharRect {
     }
     pub const fn left(&self) -> usize {
         self.left
+    }
+
+    pub const fn top_left(&self) -> CharPosition {
+        CharPosition { x: self.left, y: self.top }
     }
 
     pub const fn width(&self) -> usize {
