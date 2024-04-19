@@ -15,11 +15,11 @@ pub trait Dialog {
     fn process_input(&mut self, key_event: &KeyEvent, modifiers: &Modifiers) -> DialogResponse;
 }
 
-pub struct DialogState {
+pub struct DialogManager {
     stack: Vec<Box<dyn Dialog>>,
 }
 
-impl DialogState {
+impl DialogManager {
     pub fn new() -> Self {
         // try to match the capacity to the actually used maximum depth
         Self {

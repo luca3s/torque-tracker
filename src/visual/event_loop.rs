@@ -1,18 +1,15 @@
 use winit::{
     event::{Event, Modifiers, WindowEvent},
-    event_loop::EventLoopBuilder,
-    keyboard::{Key, ModifiersState, NamedKey},
+    keyboard::{Key, NamedKey},
     window::Window,
 };
-
-use crate::main;
 
 use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
         dialog::{
-            dialog::{Dialog, DialogResponse, DialogState},
+            dialog::{Dialog, DialogResponse, DialogManager},
             page_menu::PageMenu,
         },
         header::Header,
@@ -38,7 +35,7 @@ pub fn run() {
     let mut draw_buffer = DrawBuffer::new();
     let mut modifiers = Modifiers::default();
     let mut ui_pages = AllPages::new(event_loop_proxy.clone());
-    let mut dialog_state = DialogState::new();
+    let mut dialog_manager = DialogManager::new();
 
     let ui_header = Header {};
     ui_header.draw_constant(&mut draw_buffer);
@@ -70,7 +67,7 @@ pub fn run() {
                 // draw the new frame buffer
                 ui_pages.draw(&mut draw_buffer);
 
-                dialog_state.draw(&mut draw_buffer);
+                dialog_manager.draw(&mut draw_buffer);
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
@@ -90,10 +87,10 @@ pub fn run() {
                     return;
                 }
 
-                if let Some(dialog) = dialog_state.active_dialog_mut() {
+                if let Some(dialog) = dialog_manager.active_dialog_mut() {
                     match dialog.process_input(event, &modifiers) {
                         DialogResponse::Close => {
-                            dialog_state.close_dialog();
+                            dialog_manager.close_dialog();
                             // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
                             ui_pages.request_draw_const();
                             window.request_redraw();
@@ -101,7 +98,7 @@ pub fn run() {
                         DialogResponse::RequestRedraw => window.request_redraw(),
                         DialogResponse::None => (),
                         DialogResponse::SwitchToPage(page) => {
-                            dialog_state.close_all();
+                            dialog_manager.close_all();
                             ui_pages.switch_page(page);
                             window.request_redraw();
                         },
@@ -126,7 +123,7 @@ pub fn run() {
         },
         Event::UserEvent(event) => match event {
             CustomWinitEvent::OpenDialog(pop_up) => {
-                dialog_state.open_dialog(pop_up);
+                dialog_manager.open_dialog(pop_up);
                 window.request_redraw();
             }
         },
