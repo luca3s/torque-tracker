@@ -15,7 +15,7 @@ bytemuck = "1.15.0"
 font8x8 = "0.3.1"
 pollster = "0.3.0"
 # rtrb = "0.2.3"
-wgpu = "0.19.3"
+wgpu = "0.19.4"
 winit = "0.29.15"
 ascii = "1.1.0"
 
