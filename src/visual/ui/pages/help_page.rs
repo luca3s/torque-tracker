@@ -82,6 +82,6 @@ impl HelpPage {
             .as_any()
             .downcast_ref::<TextIn>()
             .unwrap()
-            .get_string()
+            .get_str()
     }
 }

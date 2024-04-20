@@ -25,10 +25,10 @@ impl Widget for Button {
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
     ) -> WidgetResponse {
-        if !key_event.repeat {
-            if key_event.logical_key == Key::Named(NamedKey::Space)
-                || key_event.logical_key == Key::Named(NamedKey::Enter)
-            {
+        if key_event.logical_key == Key::Named(NamedKey::Space)
+            || key_event.logical_key == Key::Named(NamedKey::Enter)
+        {
+            if !key_event.repeat {
                 if key_event.state.is_pressed() {
                     self.pressed = true;
                     return WidgetResponse::RequestRedraw;
@@ -42,15 +42,15 @@ impl Widget for Button {
                     self.pressed = false;
                     return WidgetResponse::RequestRedraw;
                 }
-            // if focus is changed stop being pressed
-            } else {
-                match self.next_widget.process_key_event(key_event, modifiers) {
-                    Some(next) => {
-                        self.pressed = false;
-                        return WidgetResponse::SwitchFocus(next);
-                    }
-                    None => return WidgetResponse::None,
+            }
+        // if focus is changed stop being pressed
+        } else {
+            match self.next_widget.process_key_event(key_event, modifiers) {
+                Some(next) => {
+                    self.pressed = false;
+                    return WidgetResponse::SwitchFocus(next);
                 }
+                None => return WidgetResponse::None,
             }
         }
         WidgetResponse::None

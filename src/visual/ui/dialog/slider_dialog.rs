@@ -35,7 +35,7 @@ impl Dialog for SliderDialog {
             if key_event.logical_key == Key::Named(NamedKey::Escape) {
                 return DialogResponse::Close;
             } else if key_event.logical_key == Key::Named(NamedKey::Enter) {
-                if let Ok(num) = self.text.get_string().parse::<i16>() {
+                if let Ok(num) = self.text.get_str().parse::<i16>() {
                     let result = self.return_value.set(num);
                     // otherwise the OnceCell wasnt reset correctly before starting the dialog
                     assert!(result.is_ok());

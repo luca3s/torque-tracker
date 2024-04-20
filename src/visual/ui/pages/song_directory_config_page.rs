@@ -9,6 +9,7 @@ use crate::visual::{
         button::Button,
         slider::Slider,
         text_in::TextIn,
+        text_in_scroll::TextInScroll,
         toggle::Toggle,
         toggle_button::ToggleButton,
         widget::{NextWidget, RequestRedraw, WidgetAny, WidgetResponse},
@@ -138,10 +139,13 @@ impl Page for SongDirectoryConfigPage {
 }
 
 impl SongDirectoryConfigPage {
-    const WIDGET_COUNT: usize = 15;
+    const WIDGET_COUNT: usize = 18;
     const SONG_NAME: usize = 0;
     const OLD_EFFECTS: usize = 6;
     const COMPATIBLE_GXX: usize = 7;
+    const MODULE_PATH: usize = 14;
+    const SAMPLE_PATH: usize = 15;
+    const INSTRUMENT_PATH: usize = 16;
 
     pub fn new(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
         // widget 0
@@ -367,14 +371,56 @@ impl SongDirectoryConfigPage {
             pitch_slides_rc,
             |_| println!("set to amiga pitch slide"),
         );
-
         // widget 14
+        let module_path = TextInScroll::new(
+            CharPosition::new(13, 42),
+            64,
+            NextWidget {
+                left: None,
+                right: None,
+                up: Some(12),
+                down: Some(15),
+                tab: Some(15),
+                shift_tab: Some(12),
+            },
+            |text| println!("Module path set to {text}"),
+        );
+        // widget 15
+        let sample_path = TextInScroll::new(
+            CharPosition::new(13, 43),
+            64,
+            NextWidget {
+                left: None,
+                right: None,
+                up: Some(14),
+                down: Some(16),
+                tab: Some(16),
+                shift_tab: Some(14),
+            },
+            |text| println!("Sample path set to {text}"),
+        );
+        // widget 16
+        let instrument_path = TextInScroll::new(
+            CharPosition::new(13, 44),
+            64,
+            NextWidget {
+                left: None,
+                right: None,
+                up: Some(15),
+                down: Some(17),
+                tab: Some(17),
+                shift_tab: Some(15),
+            },
+            |text| println!("Instrument path set to {text}"),
+        );
+
+        // widget 17
         let save_button = Button::new(
             "Save all Preferences",
             CharRect::new(46, 48, 28, 51),
             NextWidget {
-                up: Some(8),
-                shift_tab: Some(8),
+                up: Some(16),
+                shift_tab: Some(16),
                 ..Default::default()
             },
             || println!("save preferences"),
@@ -395,6 +441,9 @@ impl SongDirectoryConfigPage {
                 Box::new(mono_button),
                 Box::new(linear_slides_button),
                 Box::new(amiga_slides_button),
+                Box::new(module_path),
+                Box::new(sample_path),
+                Box::new(instrument_path),
                 Box::new(save_button),
             ],
             selected_widget: 0,
@@ -406,7 +455,7 @@ impl SongDirectoryConfigPage {
             .as_any()
             .downcast_ref::<TextIn>()
             .unwrap()
-            .get_string()
+            .get_str()
     }
 
     pub fn get_old_effects_state(&self) -> bool {
@@ -423,5 +472,29 @@ impl SongDirectoryConfigPage {
             .downcast_ref::<Toggle<bool>>()
             .unwrap()
             .get_variant()
+    }
+
+    pub fn get_module_path(&self) -> &str {
+        (*self.widgets[Self::MODULE_PATH])
+            .as_any()
+            .downcast_ref::<TextInScroll>()
+            .unwrap()
+            .get_str()
+    }
+
+    pub fn get_sample_path(&self) -> &str {
+        (*self.widgets[Self::SAMPLE_PATH])
+            .as_any()
+            .downcast_ref::<TextInScroll>()
+            .unwrap()
+            .get_str()
+    }
+
+    pub fn get_instrument_path(&self) -> &str {
+        (*self.widgets[Self::INSTRUMENT_PATH])
+            .as_any()
+            .downcast_ref::<TextInScroll>()
+            .unwrap()
+            .get_str()
     }
 }
