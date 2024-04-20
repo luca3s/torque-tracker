@@ -1,5 +1,5 @@
 [package]
-name = "RustRacker"
+name = "rusTracker"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,6 +17,7 @@ wgpu = "0.19.4"
 ascii = "1.1.0"
 winit = "0.29.15"
 lockfree = "0.5.1"
+symphonia = "0.5.4"
 
 [profile.dev]
 debug = 0

@@ -1,5 +1,5 @@
-mod visual;
 mod audio;
+mod visual;
 
 fn main() {
     let audio_manager = audio::manager::AudioManager::new();
