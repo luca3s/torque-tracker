@@ -216,7 +216,23 @@ impl<'window> GPUState<'window> {
         }
     }
 
-    pub fn render(&mut self, framebuffer: &[u32]) -> Result<(), SurfaceError> {
+    pub fn render<'frame>(
+        &mut self,
+        framebuffer: &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+    ) -> Result<(), SurfaceError> {
+        // SAFETY:
+        // - u32 and [u8; 4] are valid for every bit pattern
+        // - lifetime stays the same
+        // - size of the slice stays the same, is compile time constant
+        // could also be done with bytemuck::cast_slice and nightly feature slice_flatten.
+        // This just saves me the import and allows me use stable
+        let framebuffer = unsafe {
+            std::mem::transmute::<
+                &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+                &'frame [u8; WINDOW_SIZE.0 * WINDOW_SIZE.1 * std::mem::size_of::<u32>()],
+            >(framebuffer)
+        };
+
         // push framebuffer to GPU-Texture
         self.queue.write_texture(
             ImageCopyTexture {
@@ -225,7 +241,7 @@ impl<'window> GPUState<'window> {
                 origin: Origin3d::ZERO,
                 aspect: TextureAspect::All,
             },
-            bytemuck::cast_slice(framebuffer),
+            framebuffer,
             ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some((PIXEL_SIZE * WINDOW_SIZE.0) as u32),

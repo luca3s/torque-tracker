@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-Zthreads=8", "-Ctarget-cpu=native"]
+rustflags = ["-Ctarget-cpu=native"]

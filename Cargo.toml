@@ -6,18 +6,17 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytemuck = "1.15.0"
 # anyhow = "1.0.75"
-# arrayvec = "0.7.4"
-# basedrop = "0.1.2"
-# cpal = "0.15.3"
+basedrop = "0.1.2"
+cpal = "0.15.3"
 # env_logger = "0.10.0"
 font8x8 = "0.3.1"
 pollster = "0.3.0"
 # rtrb = "0.2.3"
 wgpu = "0.19.4"
-winit = "0.29.15"
 ascii = "1.1.0"
+winit = "0.29.15"
+lockfree = "0.5.1"
 
 [profile.dev]
 debug = 0

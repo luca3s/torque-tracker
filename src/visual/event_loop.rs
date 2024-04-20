@@ -9,7 +9,7 @@ use super::{
     gpu::GPUState,
     ui::{
         dialog::{
-            dialog::{Dialog, DialogResponse, DialogManager},
+            dialog::{Dialog, DialogManager, DialogResponse},
             page_menu::PageMenu,
         },
         header::Header,
@@ -71,7 +71,7 @@ pub fn run() {
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
-                match gpu_state.render(draw_buffer.framebuffer.flatten()) {
+                match gpu_state.render(&draw_buffer.framebuffer) {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => gpu_state.resize(gpu_state.size),
                     Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
@@ -101,7 +101,7 @@ pub fn run() {
                             dialog_manager.close_all();
                             ui_pages.switch_page(page);
                             window.request_redraw();
-                        },
+                        }
                     }
                 } else {
                     if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)

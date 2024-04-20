@@ -53,7 +53,10 @@ impl CharRect {
     }
 
     pub const fn top_left(&self) -> CharPosition {
-        CharPosition { x: self.left, y: self.top }
+        CharPosition {
+            x: self.left,
+            y: self.top,
+        }
     }
 
     pub const fn width(&self) -> usize {

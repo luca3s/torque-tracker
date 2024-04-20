@@ -4,7 +4,9 @@ use winit::{
 };
 
 use crate::visual::{
-    coordinates::{CharPosition, CharRect}, event_loop::CustomWinitEvent, ui::pages::page::PagesEnum,
+    coordinates::{CharPosition, CharRect},
+    event_loop::CustomWinitEvent,
+    ui::pages::page::PagesEnum,
 };
 
 use super::dialog::{Dialog, DialogResponse};
@@ -15,7 +17,6 @@ enum PageOrPageMenu {
     // should be removed when possible
     NotYetImplemented,
 }
-
 
 // Main Missing, because it cant be opened from a menu
 enum Menu {
@@ -48,7 +49,6 @@ impl Dialog for PageMenu {
         draw_buffer.draw_string(self.name, top_left + CharPosition::new(6, 2), 3, 2);
         draw_buffer.draw_box(self.rect, TOPLEFT_COLOR, BACKGROUND_COLOR, BACKGROUND_COLOR);
 
-
         for (num, button) in self.button_names.iter().enumerate() {
             let text_color = match self.selected == num {
                 true => 11,
@@ -60,8 +60,23 @@ impl Dialog for PageMenu {
                 false => (TOPLEFT_COLOR, BOTRIGHT_COLOR),
             };
 
-            draw_buffer.draw_string(button, top_left + CharPosition::new(2, (3*num) + 4), text_color, BACKGROUND_COLOR);
-            draw_buffer.draw_box(CharRect::new(top_left.y() + (3*num) + 3, top_left.y() + (3*num) + 5, top_left.x() + 1, top_left.x() + 2 + button_width), BACKGROUND_COLOR, box_colors.0, box_colors.1);
+            draw_buffer.draw_string(
+                button,
+                top_left + CharPosition::new(2, (3 * num) + 4),
+                text_color,
+                BACKGROUND_COLOR,
+            );
+            draw_buffer.draw_box(
+                CharRect::new(
+                    top_left.y() + (3 * num) + 3,
+                    top_left.y() + (3 * num) + 5,
+                    top_left.x() + 1,
+                    top_left.x() + 2 + button_width,
+                ),
+                BACKGROUND_COLOR,
+                box_colors.0,
+                box_colors.1,
+            );
         }
     }
 
@@ -94,7 +109,7 @@ impl Dialog for PageMenu {
                     PageOrPageMenu::NotYetImplemented => {
                         println!("Not yet implementes");
                         return DialogResponse::RequestRedraw;
-                },
+                    }
                 }
             }
         }
@@ -135,7 +150,12 @@ impl PageMenu {
         // assert!(pos.x() + width < WINDOW_SIZE_CHARS.0);
 
         // println!("{width}");
-        let rect = CharRect::new(pos.y(), pos.y() + 3 + (3*button_names.len()), pos.x(), pos.x() + width + 3);
+        let rect = CharRect::new(
+            pos.y(),
+            pos.y() + 3 + (3 * button_names.len()),
+            pos.x(),
+            pos.x() + width + 3,
+        );
 
         Self {
             name,
