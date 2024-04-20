@@ -11,7 +11,7 @@ use super::widget::{NextWidget, Widget, WidgetResponse};
 
 /// text has max_len of the rect that was given, because the text_in cannot scroll
 /// use text_in_scroll for that
-// i only allow Ascii characters as i can only render ascii
+/// i only allow Ascii characters as i can only render ascii
 pub struct TextIn {
     pos: CharPosition,
     width: usize,
@@ -23,43 +23,15 @@ pub struct TextIn {
 
 impl Widget for TextIn {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
-        const TEXT_COLOR: usize = 2;
+        draw_buffer.draw_string_length(self.text.as_str(), self.pos, self.width, 2, 0);
+        // draw the cursor by overdrawing a lette
         if selected {
-            // if the cursor is inside the text
-            if self.text.len() < self.cursor_pos {
-                self.text.chars().enumerate().for_each(|(i, ascii_char)| {
-                    let (fg_color, bg_color) = if self.cursor_pos == i {
-                        (0, 3)
-                    } else {
-                        (TEXT_COLOR, 0)
-                    };
-                    draw_buffer.draw_char(
-                        font8x8::BASIC_FONTS.get(ascii_char.into()).unwrap(),
-                        self.pos + (i, 0),
-                        fg_color,
-                        bg_color,
-                    );
-                });
+            let cursor_char_pos = self.pos + CharPosition::new(self.cursor_pos, 0);
+            if self.cursor_pos < self.text.len() {
+                draw_buffer.draw_char(font8x8::BASIC_FONTS.get(self.text[self.cursor_pos].into()).unwrap(), cursor_char_pos, 0, 3);
             } else {
-                draw_buffer.draw_string_length(
-                    self.text.as_str(),
-                    self.pos,
-                    self.width,
-                    TEXT_COLOR,
-                    0,
-                );
-                draw_buffer.draw_rect(
-                    3,
-                    CharRect::new(
-                        self.pos.y(),
-                        self.pos.y(),
-                        self.pos.x() + self.cursor_pos,
-                        self.pos.x() + self.cursor_pos,
-                    ),
-                );
+                draw_buffer.draw_rect(3, cursor_char_pos.into());
             }
-        } else {
-            draw_buffer.draw_string_length(self.text.as_str(), self.pos, self.width, 1, 0);
         }
     }
 

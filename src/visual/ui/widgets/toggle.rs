@@ -47,12 +47,11 @@ impl<T: Copy> Widget for Toggle<T> {
         {
             self.next();
             (*self.cb)(self.variants[self.state].0);
-            return WidgetResponse::RequestRedraw;
+            WidgetResponse::RequestRedraw
         } else {
-            return self
-                .next_widget
+            self.next_widget
                 .process_key_event(key_event, modifiers)
-                .into();
+                .into()
         }
     }
 }
