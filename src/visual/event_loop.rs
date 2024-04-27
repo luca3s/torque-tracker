@@ -1,7 +1,11 @@
+use std::{pin::Pin, marker::PhantomPinned};
+
 use winit::{
+    application::ApplicationHandler,
     event::{Event, Modifiers, WindowEvent},
+    event_loop::{ControlFlow, EventLoopProxy},
     keyboard::{Key, NamedKey},
-    window::Window,
+    window::{Window, WindowAttributes},
 };
 
 use super::{
@@ -21,12 +25,58 @@ pub enum CustomWinitEvent {
     OpenDialog(Box<dyn Dialog>),
 }
 
+pub struct App {
+    window: Option<Box<Pin<Window>>>,
+    gpu_state: Option<GPUState<'a>>,
+    modifiers: Modifiers,
+    ui_pages: AllPages,
+    dialog_manager: DialogManager,
+    header: Header,
+    // self-refential struct needs stuff
+    _pin: PhantomPinned,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        self.window = Some(
+            event_loop
+                .create_window(WindowAttributes::default())
+                .unwrap(),
+        );
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
+        let window = self.window.as_ref().unwrap();
+    }
+}
+
+impl App {
+    pub fn new(proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+        
+        // Self {
+        //     window: None,
+        //     modifiers: Modifiers::default(),
+        //     ui_pages: AllPages::new(proxy),
+        //     dialog_manager: DialogManager::new(),
+        //     header: Header {},
+        //     gpu_state: todo!(),
+        // }
+    }
+}
+
 pub fn run() {
-    let event_loop = winit::event_loop::EventLoopBuilder::<CustomWinitEvent>::with_user_event()
+    let event_loop = winit::event_loop::EventLoop::<CustomWinitEvent>::with_user_event()
         .build()
         .unwrap();
+    event_loop.set_control_flow(ControlFlow::Wait);
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
     let event_loop_proxy = event_loop.create_proxy();
+    let app = App::new(event_loop_proxy);
 
     let window = Window::new(&event_loop).unwrap();
 

@@ -27,7 +27,8 @@ impl Widget for TextInScroll {
         );
         // draw the cursor by overdrawing a letter
         if selected {
-            let cursor_char_pos = self.pos + CharPosition::new(self.cursor_pos - self.scroll_offset, 0);
+            let cursor_char_pos =
+                self.pos + CharPosition::new(self.cursor_pos - self.scroll_offset, 0);
             if self.cursor_pos < self.text.len() {
                 draw_buffer.draw_char(
                     font8x8::BASIC_FONTS

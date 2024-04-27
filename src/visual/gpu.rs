@@ -1,3 +1,5 @@
+use std::{pin::Pin, marker::PhantomPinned};
+
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, BlendState, ColorTargetState, ColorWrites,
@@ -15,6 +17,7 @@ use winit::window::Window;
 use super::coordinates::{PIXEL_SIZE, WINDOW_SIZE};
 
 pub(crate) struct GPUState<'window> {
+    window: Box<Pin<Window>>,
     surface: Surface<'window>,
 
     device: Device,
@@ -28,10 +31,11 @@ pub(crate) struct GPUState<'window> {
     texture_size: Extent3d,
 
     diffuse_bind_group: BindGroup,
+    _pin: PhantomPinned,
 }
 
 impl<'window> GPUState<'window> {
-    pub async fn new(window: &'window Window) -> Self {
+    pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
         let instance = Instance::default();
 
