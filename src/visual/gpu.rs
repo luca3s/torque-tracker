@@ -221,11 +221,12 @@ impl<'window> GPUState<'window> {
         framebuffer: &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
     ) -> Result<(), SurfaceError> {
         // SAFETY:
-        // - u32 and [u8; 4] are valid for every bit pattern
+        // - u32 and [u8; 4] are both valid for every bit pattern => No invalid patterns can be created
         // - lifetime stays the same
         // - size of the slice stays the same, is compile time constant
+        // - mutability stays the same
         // could also be done with bytemuck::cast_slice and nightly feature slice_flatten.
-        // This just saves me the import and allows me use stable
+        // This just saves me the import and allows me to use stable
         let framebuffer = unsafe {
             std::mem::transmute::<
                 &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
@@ -289,7 +290,6 @@ impl<'window> GPUState<'window> {
             render_pass.draw(0..6, 0..1);
         }
 
-        // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
 

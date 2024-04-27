@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 # anyhow = "1.0.75"
-basedrop = "0.1.2"
-cpal = "0.15.3"
+# basedrop = "0.1.2"
+# cpal = "0.15.3"
 # env_logger = "0.10.0"
 font8x8 = "0.3.1"
 pollster = "0.3.0"
@@ -16,8 +16,10 @@ pollster = "0.3.0"
 wgpu = "0.19.4"
 ascii = "1.1.0"
 winit = "0.29.15"
-lockfree = "0.5.1"
-symphonia = "0.5.4"
+left-right = "0.11.5"
+# lockfree = "0.5.1"
+# symphonia = "0.5.4"
+# knyst = { version = "0.5.0", features = ["debug-warn-on-alloc", "cpal"], default_features = false }
 
 [profile.dev]
 debug = 0
