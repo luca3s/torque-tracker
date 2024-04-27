@@ -14,8 +14,8 @@ use winit::window::Window;
 
 use super::coordinates::{PIXEL_SIZE, WINDOW_SIZE};
 
-pub(crate) struct GPUState<'window> {
-    surface: Surface<'window>,
+pub(crate) struct GPUState<'a> {
+    surface: Surface<'a>,
 
     device: Device,
     queue: Queue,
@@ -30,12 +30,12 @@ pub(crate) struct GPUState<'window> {
     diffuse_bind_group: BindGroup,
 }
 
-impl<'window> GPUState<'window> {
-    pub async fn new(window: &'window Window) -> Self {
+impl GPUState<'_> {
+    pub async fn new(window: std::sync::Arc<Window>) -> Self {
         let size = window.inner_size();
         let instance = Instance::default();
 
-        let surface = instance.create_surface(window).unwrap();
+        let surface = instance.create_surface(window.clone()).unwrap();
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
