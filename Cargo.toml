@@ -7,16 +7,13 @@ edition = "2021"
 
 [dependencies]
 # anyhow = "1.0.75"
-basedrop = "0.1.2"
-cpal = "0.15.3"
 # env_logger = "0.10.0"
 font8x8 = "0.3.1"
 pollster = "0.3.0"
 # rtrb = "0.2.3"
 wgpu = "0.19.4"
 ascii = "1.1.0"
-winit = "0.29.15"
-lockfree = "0.5.1"
+winit = "0.30.0"
 
 [profile.dev]
 debug = 0

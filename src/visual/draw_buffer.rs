@@ -63,6 +63,8 @@ impl DrawBuffer {
         }
     }
 
+    /// cuts off the string if it's too long
+    /// if it's too short it gets filled with whitespace
     pub fn draw_string_length(
         &mut self,
         string: &str,
@@ -71,18 +73,20 @@ impl DrawBuffer {
         fg_color: usize,
         bg_color: usize,
     ) {
-        // either this or cut off the str
-        assert!(lenght >= string.len());
-        self.draw_string(string, position, fg_color, bg_color);
-        self.draw_rect(
-            bg_color,
-            CharRect::new(
-                position.y(),
-                position.y(),
-                position.x() + string.len(),
-                position.x() + lenght,
-            ),
-        );
+        if string.len() > lenght {
+            self.draw_string(&string[..=lenght], position, fg_color, bg_color)
+        } else {
+            self.draw_string(string, position, fg_color, bg_color);
+            self.draw_rect(
+                bg_color,
+                CharRect::new(
+                    position.y(),
+                    position.y(),
+                    position.x() + string.len(),
+                    position.x() + lenght,
+                ),
+            );
+        }
     }
 
     pub fn draw_box(

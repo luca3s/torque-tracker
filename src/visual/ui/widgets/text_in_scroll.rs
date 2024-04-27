@@ -2,31 +2,33 @@ use ascii::{AsciiChar, AsciiString};
 use font8x8::UnicodeFonts;
 use winit::keyboard::{Key, NamedKey};
 
-use crate::visual::{
-    coordinates::{CharPosition, CharRect, WINDOW_SIZE},
-    draw_buffer::DrawBuffer,
-};
+use crate::visual::coordinates::{CharPosition, WINDOW_SIZE};
 
 use super::widget::{NextWidget, Widget, WidgetResponse};
 
-/// text has max_len of the rect that was given, because the text_in cannot scroll
-/// use text_in_scroll for that
-/// i only allow Ascii characters as i can only render ascii
-pub struct TextIn {
+pub struct TextInScroll {
     pos: CharPosition,
     width: usize,
     text: AsciiString,
     next_widget: NextWidget,
     callback: Box<dyn Fn(&str)>,
     cursor_pos: usize,
+    scroll_offset: usize,
 }
 
-impl Widget for TextIn {
-    fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
-        draw_buffer.draw_string_length(self.text.as_str(), self.pos, self.width, 2, 0);
-        // draw the cursor by overdrawing a lette
+impl Widget for TextInScroll {
+    fn draw(&self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer, selected: bool) {
+        draw_buffer.draw_string_length(
+            &self.text.as_str()[self.scroll_offset..],
+            self.pos,
+            self.width,
+            2,
+            0,
+        );
+        // draw the cursor by overdrawing a letter
         if selected {
-            let cursor_char_pos = self.pos + CharPosition::new(self.cursor_pos, 0);
+            let cursor_char_pos =
+                self.pos + CharPosition::new(self.cursor_pos - self.scroll_offset, 0);
             if self.cursor_pos < self.text.len() {
                 draw_buffer.draw_char(
                     font8x8::BASIC_FONTS
@@ -46,7 +48,7 @@ impl Widget for TextIn {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-    ) -> WidgetResponse {
+    ) -> super::widget::WidgetResponse {
         if !key_event.state.is_pressed() {
             return WidgetResponse::None;
         }
@@ -69,17 +71,13 @@ impl Widget for TextIn {
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft)
             && modifiers.state().is_empty()
         {
-            // when moving left from 0 i dont need to redraw
-            if self.cursor_pos > 0 {
-                self.cursor_pos -= 1;
+            if self.move_cursor_left() {
                 return WidgetResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowRight)
             && modifiers.state().is_empty()
         {
-            // check that the cursor doesnt go away from the string
-            if self.text.len() > self.cursor_pos {
-                self.cursor_pos += 1;
+            if self.move_cursor_right() {
                 return WidgetResponse::RequestRedraw;
             }
         // backspace and delete keys
@@ -96,6 +94,7 @@ impl Widget for TextIn {
             if modifiers.state().super_key() {
                 self.text.clear();
                 self.cursor_pos = 0;
+                self.scroll_offset = 0;
                 (self.callback)(self.text.as_str());
                 return WidgetResponse::RequestRedraw;
             // if string is empty we cant remove from it
@@ -106,7 +105,7 @@ impl Widget for TextIn {
                     (self.callback)(self.text.as_str());
                 } else {
                     let _ = self.text.remove(self.cursor_pos - 1);
-                    self.cursor_pos -= 1;
+                    self.move_cursor_left();
                     (self.callback)(self.text.as_str());
                 }
                 return WidgetResponse::RequestRedraw;
@@ -122,7 +121,7 @@ impl Widget for TextIn {
     }
 }
 
-impl TextIn {
+impl TextInScroll {
     pub fn new(
         pos: CharPosition,
         width: usize,
@@ -134,17 +133,17 @@ impl TextIn {
         assert!(next_widget.right.is_none());
         assert!(next_widget.left.is_none());
 
-        TextIn {
+        Self {
             pos,
             width,
-            text: AsciiString::with_capacity(width), // allows to never allocate or deallocate in TextIn
+            text: AsciiString::new(), // size completely unknown, so i don't allocate
             next_widget,
             callback: Box::new(cb),
             cursor_pos: 0,
+            scroll_offset: 0,
         }
     }
 
-    // not tested
     pub fn set_string<'a>(
         &mut self,
         new_str: &'a str,
@@ -152,22 +151,48 @@ impl TextIn {
         self.text = AsciiString::from_ascii(new_str)?;
         self.text.truncate(self.width);
         self.cursor_pos = self.text.len();
+        // never tested could be buggy
+        self.scroll_offset = self.text.len().saturating_sub(self.width);
 
         (self.callback)(self.text.as_str());
         Ok(())
     }
 
-    pub fn get_str(&self) -> &str {
-        self.text.as_str()
-    }
-
     fn insert_char(&mut self, char: AsciiChar) {
-        if self.cursor_pos < self.width {
-            self.cursor_pos += 1;
-        }
-        self.text.insert(self.cursor_pos - 1, char);
-        self.text.truncate(self.width);
+        self.text.insert(self.cursor_pos, char);
+
+        self.move_cursor_right();
 
         (self.callback)(self.text.as_str());
+    }
+
+    // returns if it moved
+    fn move_cursor_left(&mut self) -> bool {
+        if self.cursor_pos > 0 {
+            self.cursor_pos -= 1;
+            if self.cursor_pos < self.scroll_offset {
+                self.scroll_offset -= 1;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    // returns if it moved
+    fn move_cursor_right(&mut self) -> bool {
+        if self.cursor_pos < self.text.len() {
+            self.cursor_pos += 1;
+            if self.cursor_pos > self.scroll_offset + self.width {
+                self.scroll_offset += 1;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn get_str(&self) -> &str {
+        self.text.as_str()
     }
 }

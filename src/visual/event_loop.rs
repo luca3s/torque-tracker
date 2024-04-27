@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use winit::{
-    event::{Event, Modifiers, WindowEvent},
+    application::ApplicationHandler,
+    event::{Modifiers, WindowEvent},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoopProxy},
     keyboard::{Key, NamedKey},
-    window::Window,
+    window::{Window, WindowAttributes},
 };
 
 use super::{
@@ -21,36 +25,55 @@ pub enum CustomWinitEvent {
     OpenDialog(Box<dyn Dialog>),
 }
 
-pub fn run() {
-    let event_loop = winit::event_loop::EventLoopBuilder::<CustomWinitEvent>::with_user_event()
-        .build()
-        .unwrap();
-    event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
-    let event_loop_proxy = event_loop.create_proxy();
+pub struct App<'a> {
+    window: Option<Arc<Window>>,
+    gpu_state: Option<GPUState<'a>>,
+    draw_buffer: Box<DrawBuffer>,
+    modifiers: Modifiers,
+    ui_pages: AllPages,
+    dialog_manager: DialogManager,
+    header: Header,
+    event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
+}
 
-    let window = Window::new(&event_loop).unwrap();
+impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
+    fn new_events(&mut self, event_loop: &ActiveEventLoop, start_cause: winit::event::StartCause) {
+        if start_cause == winit::event::StartCause::Init {
+            self.build_window(event_loop);
+        }
 
-    let mut gpu_state = pollster::block_on(GPUState::new(&window));
+        self.ui_pages.update();
+    }
 
-    let mut draw_buffer = DrawBuffer::new();
-    let mut modifiers = Modifiers::default();
-    let mut ui_pages = AllPages::new(event_loop_proxy.clone());
-    let mut dialog_manager = DialogManager::new();
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        self.build_window(event_loop);
+    }
 
-    let ui_header = Header {};
-    ui_header.draw_constant(&mut draw_buffer);
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        _: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
+        // destructure self so i don't have to always type self.
+        let Self {
+            window,
+            gpu_state,
+            draw_buffer,
+            modifiers,
+            ui_pages,
+            dialog_manager,
+            header,
+            event_loop_proxy,
+        } = self;
 
-    let window = &window;
-    let _ = event_loop.run(move |event, elwt| match event {
-        Event::WindowEvent {
-            window_id: _, // can ignore because i only use one window
-            ref event,
-        } => match event {
-            // as soon as pop-up windows are working here should be a pop-up check, before exiting
-            WindowEvent::CloseRequested => elwt.exit(),
-            WindowEvent::Resized(pyhsical_size) => {
-                gpu_state.resize(*pyhsical_size);
-                // on macos redraw needs to be requested after resizing
+        // pull these out the Option<>s. panic is fine because when i get a window_event a window exists
+        let window = window.as_ref().unwrap();
+        let gpu_state = gpu_state.as_mut().unwrap();
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(physical_size) => {
+                gpu_state.resize(physical_size);
                 window.request_redraw();
             }
             WindowEvent::ScaleFactorChanged {
@@ -65,16 +88,16 @@ pub fn run() {
                 ui_pages.update();
 
                 // draw the new frame buffer
-                ui_pages.draw(&mut draw_buffer);
+                ui_pages.draw(draw_buffer);
 
-                dialog_manager.draw(&mut draw_buffer);
+                dialog_manager.draw(draw_buffer);
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
                 match gpu_state.render(&draw_buffer.framebuffer) {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => gpu_state.resize(gpu_state.size),
-                    Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
+                    Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
                     Err(e) => eprint!("{:?}", e),
                 }
             }
@@ -83,12 +106,12 @@ pub fn run() {
                 event,
                 is_synthetic,
             } => {
-                if *is_synthetic {
+                if is_synthetic {
                     return;
                 }
 
                 if let Some(dialog) = dialog_manager.active_dialog_mut() {
-                    match dialog.process_input(event, &modifiers) {
+                    match dialog.process_input(&event, modifiers) {
                         DialogResponse::Close => {
                             dialog_manager.close_dialog();
                             // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
@@ -111,24 +134,67 @@ pub fn run() {
                             .send_event(CustomWinitEvent::OpenDialog(Box::new(main_menu)));
                     }
 
-                    match ui_pages.process_key_event(&modifiers, event) {
+                    match ui_pages.process_key_event(modifiers, &event) {
                         PageResponse::RequestRedraw => window.request_redraw(),
                         PageResponse::None => (),
                     }
                 }
             }
             // not sure if i need it just to make sure i always have all current modifiers to be used with keyboard events
-            WindowEvent::ModifiersChanged(new_modifiers) => modifiers = *new_modifiers,
-            _ => {}
-        },
-        Event::UserEvent(event) => match event {
-            CustomWinitEvent::OpenDialog(pop_up) => {
-                dialog_manager.open_dialog(pop_up);
-                window.request_redraw();
+            WindowEvent::ModifiersChanged(new_modifiers) => *modifiers = new_modifiers,
+
+            _ => (),
+        }
+    }
+
+    fn user_event(&mut self, _: &ActiveEventLoop, event: CustomWinitEvent) {
+        match event {
+            CustomWinitEvent::OpenDialog(dialog) => {
+                self.dialog_manager.open_dialog(dialog);
+                self.window.as_ref().unwrap().request_redraw();
             }
-        },
-        // runs before updating the screen again, so the pages are on current state, currently panics
-        // Event::NewEvents(_) => pages.update(),
-        _ => {}
-    });
+        }
+    }
+}
+
+impl<'a> App<'a> {
+    pub fn new(proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+        Self {
+            window: None,
+            gpu_state: None,
+            draw_buffer: Box::new(DrawBuffer::new()),
+            modifiers: Modifiers::default(),
+            ui_pages: AllPages::new(proxy.clone()),
+            dialog_manager: DialogManager::new(),
+            header: Header {},
+            event_loop_proxy: proxy,
+        }
+    }
+
+    fn build_window(&mut self, event_loop: &ActiveEventLoop) {
+        let mut attributes = WindowAttributes::default();
+        attributes.active = true;
+        attributes.resizable = true;
+        attributes.resize_increments = None;
+        attributes.title = String::from("RusTracker");
+
+        let window = Arc::new(event_loop.create_window(attributes).unwrap());
+        let gpu_state = pollster::block_on(GPUState::new(window.clone()));
+        self.window = Some(window);
+        self.gpu_state = Some(gpu_state);
+    }
+}
+
+pub fn run() {
+    let event_loop = winit::event_loop::EventLoop::<CustomWinitEvent>::with_user_event()
+        .build()
+        .unwrap();
+    event_loop.set_control_flow(ControlFlow::Wait);
+    // i don't need any raw device events. Keyboard and Mouse coming as window events are enough
+    event_loop.listen_device_events(winit::event_loop::DeviceEvents::Never);
+    let event_loop_proxy = event_loop.create_proxy();
+    let mut app = App::new(event_loop_proxy);
+    app.header.draw_constant(&mut app.draw_buffer);
+
+    event_loop.run_app(&mut app).unwrap();
 }
