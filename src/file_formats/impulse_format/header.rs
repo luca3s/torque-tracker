@@ -1,3 +1,5 @@
+use crate::playback::channel::Pan;
+
 #[derive(Debug)]
 enum PatternOrder {
     Number(u8),
@@ -13,27 +15,6 @@ impl TryFrom<u8> for PatternOrder {
             255 => Ok(Self::EndOfSong),
             254 => Ok(Self::NextOrder),
             0..=199 => Ok(Self::Number(value)),
-            _ => Err(value),
-        }
-    }
-}
-
-/// Value ranges from 0 to 64, with 32 being center
-#[derive(Debug)]
-enum ChannelPan {
-    Value(u8),
-    Surround,
-    Diabled,
-}
-
-impl TryFrom<u8> for ChannelPan {
-    type Error = u8;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            100 => Ok(Self::Surround),
-            128 => Ok(Self::Diabled),
-            0..=64 => Ok(Self::Value(value)),
             _ => Err(value),
         }
     }
@@ -58,7 +39,7 @@ pub struct ImpulseHeader {
     message_lenght: u16,
     message_offset: u32,
 
-    channel_pan: [ChannelPan; 64],
+    channel_pan: [Pan; 64],
     channel_volume: [u8; 64],
 
     orders: Option<Vec<PatternOrder>>, // lenght is oder_num
@@ -111,7 +92,7 @@ impl ImpulseHeader {
         let _reserved = u32::from_le_bytes([buf[0x3C], buf[0x3D], buf[0x3E], buf[0x3F]]);
 
         let pan_vals: [u8; 64] = buf[0x40..0x80].try_into().unwrap();
-        let channel_pan: [ChannelPan; 64] = pan_vals.map(|pan| ChannelPan::try_from(pan).unwrap());
+        let channel_pan: [Pan; 64] = pan_vals.map(|pan| Pan::try_from(pan).unwrap());
 
         let channel_volume: [u8; 64] = buf[0x80..0xC0].try_into().unwrap();
         channel_volume.iter().for_each(|vol| assert!(*vol <= 64));

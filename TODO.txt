@@ -1,0 +1,17 @@
+- Move Playback into its own Library.
+    - Communication via trait. Look at new winit App trait
+    - Other direction via channel
+    - Build loop to wait on mulitple event channels for AudioManager
+        - posibly different behaviour depending on, if the audio stream is running (and therefore sends events)
+- Build a good Sample/AudioFile Abstraction that works with all Types
+or
+- Decide to convert all samples. (Would have to convert again when switching backends)
+- Look into how the timing in Schism works
+- build a audio callback 
+    - build audio playback / channel type
+    - different phases:
+        - event processing
+        - lock pattern
+        - process
+- build a good File Loading API / request-responce?
+    - usable for Audio and IT files

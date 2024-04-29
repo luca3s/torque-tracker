@@ -59,13 +59,17 @@ pub struct Pattern {
 
 impl Default for Pattern {
     fn default() -> Self {
-        Self { rows: [Vec::new(); 64] }
+        Self::new(Self::DEFAULT_ROWS)
     }
 }
 
 impl Pattern {
+    const DEFAULT_ROWS: usize = 64;
+
     pub fn new(rows: usize) -> Self {
-        Self { rows: vec![Row::default(); rows].into_boxed_slice() }
+        Self {
+            rows: vec![Row::default(); rows].into_boxed_slice(),
+        }
     }
 
     pub fn set_length(&mut self, new_len: usize) {

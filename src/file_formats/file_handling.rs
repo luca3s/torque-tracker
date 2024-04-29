@@ -1,8 +1,11 @@
 use std::path::Path;
 
-use crate::{file_formats::impulse_format::{
-    header::ImpulseHeader, pattern::load_pattern, sample::ImpulseSampleHeader,
-}, playback::{pattern::Pattern, constants::MAX_PATTERNS}};
+use crate::{
+    file_formats::impulse_format::{
+        header::ImpulseHeader, pattern::load_pattern, sample::ImpulseSampleHeader,
+    },
+    playback::{constants::MAX_PATTERNS, pattern::Pattern},
+};
 
 pub fn load_file(path: &Path) {
     let file_buf = std::fs::read(path).unwrap();
@@ -18,11 +21,11 @@ pub fn load_file(path: &Path) {
         }
     }
 
-    let patterns = [Pattern::default(); MAX_PATTERNS];
-    if let Some(patterns) = &header.pattern_offsets {
-        for (i, offset) in patterns.iter().enumerate() {
+    let mut patterns: [Pattern; MAX_PATTERNS] = [(); 240].map(|_| Pattern::default());
+    if let Some(pattern_offsets) = &header.pattern_offsets {
+        for (i, offset) in pattern_offsets.iter().enumerate() {
             if *offset != 0 {
-                load_pattern(&file_buf[usize::try_from(*offset).unwrap()..]);
+                patterns[i] = load_pattern(&file_buf[usize::try_from(*offset).unwrap()..]);
             }
         }
     }

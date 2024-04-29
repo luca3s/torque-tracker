@@ -1,4 +1,4 @@
-use crate::playback::pattern::{Pattern, Event, VolumeEffect};
+use crate::playback::pattern::{Event, Pattern};
 
 pub fn load_pattern(buf: &[u8]) -> Pattern {
     // byte length of the pattern itself
@@ -53,7 +53,7 @@ pub fn load_pattern(buf: &[u8]) -> Pattern {
         if (maskvariable & 0b00000010) != 0 {
             let instrument = buf[read_pointer];
             read_pointer += 1;
-            
+
             event.instr = instrument;
             last_event[channel_id].instr = instrument;
         }
@@ -103,6 +103,5 @@ pub fn load_pattern(buf: &[u8]) -> Pattern {
         pattern.rows[usize::from(row_num)].push((channel, event));
     }
 
-    println!("{pattern:?}"); 
     pattern
 }
