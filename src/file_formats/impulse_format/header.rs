@@ -61,7 +61,7 @@ pub struct ImpulseHeader {
     channel_pan: [ChannelPan; 64],
     channel_volume: [u8; 64],
 
-    orders: Option<Box<[PatternOrder]>>, // lenght is oder_num
+    orders: Option<Vec<PatternOrder>>, // lenght is oder_num
 
     pub instr_offsets: Option<Box<[u32]>>,
     pub sample_offsets: Option<Box<[u32]>>,
@@ -117,7 +117,7 @@ impl ImpulseHeader {
         channel_volume.iter().for_each(|vol| assert!(*vol <= 64));
 
         let orders_end = usize::from(order_num) + 0xC0; // not inclusive
-        let orders: Option<Box<[PatternOrder]>> = if order_num == 0 {
+        let orders: Option<Vec<PatternOrder>> = if order_num == 0 {
             None
         } else {
             let slice = &buf[0xC0..orders_end];

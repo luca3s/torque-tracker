@@ -1,104 +1,108 @@
-pub struct ImpulsePattern {}
+use crate::playback::pattern::{Pattern, Event, VolumeEffect};
 
-impl ImpulsePattern {
-    // pub fn new(buf: &[u8]) -> Self {
-    //     let lenght = u16::from_le_bytes([buf[0], buf[1]]);
-    //     let num_rows = u16::from_le_bytes([buf[2], buf[3]]);
-    //     assert!((32..=200).contains(&num_rows));
+pub fn load_pattern(buf: &[u8]) -> Pattern {
+    // byte length of the pattern itself
+    let length = u16::from_le_bytes([buf[0], buf[1]]);
+    let num_rows = u16::from_le_bytes([buf[2], buf[3]]);
 
-    //     // bytes 4 - 7 empty
+    let mut pattern = Pattern::new(usize::from(num_rows));
 
-    //     let mut counter = 8;
-    //     let channel_variable = buf[8];
-    //     if channel_variable == 0 {
-    //         // end of row. dont know what that means
-    //     }
+    let mut read_pointer = 8;
+    let mut row_num: u8 = 0;
 
-    //     let channel = (channel_variable - 1) & 63; // "channel is 0 based"????? dont understand the docs
-    //                                                // if channel_variable & 128 == 1 {
+    let mut last_mask = [0; 64];
+    let mut last_event = [Event::default(); 64];
 
-    //     // }
-
-    //     todo!()
-    // }
-
-    pub fn load(buf: &[u8]) {
-        // byte length of the pattern itself
-        let length = u16::from_le_bytes([buf[0], buf[1]]);
-        let num_rows = u16::from_le_bytes([buf[2], buf[3]]);
-        // has 8 byte header
-        let buf = &buf[..=(usize::from(length) + 8)];
-        let mut read_pointer = 8;
-        let mut row_num: u8 = 0;
-        
-        loop {
-            if read_pointer >= usize::from(length) + 8 {
-                break;
-            }
-
-            let mut channel_variable = buf[read_pointer];
-            read_pointer += 1;
-
-            let mut maskvariable = 0;
-            if channel_variable == 0 {
-                println!("end of row {row_num}");
-                row_num += 1;
-            } else {
-                let channel = (channel_variable - 1) & 63; // 64 channels, 0 based
-                println!("channel: {channel}");
-                if (channel_variable & 0b10000000) != 0 {
-                    maskvariable = buf[read_pointer];
-                    read_pointer += 1;
-                    println!("mask: {maskvariable}");
-                }
-
-                if (maskvariable & 0b00000001) != 0 {
-                    let note = buf[read_pointer];
-                    read_pointer += 1;
-                    println!("note: {note}");
-                }
-
-                if (maskvariable & 0b00000010) != 0 {
-                    let instrument = buf[read_pointer];
-                    read_pointer += 1;
-                    println!("instrument: {instrument}");
-                }
-
-                if (maskvariable & 0b00000100) != 0 {
-                    let vol_pan = buf[read_pointer];
-                    read_pointer += 1;
-                    println!("vol_pan: {vol_pan}");
-                }
-
-                if (maskvariable & 0b00001000) != 0 {
-                    let command = buf[read_pointer];
-                    read_pointer += 1;
-                    println!("command: {command}");
-                    let cmd_val = buf[read_pointer];
-                    read_pointer += 1;
-                    println!("cmd val: {cmd_val}");
-                }
-
-                if (maskvariable & 0b00010000) != 0 {
-                    println!("note = last note for chennel");
-                }
-
-                if (maskvariable & 0b00100000) != 0 {
-                    println!("instr = last instr for channel");
-                }
-
-                if (maskvariable & 0b01000000) != 0 {
-                    println!("volpan = last volpan for channel");
-                }
-
-                if (maskvariable & 0b10000000) != 0 {
-                    println!("cmd = last cmd for channel");
-                    println!("cmd val = last cmd val for channel");
-                }
-
-            }
+    loop {
+        if read_pointer >= usize::from(length) + 8 {
+            break;
         }
 
-        println!("pattern: {buf:?}");
+        let channel_variable = buf[read_pointer];
+        read_pointer += 1;
+
+        if channel_variable == 0 {
+            row_num += 1;
+            continue;
+        }
+
+        let channel = (channel_variable - 1) & 63; // 64 channels, 0 based
+        let channel_id = usize::from(channel);
+
+        let maskvariable = if (channel_variable & 0b10000000) != 0 {
+            let val = buf[read_pointer];
+            last_mask[channel_id] = val;
+            read_pointer += 1;
+            val
+        } else {
+            last_mask[channel_id]
+        };
+
+        let mut event = Event::default();
+
+        // Note
+        if (maskvariable & 0b00000001) != 0 {
+            let note = buf[read_pointer];
+            read_pointer += 1;
+
+            event.note = note;
+            last_event[channel_id].note = note;
+        }
+
+        // Instrument / Sample
+        if (maskvariable & 0b00000010) != 0 {
+            let instrument = buf[read_pointer];
+            read_pointer += 1;
+            
+            event.instr = instrument;
+            last_event[channel_id].instr = instrument;
+        }
+
+        // Volume
+        if (maskvariable & 0b00000100) != 0 {
+            let vol_pan = buf[read_pointer].try_into().unwrap();
+            read_pointer += 1;
+
+            last_event[channel_id].vol = vol_pan;
+            event.vol = vol_pan;
+        }
+
+        // Effect
+        if (maskvariable & 0b00001000) != 0 {
+            let command = buf[read_pointer];
+            read_pointer += 1;
+            let cmd_val = buf[read_pointer];
+            read_pointer += 1;
+
+            let cmd = (command.try_into().unwrap(), cmd_val);
+            last_event[channel_id].command = Some(cmd);
+
+            event.command = Some(cmd);
+        }
+
+        // Same note
+        if (maskvariable & 0b00010000) != 0 {
+            event.note = last_event[channel_id].note;
+        }
+
+        // Same Instr / Sample
+        if (maskvariable & 0b00100000) != 0 {
+            event.instr = last_event[channel_id].instr;
+        }
+
+        // Same volume
+        if (maskvariable & 0b01000000) != 0 {
+            event.vol = last_event[channel_id].vol;
+        }
+
+        // Same Command
+        if (maskvariable & 0b10000000) != 0 {
+            event.command = last_event[channel_id].command;
+        }
+
+        pattern.rows[usize::from(row_num)].push((channel, event));
     }
+
+    println!("{pattern:?}"); 
+    pattern
 }
