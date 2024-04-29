@@ -8,7 +8,7 @@ use wgpu::{
     RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
     ShaderModuleDescriptor, ShaderSource, ShaderStages, Surface, SurfaceConfiguration,
     SurfaceError, Texture, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState,
+    TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState, PipelineCompilationOptions,
 };
 use winit::window::Window;
 
@@ -161,8 +161,9 @@ impl GPUState<'_> {
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader,
-                entry_point: "vs_main", // 1.
-                buffers: &[],           // 2.
+                entry_point: "vs_main",
+                buffers: &[],
+                compilation_options: PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
                 // 3.
@@ -174,6 +175,7 @@ impl GPUState<'_> {
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::COLOR,
                 })],
+                compilation_options: PipelineCompilationOptions::default(),
             }),
 
             primitive: PrimitiveState {
