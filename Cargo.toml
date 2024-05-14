@@ -1,5 +1,5 @@
 [package]
-name = "RustRacker"
+name = "rusTracker"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,6 +14,10 @@ pollster = "0.3.0"
 wgpu = "0.20.0"
 ascii = "1.1.0"
 winit = "0.30.0"
+tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }
+# lockfree = "0.5.1"
+# symphonia = "0.5.4"
+# knyst = { version = "0.5.0", features = ["debug-warn-on-alloc", "cpal"], default_features = false }
 
 [profile.dev]
 debug = 0
