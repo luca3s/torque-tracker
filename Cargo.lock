@@ -692,6 +692,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "grid"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d196ffc1627db18a531359249b2bf8416178d84b729f3cebeb278f285fb9b58c"
+
+[[package]]
 name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1387,11 +1393,9 @@ name = "rusTracker"
 version = "0.1.0"
 dependencies = [
  "ascii",
- "basedrop",
- "cpal",
  "font8x8",
- "left-right",
  "pollster",
+ "tracker-engine",
  "wgpu",
  "winit",
 ]
@@ -1417,9 +1421,9 @@ dependencies = [
 
 [[package]]
 name = "rustversion"
-version = "1.0.15"
+version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80af6f9131f277a45a3fba6ce8e2258037bb0477a67e610d3c1fe046ab31de47"
+checksum = "092474d1a01ea8278f69e6a358998405fae5b8b963ddaeb2b0b04a128bf1dfb0"
 
 [[package]]
 name = "same-file"
@@ -1731,6 +1735,17 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "tracker-engine"
+version = "0.1.0"
+source = "git+https://github.com/luca3s/tracker-engine#0d7153ba978f67c8a4bf977d6ca80c45063a72c9"
+dependencies = [
+ "basedrop",
+ "cpal",
+ "grid",
+ "left-right",
 ]
 
 [[package]]

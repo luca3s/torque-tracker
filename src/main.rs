@@ -1,12 +1,8 @@
+mod visual;
 use std::path::Path;
 
-use file_formats::file_handling::load_file;
-
-mod file_formats;
-mod playback;
-mod visual;
-
+use tracker_engine::file_formats::*;
 fn main() {
-    load_file(Path::new("/Users/lucasbaumann/Music/Tracker/test-1.it"));
+    file_handling::load_file(Path::new("/Users/lucasbaumann/Music/Tracker/test-1.it"));
     visual::event_loop::run();
 }

@@ -9,9 +9,22 @@ or
 - Look into how the timing in Schism works
 - build a audio callback 
     - build audio playback / channel type
+    - assert_no_alloc
+    - rinfbuf ?
     - different phases:
         - event processing
         - lock pattern
         - process
 - build a good File Loading API / request-responce?
     - usable for Audio and IT files
+    - error handling needed
+    - maybe switch to something like nom
+    - also fuzz this (cargo-fuzz)
+- Change the Pattern / Patterns Type.
+    - Use ArrayVec
+    - investigate some crazy data structures like rope and text editor stuff
+- read: https://marabos.nl/atomics/
+- add benchmarks for audio (maybe also video):
+    - criterion
+    - bencher
+    - flamegraph
