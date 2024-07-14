@@ -7,13 +7,12 @@ use crate::visual::{
 
 use super::widget::{NextWidget, Widget, WidgetResponse};
 
-pub struct Toggle<T: Copy> {
+pub struct Toggle<T: Copy + 'static> {
     pos: CharPosition,
     width: usize,
     state: usize,
     next_widget: NextWidget,
-    // know its bad, dont know how to do it better, except put everything as static
-    variants: Box<[(T, &'static str)]>,
+    variants: &'static [(T, &'static str)],
     cb: Box<dyn Fn(T)>,
 }
 
@@ -56,12 +55,12 @@ impl<T: Copy> Widget for Toggle<T> {
     }
 }
 
-impl<T: Copy> Toggle<T> {
+impl<T: Copy + 'static> Toggle<T> {
     pub fn new(
         pos: CharPosition,
         width: usize,
         next_widget: NextWidget,
-        variants: &[(T, &'static str)],
+        variants: &'static [(T, &'static str)],
         cb: impl Fn(T) + 'static,
     ) -> Self {
         assert!(pos.x() + width < WINDOW_SIZE.0);
@@ -71,7 +70,7 @@ impl<T: Copy> Toggle<T> {
             width,
             state: 0,
             next_widget,
-            variants: variants.into(),
+            variants,
             cb: Box::new(cb),
         }
     }
@@ -85,7 +84,7 @@ impl<T: Copy> Toggle<T> {
         if self.state + 1 == self.variants.len() {
             self.set_state(0);
         } else {
-            self.set_state(self.state + 1);
+            self.state += 1;
         }
     }
 

@@ -39,8 +39,6 @@ pub struct AllPages {
     current: PagesEnum,
 }
 
-// pretty dumb implementation with a lot of code duplication
-// should probably be done more elegantly with a macro or some stuff
 impl Page for AllPages {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
         if self.const_draw_needed {

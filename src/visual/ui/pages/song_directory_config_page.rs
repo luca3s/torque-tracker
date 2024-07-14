@@ -106,8 +106,6 @@ impl Page for SongDirectoryConfigPage {
             TOPLEFT_COLOR,
             BOTRIGHT_COLOR,
         );
-
-        // draw_buffer.draw_rect(0, CharRect::new(20, 26, 27, 33));
     }
 
     fn update(&mut self) -> RequestRedraw {

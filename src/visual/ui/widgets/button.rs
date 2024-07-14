@@ -1,4 +1,4 @@
-use winit::keyboard::{Key, ModifiersState, NamedKey};
+use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect},

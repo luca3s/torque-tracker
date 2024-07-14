@@ -6,18 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# anyhow = "1.0.75"
-# env_logger = "0.10.0"
 font8x8 = "0.3.1"
 pollster = "0.3.0"
-# rtrb = "0.2.3"
-wgpu = "0.20.0"
+wgpu = "0.20.1"
 ascii = "1.1.0"
-winit = "0.30.0"
+winit = "0.30.3"
 tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }
-# lockfree = "0.5.1"
 # symphonia = "0.5.4"
-# knyst = { version = "0.5.0", features = ["debug-warn-on-alloc", "cpal"], default_features = false }
 
 [profile.dev]
 debug = 0

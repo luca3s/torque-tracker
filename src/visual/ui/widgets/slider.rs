@@ -71,12 +71,6 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
         }
     }
 
-    pub const unsafe fn new_unchecked(value: i16) -> Self {
-        // fine to call in unchecked, because this is a compile time check
-        assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
-        Self { inner: value }
-    }
-
     /// sets to MAX or MIN when the value is out of bounds
     pub fn set_saturating(&mut self, value: i16) {
         if value > MAX {
@@ -88,11 +82,6 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
         }
     }
 
-    pub unsafe fn set_unchecked(&mut self, value: i16) {
-        self.inner = value;
-    }
-
-    /// returns a Err if the value was out of bounds
     pub fn try_set(&mut self, value: i16) -> Result<(), i16> {
         if MIN < value && value < MAX {
             self.inner = value;
