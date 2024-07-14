@@ -227,8 +227,8 @@ impl GPUState<'_> {
         // - lifetime stays the same
         // - size of the slice stays the same, is compile time constant
         // - mutability stays the same
-        // could also be done with bytemuck::cast_slice and nightly feature slice_flatten.
-        // This just saves me the import and allows me to use stable
+        // could also be done with bytemuck::cast_slice and nightly feature slice_flatten, which shows
+        // that it is sound. This just saves me the import and allows me to use stable
         let framebuffer = unsafe {
             std::mem::transmute::<
                 &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
