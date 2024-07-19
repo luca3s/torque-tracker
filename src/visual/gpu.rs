@@ -1,20 +1,21 @@
 use wgpu::{
-    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, BlendState, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Face, FilterMode, FragmentState,
-    FrontFace, ImageCopyTexture, ImageDataLayout, Instance, MultisampleState, Operations, Origin3d,
-    PipelineLayoutDescriptor, PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology,
-    Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
-    ShaderModuleDescriptor, ShaderSource, ShaderStages, Surface, SurfaceConfiguration,
-    SurfaceError, Texture, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, VertexState, PipelineCompilationOptions,
+    include_wgsl, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
+    ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d,
+    Face, FilterMode, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, Instance,
+    MultisampleState, Operations, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor,
+    PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor,
+    ShaderStages, Surface, SurfaceConfiguration, SurfaceError, Texture, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
+    TextureViewDescriptor, TextureViewDimension, VertexState,
 };
 use winit::window::Window;
 
 use super::coordinates::{PIXEL_SIZE, WINDOW_SIZE};
 
-pub(crate) struct GPUState<'a> {
+pub struct GPUState<'a> {
     surface: Surface<'a>,
 
     device: Device,
@@ -39,7 +40,9 @@ impl GPUState<'_> {
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
-                power_preference: PowerPreference::default(),
+                // i do very little on the GPU (only scale the whole image once per frame)
+                // so i think that this setting should be correct.
+                power_preference: PowerPreference::LowPower,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
@@ -52,6 +55,9 @@ impl GPUState<'_> {
                     label: None,
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::default(),
+                    // i only have two buffers, one constant size and the other one changing with the window size
+                    // so i don't need a lot of allocations and they don't have to be that fast
+                    memory_hints: wgpu::MemoryHints::MemoryUsage,
                 },
                 None,
             )
@@ -145,10 +151,20 @@ impl GPUState<'_> {
             label: Some("diffuse_bind_group"),
         });
 
-        let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
-        });
+        const SHADER_DESCRIPTOR: ShaderModuleDescriptor = include_wgsl!("shader.wgsl");
+        let shader = device.create_shader_module(SHADER_DESCRIPTOR);
+
+        #[cfg(debug_assertions)]
+        {
+            let compilation_info = shader.get_compilation_info().await;
+            println!(
+                "{} Shader Compilation Messages",
+                compilation_info.messages.len()
+            );
+            for message in compilation_info.messages {
+                println!("{message:?}");
+            }
+        }
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
@@ -166,11 +182,9 @@ impl GPUState<'_> {
                 compilation_options: PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
-                // 3.
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(ColorTargetState {
-                    // 4.
                     format: config.format,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::COLOR,
@@ -194,6 +208,7 @@ impl GPUState<'_> {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
+            cache: None,
         });
 
         Self {

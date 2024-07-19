@@ -8,9 +8,9 @@ edition = "2021"
 [dependencies]
 font8x8 = "0.3.1"
 pollster = "0.3.0"
-wgpu = "0.20.1"
+wgpu = "22.0.0"
 ascii = "1.1.0"
-winit = "0.30.3"
+winit = "0.30.4"
 tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }
 # symphonia = "0.5.4"
 
