@@ -35,7 +35,7 @@ impl DialogManager {
     }
 
     pub fn is_active(&self) -> bool {
-        self.stack.len() > 0
+        !self.stack.is_empty()
     }
 
     pub fn open_dialog(&mut self, dialog: Box<dyn Dialog>) {

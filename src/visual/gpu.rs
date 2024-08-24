@@ -21,17 +21,23 @@ pub struct GPUState<'a> {
     device: Device,
     queue: Queue,
     config: SurfaceConfiguration,
-    pub size: winit::dpi::PhysicalSize<u32>,
+    size: winit::dpi::PhysicalSize<u32>,
 
     render_pipeline: RenderPipeline,
 
     streaming_texture: Texture,
-    texture_size: Extent3d,
 
     diffuse_bind_group: BindGroup,
 }
 
 impl GPUState<'_> {
+    /// Size of the Framebuffer in GPU speech
+    const TEXTURE_SIZE: Extent3d = Extent3d {
+        width: WINDOW_SIZE.0 as u32,
+        height: WINDOW_SIZE.1 as u32,
+        depth_or_array_layers: 1,
+    };
+
     pub async fn new(window: std::sync::Arc<Window>) -> Self {
         let size = window.inner_size();
         let instance = Instance::default();
@@ -85,20 +91,14 @@ impl GPUState<'_> {
 
         surface.configure(&device, &config);
 
-        let texture_size = Extent3d {
-            width: WINDOW_SIZE.0 as u32,
-            height: WINDOW_SIZE.1 as u32,
-            depth_or_array_layers: 1,
-        };
-
         let texture = device.create_texture(&TextureDescriptor {
-            size: texture_size,
+            size: Self::TEXTURE_SIZE,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TextureFormat::Rgb10a2Unorm,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-            label: Some("Streaming Texture"),
+            label: None,
             view_formats: &[],
         });
 
@@ -220,7 +220,6 @@ impl GPUState<'_> {
             render_pipeline,
             diffuse_bind_group,
             streaming_texture: texture,
-            texture_size,
         }
     }
 
@@ -229,6 +228,12 @@ impl GPUState<'_> {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
+            self.surface.configure(&self.device, &self.config);
+        }
+    }
+
+    pub fn reinit_surface(&self) {
+        if self.size.width > 0 && self.size.height > 0 {
             self.surface.configure(&self.device, &self.config);
         }
     }
@@ -242,8 +247,8 @@ impl GPUState<'_> {
         // - lifetime stays the same
         // - size of the slice stays the same, is compile time constant
         // - mutability stays the same
-        // could also be done with bytemuck::cast_slice and nightly feature slice_flatten, which shows
-        // that it is sound. This just saves me the import and allows me to use stable
+        // could also be done with bytemuck::cast_slice and slice::as_flattened, which shows
+        // that it is sound. This just saves me the import and preservers type information
         let framebuffer = unsafe {
             std::mem::transmute::<
                 &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
@@ -251,6 +256,8 @@ impl GPUState<'_> {
             >(framebuffer)
         };
 
+        const BYTES_PER_ROW: Option<u32> = Some((PIXEL_SIZE * WINDOW_SIZE.0) as u32);
+        const ROWS_PER_IMAGE: Option<u32> = Some(WINDOW_SIZE.1 as u32);
         // push framebuffer to GPU-Texture
         self.queue.write_texture(
             ImageCopyTexture {
@@ -262,10 +269,10 @@ impl GPUState<'_> {
             framebuffer,
             ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some((PIXEL_SIZE * WINDOW_SIZE.0) as u32),
-                rows_per_image: Some(WINDOW_SIZE.1 as u32),
+                bytes_per_row: BYTES_PER_ROW,
+                rows_per_image: ROWS_PER_IMAGE,
             },
-            self.texture_size,
+            Self::TEXTURE_SIZE,
         );
 
         let output = self.surface.get_current_texture()?;
@@ -280,32 +287,31 @@ impl GPUState<'_> {
                 label: Some("Render Encoder"),
             });
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.1,
+                        g: 0.2,
+                        b: 0.3,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
 
-            render_pass.draw(0..6, 0..1);
-        }
+        render_pass.draw(0..6, 0..1);
+        drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

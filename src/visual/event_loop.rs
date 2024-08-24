@@ -26,8 +26,7 @@ pub enum CustomWinitEvent {
 }
 
 pub struct App<'a> {
-    window: Option<Arc<Window>>,
-    gpu_state: Option<GPUState<'a>>,
+    window_gpu: Option<(Arc<Window>, GPUState<'a>)>,
     draw_buffer: Box<DrawBuffer>,
     modifiers: Modifiers,
     ui_pages: AllPages,
@@ -57,19 +56,19 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
     ) {
         // destructure self so i don't have to always type self.
         let Self {
-            window,
-            gpu_state,
+            window_gpu,
             draw_buffer,
             modifiers,
             ui_pages,
             dialog_manager,
-            header,
+            header: _,
             event_loop_proxy,
         } = self;
 
-        // pull these out the Option<>s. panic is fine because when i get a window_event a window exists
-        let window = window.as_ref().unwrap();
-        let gpu_state = gpu_state.as_mut().unwrap();
+        // panic is fine because when i get a window_event a window exists
+        let (window, gpu_state) = window_gpu.as_mut().unwrap();
+        let window = window.as_ref();
+
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(physical_size) => {
@@ -96,7 +95,7 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
                 // push the framebuffer into GPU and render it onto the screen
                 match gpu_state.render(&draw_buffer.framebuffer) {
                     Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => gpu_state.resize(gpu_state.size),
+                    Err(wgpu::SurfaceError::Lost) => gpu_state.reinit_surface(),
                     Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
                     Err(e) => eprint!("{:?}", e),
                 }
@@ -151,7 +150,7 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
         match event {
             CustomWinitEvent::OpenDialog(dialog) => {
                 self.dialog_manager.open_dialog(dialog);
-                self.window.as_ref().unwrap().request_redraw();
+                self.window_gpu.as_ref().unwrap().0.request_redraw();
             }
         }
     }
@@ -160,8 +159,7 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
 impl<'a> App<'a> {
     pub fn new(proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
         Self {
-            window: None,
-            gpu_state: None,
+            window_gpu: None,
             draw_buffer: Box::new(DrawBuffer::new()),
             modifiers: Modifiers::default(),
             ui_pages: AllPages::new(proxy.clone()),
@@ -180,8 +178,7 @@ impl<'a> App<'a> {
 
         let window = Arc::new(event_loop.create_window(attributes).unwrap());
         let gpu_state = pollster::block_on(GPUState::new(window.clone()));
-        self.window = Some(window);
-        self.gpu_state = Some(gpu_state);
+        self.window_gpu = Some((window, gpu_state));
     }
 }
 

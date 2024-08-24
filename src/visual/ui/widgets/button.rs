@@ -58,7 +58,6 @@ impl Widget for Button {
 }
 
 impl Button {
-    const BACKGROUND_COLOR: usize = 2;
     const TOPLEFT_COLOR: usize = 3;
     const BOTRIGHT_COLOR: usize = 1;
 
@@ -95,7 +94,7 @@ impl Button {
 
         // fill behind the text
         buffer.draw_rect(
-            Self::BACKGROUND_COLOR,
+            DrawBuffer::BACKGROUND_COLOR,
             CharRect::new(
                 self.rect.top() + 1,
                 self.rect.bot() - 1,
@@ -111,7 +110,7 @@ impl Button {
 
         buffer.draw_box(
             self.rect,
-            Self::BACKGROUND_COLOR,
+            DrawBuffer::BACKGROUND_COLOR,
             box_colors.0,
             box_colors.1,
         );
@@ -128,7 +127,7 @@ impl Button {
                 (self.rect.bot() - self.rect.top()) / 2 + self.rect.top(),
             ),
             text_color,
-            Self::BACKGROUND_COLOR,
+            DrawBuffer::BACKGROUND_COLOR,
         )
     }
 }

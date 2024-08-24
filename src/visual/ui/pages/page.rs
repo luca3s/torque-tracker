@@ -11,8 +11,6 @@ use crate::visual::{
 use super::{help_page::HelpPage, song_directory_config_page::SongDirectoryConfigPage};
 
 pub trait Page {
-    const BACKGROUND_COLOR: usize = 2;
-
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer);
 

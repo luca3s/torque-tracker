@@ -146,10 +146,7 @@ impl PageMenu {
         event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
     ) -> Self {
         assert!(button_names.len() == button_actions.len());
-        // dont need this as the rect creation already checks this
-        // assert!(pos.x() + width < WINDOW_SIZE_CHARS.0);
 
-        // println!("{width}");
         let rect = CharRect::new(
             pos.y(),
             pos.y() + 3 + (3 * button_names.len()),
@@ -273,7 +270,7 @@ impl PageMenu {
         )
     }
 
-    pub fn instrument(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn instrument(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
         Self::new(
             "Instrument Menu",
             CharPosition::new(20, 23),
@@ -290,7 +287,7 @@ impl PageMenu {
         )
     }
 
-    pub fn settings(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn settings(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
         Self::new(
             "Settings Menu",
             CharPosition::new(22, 25),

@@ -10,6 +10,8 @@ pub(crate) struct DrawBuffer {
 }
 
 impl DrawBuffer {
+    pub const BACKGROUND_COLOR: usize = 2;
+
     pub fn new() -> Self {
         Self {
             framebuffer: [[0; WINDOW_SIZE.0]; WINDOW_SIZE.1],
