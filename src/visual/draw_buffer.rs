@@ -36,7 +36,6 @@ impl DrawBuffer {
                     true => fg_color,
                     false => bg_color,
                 };
-                // let pixel = position.0 + x + ((position.1 + y) * WINDOW_SIZE.0);
                 self.framebuffer[position.1 + y][position.0 + x] = color;
             }
         }
@@ -56,12 +55,6 @@ impl DrawBuffer {
                 fg_color,
                 bg_color,
             );
-            // self.draw_char(
-            //     font8x8::BASIC_FONTS.get(char).unwrap(),
-            //     (position.0 + num, position.1),
-            //     fg_color,
-            //     bg_color,
-            // );
         }
     }
 

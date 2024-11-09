@@ -115,6 +115,7 @@ impl GPUState<'_> {
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("texture_bind_group_layout"),
                 entries: &[
                     BindGroupLayoutEntry {
                         binding: 0,
@@ -133,10 +134,10 @@ impl GPUState<'_> {
                         count: None,
                     },
                 ],
-                label: Some("texture_bind_group_layout"),
             });
 
         let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("diffuse_bind_group"),
             layout: &texture_bind_group_layout,
             entries: &[
                 BindGroupEntry {
@@ -148,13 +149,13 @@ impl GPUState<'_> {
                     resource: BindingResource::Sampler(&texture_sampler),
                 },
             ],
-            label: Some("diffuse_bind_group"),
         });
 
         const SHADER_DESCRIPTOR: ShaderModuleDescriptor = include_wgsl!("shader.wgsl");
         let shader = device.create_shader_module(SHADER_DESCRIPTOR);
 
         #[cfg(debug_assertions)]
+        // print shader compilation errors
         {
             let compilation_info = shader.get_compilation_info().await;
             println!(
@@ -248,7 +249,7 @@ impl GPUState<'_> {
         // - size of the slice stays the same, is compile time constant
         // - mutability stays the same
         // could also be done with bytemuck::cast_slice and slice::as_flattened, which shows
-        // that it is sound. This just saves me the import and preservers type information
+        // that it is sound.
         let framebuffer = unsafe {
             std::mem::transmute::<
                 &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
@@ -310,7 +311,8 @@ impl GPUState<'_> {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
 
-        render_pass.draw(0..6, 0..1);
+        render_pass.draw(0..3, 0..1);
+        // before finishing the encoding the render_pass must be dropped
         drop(render_pass);
 
         self.queue.submit(std::iter::once(encoder.finish()));
