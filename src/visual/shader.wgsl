@@ -7,24 +7,13 @@ struct VertexOutput {
 fn vs_main(
     @builtin(vertex_index) in_vertex_index: u32,
 ) -> VertexOutput {
-    // coordinate space: x,y from -1 to 1, (0,0) middle
-    var positions = array<vec4<f32>, 3>(
-        vec4(-1.0, -1.0, 0.0, 1.0),   // bot left corner
-        vec4( 3.0, -1.0, 0.0, 1.0),   // bot right overshoot
-        vec4(-1.0,  3.0, 0.0, 1.0),   // top left overshoot
+    const vertex_outputs: array<VertexOutput, 3> = array(
+        VertexOutput(vec4(-1.0, -1.0, 0.0, 1.0), vec2(0.0, 1.0)),   // bot left corner
+        VertexOutput(vec4( 3.0, -1.0, 0.0, 1.0), vec2(2.0, 1.0)),   // bot right overshoot
+        VertexOutput(vec4(-1.0,  3.0, 0.0, 1.0), vec2(0.0, -1.0)),  // top left overshoot
     );
 
-    // coordinate space: x,y from 0 to 1, (0,0) top left
-    var tex_coords = array<vec2<f32>, 3>(
-        vec2(0.0, 1.0),     // bot left
-        vec2(2.0, 1.0),     // bot right overshoot
-        vec2(0.0, -1.0),    // top left overshoot
-    );
-
-    var out: VertexOutput;
-    out.position = positions[in_vertex_index];
-    out.tex_coords = tex_coords[in_vertex_index];
-    return out;
+    return vertex_outputs[in_vertex_index];
 }
 
 @group(0) @binding(0) var t_diffuse: texture_2d<f32>;
