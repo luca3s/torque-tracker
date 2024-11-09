@@ -12,8 +12,7 @@ use winit::{
 use crate::visual::{
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
-    event_loop::CustomWinitEvent,
-    ui::dialog::slider_dialog::SliderDialog,
+    event_loop::CustomWinitEvent, ui::dialog::slider_dialog::SliderDialog,
 };
 
 use super::widget::{NextWidget, RequestRedraw, Widget, WidgetResponse};

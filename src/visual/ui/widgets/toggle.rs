@@ -75,16 +75,10 @@ impl<T: Copy + 'static> Toggle<T> {
         }
     }
 
-    pub fn set_state(&mut self, variant: usize) {
-        assert!(variant < self.variants.len());
-        self.state = variant;
-    }
-
     pub fn next(&mut self) {
-        if self.state + 1 == self.variants.len() {
-            self.set_state(0);
-        } else {
-            self.state += 1;
+        self.state += 1;
+        if self.state >= self.variants.len() {
+            self.state = 0;
         }
     }
 

@@ -174,13 +174,11 @@ impl DrawBuffer {
         }
     }
 
-    // draw rect of full characters
     pub fn draw_rect(&mut self, color: usize, rect: CharRect) {
         let pixel_rect = PixelRect::from(rect);
         self.draw_pixel_rect(color, pixel_rect)
     }
 
-    // draw rects between character lines
     pub fn draw_pixel_rect(&mut self, color: usize, rect: PixelRect) {
         let color = self.color_palette.get_raw(color);
 

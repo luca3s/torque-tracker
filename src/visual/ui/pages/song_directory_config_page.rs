@@ -16,7 +16,7 @@ use crate::visual::{
     },
 };
 
-use super::page::{Page, PageResponse};
+use super::{Page, PageResponse};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Control {

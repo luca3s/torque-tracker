@@ -13,7 +13,7 @@ use crate::visual::{
     },
 };
 
-use super::dialog::{Dialog, DialogResponse};
+use super::{Dialog, DialogResponse};
 
 pub struct SliderDialog {
     text: TextIn,

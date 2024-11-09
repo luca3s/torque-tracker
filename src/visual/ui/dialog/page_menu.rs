@@ -6,10 +6,10 @@ use winit::{
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
     event_loop::CustomWinitEvent,
-    ui::pages::page::PagesEnum,
+    ui::pages::PagesEnum,
 };
 
-use super::dialog::{Dialog, DialogResponse};
+use super::{Dialog, DialogResponse};
 
 enum PageOrPageMenu {
     Menu(Menu),
@@ -18,7 +18,7 @@ enum PageOrPageMenu {
     NotYetImplemented,
 }
 
-// Main Missing, because it cant be opened from a menu
+// Main missing, because it cant be opened from a menu
 enum Menu {
     File,
     Playback,

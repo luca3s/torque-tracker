@@ -64,12 +64,6 @@ impl CharRect {
     }
 }
 
-// impl From<(usize, usize)> for CharRect {
-//     fn from(value: (usize, usize)) -> Self {
-//         Self::from_pos(value.0, value.1)
-//     }
-// }
-
 /// uncheck conversion, because CharPosition is a safe type
 impl From<CharPosition> for CharRect {
     fn from(value: CharPosition) -> Self {

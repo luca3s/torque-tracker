@@ -8,7 +8,7 @@ use crate::visual::{
     },
 };
 
-use super::page::{Page, PageResponse};
+use super::{Page, PageResponse};
 
 pub struct HelpPage {
     selected_widget: usize,

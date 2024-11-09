@@ -1,6 +1,9 @@
+pub mod page_menu;
+pub mod slider_dialog;
+
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::visual::{draw_buffer::DrawBuffer, ui::pages::page::PagesEnum};
+use crate::visual::{draw_buffer::DrawBuffer, ui::pages::PagesEnum};
 
 pub enum DialogResponse {
     RequestRedraw,

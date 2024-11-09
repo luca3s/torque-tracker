@@ -12,12 +12,7 @@ use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
-        dialog::{
-            dialog::{Dialog, DialogManager, DialogResponse},
-            page_menu::PageMenu,
-        },
-        header::Header,
-        pages::page::{AllPages, Page, PageResponse},
+        dialog::{page_menu::PageMenu, Dialog, DialogManager, DialogResponse}, header::Header, pages::{AllPages, PageResponse}
     },
 };
 

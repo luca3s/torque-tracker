@@ -5,20 +5,26 @@ pub type RGB8 = [u8; 3];
 // for RGB10A2 structure see: https://developer.apple.com/documentation/metal/mtlpixelformat/rgb10a2unorm
 pub struct RGB10A2(u32);
 
-impl From<RGB8> for RGB10A2 {
-    fn from(value: RGB8) -> Self {
+impl RGB10A2 {
+    const fn from_rgb8(value: RGB8) -> Self {
         let mut storage: u32 = 0;
 
-        let blue: u32 = (u32::from(value[2]) * 4) << 20;
+        let blue: u32 = (value[2] as u32 * 4) << 20;
         storage |= blue;
 
-        let green: u32 = (u32::from(value[1]) * 4) << 10;
+        let green: u32 = (value[1] as u32 * 4) << 10;
         storage |= green;
 
-        let red: u32 = u32::from(value[0]) * 4;
+        let red: u32 = value[0] as u32 * 4;
         storage |= red;
 
         Self(storage)
+    }
+}
+
+impl From<RGB8> for RGB10A2 {
+    fn from(value: RGB8) -> Self {
+        Self::from_rgb8(value)
     }
 }
 
