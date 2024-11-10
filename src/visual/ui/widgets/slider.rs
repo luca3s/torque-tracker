@@ -1,21 +1,14 @@
-use std::{
-    cell::OnceCell,
-    ops::{AddAssign, Deref, SubAssign},
-    rc::Rc,
-};
+use std::ops::{AddAssign, Deref, SubAssign};
 
-use winit::{
-    event_loop::EventLoopProxy,
-    keyboard::{Key, NamedKey},
-};
+use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
-    event_loop::CustomWinitEvent, ui::dialog::slider_dialog::SliderDialog,
+    event_loop::GlobalEvent, ui::dialog::slider_dialog::SliderDialog,
 };
 
-use super::widget::{NextWidget, RequestRedraw, Widget, WidgetResponse};
+use super::widget::{NextWidget, Widget, WidgetResponse};
 
 pub struct BoundNumber<const MIN: i16, const MAX: i16> {
     inner: i16,
@@ -58,9 +51,10 @@ impl<const MIN: i16, const MAX: i16> Deref for BoundNumber<MIN, MAX> {
 }
 
 impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
-    // sets inner to MIN or MAX if its out of bounds
-    pub const fn new(value: i16) -> Self {
-        assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
+    const _VALID: () = assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
+
+    /// sets inner to MIN or MAX if its out of bounds
+    pub const fn new_saturating(value: i16) -> Self {
         if value > MAX {
             Self { inner: MAX }
         } else if value < MIN {
@@ -68,6 +62,13 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
         } else {
             Self { inner: value }
         }
+    }
+
+    /// panics on out of bounds value
+    pub const fn new(value: i16) -> Self {
+        assert!(value <= MAX);
+        assert!(value >= MIN);
+        Self { inner: value }
     }
 
     /// sets to MAX or MIN when the value is out of bounds
@@ -103,8 +104,7 @@ pub struct Slider<const MIN: i16, const MAX: i16> {
     position: CharPosition,
     width: usize,
     next_widget: NextWidget,
-    event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
-    dialog_return: Rc<OnceCell<i16>>,
+    dialog_return: fn(i16) -> GlobalEvent,
     callback: Box<dyn Fn(i16)>,
 }
 
@@ -133,17 +133,17 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
             ),
         );
 
-        // shift value scale. this is the new MAX
-        // MIN -> MAX => 0 -> (MAX-MIN)
-        let num_possible_values = usize::from(MAX.abs_diff(MIN));
-
-        // shift value scale as shown below
-        // MIN -> MAX => 0 -> (MAX-MIN)
-        let value = usize::from(self.number.abs_diff(MIN));
-
         let cursor_pos = if MAX == MIN {
             0
         } else {
+            // shift value scale. this is the new MAX
+            // MIN -> MAX => 0 -> (MAX-MIN)
+            let num_possible_values = usize::from(MAX.abs_diff(MIN));
+
+            // shift value scale as shown below
+            // MIN -> MAX => 0 -> (MAX-MIN)
+            let value = usize::from(self.number.abs_diff(MIN));
+
             // first + 1 makes it have a border on the left side
             // rest mostly stole from original source code
             1 + value * (self.width * FONT_SIZE + 1) / num_possible_values
@@ -163,17 +163,6 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         );
 
         draw_buffer.draw_pixel_rect(color, cursor_pixel_rect);
-    }
-
-    fn update(&mut self) -> RequestRedraw {
-        // fails if a dialog is open
-        if let Some(cell) = Rc::get_mut(&mut self.dialog_return) {
-            // succeeds once after the dialog is closed
-            if let Some(value) = cell.take() {
-                return self.number.try_set(value).is_ok();
-            }
-        }
-        false
     }
 
     fn process_input(
@@ -233,24 +222,12 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         // set the value directly, by opening a pop-up
         } else if let Key::Character(text) = &key_event.logical_key {
             let mut chars = text.chars();
-            if let Some(next_char) = chars.next() {
-                if next_char.is_ascii_digit() {
-                    // reset the Cell to its empty state
-                    if let Some(inner) = Rc::get_mut(&mut self.dialog_return) {
-                        inner.take();
-                    } else {
-                        // if i am not the only holder of the Rc at this point some Dialog didnt get cleaned up
-                        panic!();
-                    }
-                    let dialog = SliderDialog::new(next_char, self.dialog_return.clone());
-                    let _ = self
-                        .event_loop_proxy
-                        .send_event(CustomWinitEvent::OpenDialog(Box::new(dialog)));
-                    return WidgetResponse::RequestRedraw;
+            if let Some(first_char) = chars.next() {
+                if first_char.is_ascii_digit() {
+                    let dialog = SliderDialog::new(first_char, self.dialog_return);
+                    return WidgetResponse::GlobalEvent(GlobalEvent::OpenDialog(Box::new(dialog)));
                 }
             }
-            // should only be one. in any case i only want one
-            assert!(chars.next().is_none());
         } else {
             return self
                 .next_widget
@@ -269,7 +246,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
         position: CharPosition,
         width: usize,
         next_widget: NextWidget,
-        event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
+        dialog_return: fn(i16) -> GlobalEvent,
         callback: impl Fn(i16) + 'static,
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
@@ -289,8 +266,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
             position,
             width,
             next_widget,
-            event_loop_proxy,
-            dialog_return: Rc::new(OnceCell::new()),
+            dialog_return,
             callback: Box::new(callback),
         }
     }

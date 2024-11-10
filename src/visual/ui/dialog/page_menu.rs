@@ -5,7 +5,7 @@ use winit::{
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
-    event_loop::CustomWinitEvent,
+    event_loop::GlobalEvent,
     ui::pages::PagesEnum,
 };
 
@@ -34,7 +34,7 @@ pub struct PageMenu {
     pressed: bool,
     button_names: &'static [&'static str],
     button_actions: &'static [PageOrPageMenu],
-    event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
+    // event_loop_proxy: EventLoopProxy<GlobalEvent>,
 }
 
 impl Dialog for PageMenu {
@@ -94,16 +94,14 @@ impl Dialog for PageMenu {
                 match &self.button_actions[self.selected] {
                     PageOrPageMenu::Menu(menu) => {
                         let menu = match menu {
-                            Menu::File => Self::file(self.event_loop_proxy.clone()),
-                            Menu::Playback => Self::playback(self.event_loop_proxy.clone()),
-                            Menu::Sample => Self::sample(self.event_loop_proxy.clone()),
-                            Menu::Instrument => Self::instrument(self.event_loop_proxy.clone()),
-                            Menu::Settings => Self::settings(self.event_loop_proxy.clone()),
+                            Menu::File => Self::file(),
+                            Menu::Playback => Self::playback(),
+                            Menu::Sample => Self::sample(),
+                            Menu::Instrument => Self::instrument(),
+                            Menu::Settings => Self::settings(),
                         };
 
-                        let _ = self
-                            .event_loop_proxy
-                            .send_event(CustomWinitEvent::OpenDialog(Box::new(menu)));
+                        return DialogResponse::GlobalEvent(GlobalEvent::OpenDialog(Box::new(menu)), false);
                     }
                     PageOrPageMenu::Page(page) => return DialogResponse::SwitchToPage(*page),
                     PageOrPageMenu::NotYetImplemented => {
@@ -143,7 +141,6 @@ impl PageMenu {
         width: usize,
         button_names: &'static [&'static str],
         button_actions: &'static [PageOrPageMenu],
-        event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
     ) -> Self {
         assert!(button_names.len() == button_actions.len());
 
@@ -161,11 +158,10 @@ impl PageMenu {
             pressed: false,
             button_names,
             button_actions,
-            event_loop_proxy,
         }
     }
 
-    pub const fn main(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn main() -> Self {
         Self::new(
             "Main Menu",
             CharPosition::new(6, 11),
@@ -194,11 +190,11 @@ impl PageMenu {
                 PageOrPageMenu::Menu(Menu::Settings),
                 PageOrPageMenu::Page(PagesEnum::Help),
             ],
-            event_loop_proxy,
+            // event_loop_proxy,
         )
     }
 
-    pub const fn file(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn file() -> Self {
         Self::new(
             "File Menu",
             CharPosition::new(25, 13),
@@ -221,11 +217,10 @@ impl PageMenu {
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
             ],
-            event_loop_proxy,
         )
     }
 
-    pub const fn playback(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn playback() -> Self {
         Self::new(
             "Playback Menu",
             CharPosition::new(25, 13),
@@ -252,11 +247,10 @@ impl PageMenu {
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
             ],
-            event_loop_proxy,
         )
     }
 
-    pub const fn sample(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn sample() -> Self {
         Self::new(
             "Sample Menu",
             CharPosition::new(25, 20),
@@ -266,11 +260,10 @@ impl PageMenu {
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
             ],
-            event_loop_proxy,
         )
     }
 
-    pub const fn instrument(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn instrument() -> Self {
         Self::new(
             "Instrument Menu",
             CharPosition::new(20, 23),
@@ -283,11 +276,10 @@ impl PageMenu {
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
             ],
-            event_loop_proxy,
         )
     }
 
-    pub const fn settings(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub const fn settings() -> Self {
         Self::new(
             "Settings Menu",
             CharPosition::new(22, 25),
@@ -308,7 +300,6 @@ impl PageMenu {
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
             ],
-            event_loop_proxy,
         )
     }
 }

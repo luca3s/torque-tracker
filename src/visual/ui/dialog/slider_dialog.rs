@@ -6,18 +6,17 @@ use winit::{
 };
 
 use crate::visual::{
-    coordinates::{CharPosition, CharRect},
-    ui::widgets::{
+    coordinates::{CharPosition, CharRect}, event_loop::GlobalEvent, ui::widgets::{
         text_in::TextIn,
         widget::{NextWidget, Widget, WidgetResponse},
-    },
+    }
 };
 
 use super::{Dialog, DialogResponse};
 
 pub struct SliderDialog {
     text: TextIn,
-    return_value: Rc<OnceCell<i16>>,
+    return_event: fn(i16) -> GlobalEvent,
 }
 
 impl Dialog for SliderDialog {
@@ -36,9 +35,7 @@ impl Dialog for SliderDialog {
                 return DialogResponse::Close;
             } else if key_event.logical_key == Key::Named(NamedKey::Enter) {
                 if let Ok(num) = self.text.get_str().parse::<i16>() {
-                    let result = self.return_value.set(num);
-                    // otherwise the OnceCell wasnt reset correctly before starting the dialog
-                    assert!(result.is_ok());
+                    return DialogResponse::GlobalEvent((self.return_event)(num), true);
                 }
                 return DialogResponse::Close;
             }
@@ -49,17 +46,18 @@ impl Dialog for SliderDialog {
             WidgetResponse::SwitchFocus(_) => DialogResponse::None,
             WidgetResponse::RequestRedraw => DialogResponse::RequestRedraw,
             WidgetResponse::None => DialogResponse::None,
+            WidgetResponse::GlobalEvent(e) => DialogResponse::GlobalEvent(e, false),
         }
     }
 }
 
 impl SliderDialog {
-    pub fn new(inital_char: char, return_pointer: Rc<OnceCell<i16>>) -> Self {
+    pub fn new(inital_char: char, return_event: fn(i16) -> GlobalEvent) -> Self {
         let mut text_in = TextIn::new(CharPosition::new(45, 26), 3, NextWidget::default(), |_| {});
-        text_in.set_string(&inital_char.to_string()).unwrap();
+        text_in.set_string(inital_char.to_string()).unwrap();
         Self {
             text: text_in,
-            return_value: return_pointer,
+            return_event,
         }
     }
 }

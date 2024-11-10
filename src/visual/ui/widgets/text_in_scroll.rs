@@ -83,7 +83,7 @@ impl Widget for TextInScroll {
         // backspace and delete keys
         // entf on German Keyboards
         } else if key_event.logical_key == Key::Named(NamedKey::Delete) {
-            // cant delete if im outside the text, also includes text empty
+            // cant delete if i'm outside the text. also includes text empty
             if self.cursor_pos < self.text.len() {
                 let _ = self.text.remove(self.cursor_pos);
                 (self.callback)(self.text.as_str());
@@ -150,7 +150,9 @@ impl TextInScroll {
     ) -> Result<(), ascii::FromAsciiError<&'a str>> {
         self.text = AsciiString::from_ascii(new_str)?;
         self.text.truncate(self.width);
-        self.cursor_pos = self.text.len();
+        if self.cursor_pos > self.text.len() {
+            self.cursor_pos = self.text.len();
+        }
         // never tested could be buggy
         self.scroll_offset = self.text.len().saturating_sub(self.width);
 

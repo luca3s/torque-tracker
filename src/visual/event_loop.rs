@@ -12,12 +12,13 @@ use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
-        dialog::{page_menu::PageMenu, Dialog, DialogManager, DialogResponse}, header::Header, pages::{AllPages, PageResponse}
+        dialog::{page_menu::PageMenu, Dialog, DialogManager, DialogResponse}, header::Header, pages::{AllPages, PageEvent, PageResponse}
     },
 };
 
-pub enum CustomWinitEvent {
+pub enum GlobalEvent {
     OpenDialog(Box<dyn Dialog>),
+    PageEvent(PageEvent),
 }
 
 pub struct App<'a> {
@@ -27,16 +28,16 @@ pub struct App<'a> {
     ui_pages: AllPages,
     dialog_manager: DialogManager,
     header: Header,
-    event_loop_proxy: EventLoopProxy<CustomWinitEvent>,
+    event_loop_proxy: EventLoopProxy<GlobalEvent>,
 }
 
-impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
+impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
     fn new_events(&mut self, event_loop: &ActiveEventLoop, start_cause: winit::event::StartCause) {
         if start_cause == winit::event::StartCause::Init {
             self.build_window(event_loop);
         }
 
-        self.ui_pages.update();
+        // self.ui_pages.update();
     }
 
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
@@ -57,7 +58,7 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
             ui_pages,
             dialog_manager,
             header: _,
-            event_loop_proxy,
+            event_loop_proxy: _,
         } = self;
 
         // panic is fine because when i get a window_event a window exists
@@ -79,8 +80,6 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
                 println!("Window Scale Factor Changed");
             }
             WindowEvent::RedrawRequested => {
-                ui_pages.update();
-
                 // draw the new frame buffer
                 ui_pages.draw(draw_buffer);
 
@@ -119,18 +118,27 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
                             ui_pages.switch_page(page);
                             window.request_redraw();
                         }
+                        DialogResponse::GlobalEvent(e, c) => {
+                            if c {
+                                dialog_manager.close_dialog();
+                                ui_pages.request_draw_const();
+                                window.request_redraw();
+                            }
+                            self.user_event(event_loop, e);
+                        },
                     }
                 } else {
                     if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
                     {
-                        let main_menu = PageMenu::main(event_loop_proxy.clone());
-                        let _ = event_loop_proxy
-                            .send_event(CustomWinitEvent::OpenDialog(Box::new(main_menu)));
+                        let main_menu = PageMenu::main();
+                        self.user_event(event_loop, GlobalEvent::OpenDialog(Box::new(main_menu)));
                     }
 
-                    match ui_pages.process_key_event(modifiers, &event) {
-                        PageResponse::RequestRedraw => window.request_redraw(),
+                    match self.ui_pages.process_key_event(&self.modifiers, &event) {
+                        PageResponse::RequestRedraw => _ = self.try_request_redraw(),
                         PageResponse::None => (),
+                        // if the page wants to send a custom_event i don't really have to send it i can just handle it myself
+                        PageResponse::GlobalEvent(event) => self.user_event(event_loop, event),
                     }
                 }
             }
@@ -141,26 +149,51 @@ impl<'a> ApplicationHandler<CustomWinitEvent> for App<'a> {
         }
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, event: CustomWinitEvent) {
-        match event {
-            CustomWinitEvent::OpenDialog(dialog) => {
-                self.dialog_manager.open_dialog(dialog);
-                self.window_gpu.as_ref().unwrap().0.request_redraw();
+    /// loops while the response the the event is a new event and processes that
+    fn user_event(&mut self, _: &ActiveEventLoop, mut event: GlobalEvent) {
+        loop {
+            match event {
+                GlobalEvent::OpenDialog(dialog) => {
+                    self.dialog_manager.open_dialog(dialog);
+                    _ = self.try_request_redraw();
+                    break;
+                },
+                GlobalEvent::PageEvent(c) => {
+                    match self.ui_pages.process_page_event(c) {
+                        PageResponse::RequestRedraw => {
+                            // i may get a user_event without an existing window
+                            _ = self.try_request_redraw();
+                            break;
+                        },
+                        PageResponse::None => break,
+                        PageResponse::GlobalEvent(new_event) => event = new_event,
+                    }
+                },
             }
         }
     }
 }
 
 impl<'a> App<'a> {
-    pub fn new(proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
             window_gpu: None,
             draw_buffer: Box::new(DrawBuffer::new()),
             modifiers: Modifiers::default(),
-            ui_pages: AllPages::new(proxy.clone()),
+            ui_pages: AllPages::new(),
             dialog_manager: DialogManager::new(),
             header: Header {},
             event_loop_proxy: proxy,
+        }
+    }
+
+    /// tries to request a redraw. if there currently is no window this fails
+    fn try_request_redraw(&self) -> Result<(), ()> {
+        if let Some((window, _)) = &self.window_gpu {
+            window.request_redraw();
+            Ok(())
+        } else {
+            Err(())
         }
     }
 
@@ -178,7 +211,7 @@ impl<'a> App<'a> {
 }
 
 pub fn run() {
-    let event_loop = winit::event_loop::EventLoop::<CustomWinitEvent>::with_user_event()
+    let event_loop = winit::event_loop::EventLoop::<GlobalEvent>::with_user_event()
         .build()
         .unwrap();
     event_loop.set_control_flow(ControlFlow::Wait);

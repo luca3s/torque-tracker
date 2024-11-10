@@ -4,7 +4,7 @@ use winit::event_loop::EventLoopProxy;
 
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
-    event_loop::CustomWinitEvent,
+    event_loop::GlobalEvent,
     ui::widgets::{
         button::Button,
         slider::Slider,
@@ -34,6 +34,16 @@ enum Playback {
 enum PitchSlides {
     Linear,
     Amiga,
+}
+
+pub enum SDCChange {
+    SetSongName(String),
+    InitialTempo(i16),
+    InitialSpeed(i16),
+    GlobalVolume(i16),
+    MixingVolume(i16),
+    Seperation(i16),
+    
 }
 
 pub struct SongDirectoryConfigPage {
@@ -108,17 +118,6 @@ impl Page for SongDirectoryConfigPage {
         );
     }
 
-    fn update(&mut self) -> RequestRedraw {
-        let mut result = false;
-
-        for widget in self.widgets.iter_mut() {
-            if widget.update() {
-                result = true;
-            }
-        }
-        result
-    }
-
     fn process_key_event(
         &mut self,
         modifiers: &winit::event::Modifiers,
@@ -132,20 +131,67 @@ impl Page for SongDirectoryConfigPage {
             }
             WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
             WidgetResponse::None => PageResponse::None,
+            WidgetResponse::GlobalEvent(e) => PageResponse::GlobalEvent(e),
         }
     }
 }
 
 impl SongDirectoryConfigPage {
+    pub fn ui_change(&mut self, change: SDCChange) -> PageResponse {
+        match change {
+            SDCChange::SetSongName(s) => {
+                match self.song_name().set_string(s) {
+                    Ok(_) => PageResponse::RequestRedraw,
+                    Err(_) => PageResponse::None,
+                }
+            },
+            SDCChange::InitialTempo(n) => {
+                match self.initial_tempo().number.try_set(n) {
+                    Ok(_) => PageResponse::RequestRedraw,
+                    Err(_) => PageResponse::None,
+                }
+            },
+            SDCChange::InitialSpeed(n) => {
+                match self.initial_speed().number.try_set(n) {
+                    Ok(_) => PageResponse::RequestRedraw,
+                    Err(_) => PageResponse::None,
+                }
+            },
+            SDCChange::GlobalVolume(n) => {
+                match self.global_volume().number.try_set(n) {
+                    Ok(_) => PageResponse::RequestRedraw,
+                    Err(_) => PageResponse::None,
+                }
+            },
+            SDCChange::MixingVolume(n) => {
+                match self.mixing_volume().number.try_set(n) {
+                    Ok(_) => PageResponse::RequestRedraw,
+                    Err(_) => PageResponse::None,
+                }
+            },
+            SDCChange::Seperation(n) => {
+                match self.seperation().number.try_set(n) {
+                    Ok(_) => PageResponse::RequestRedraw,
+                    Err(_) => PageResponse::None,
+                }
+            },
+        }
+    }
+
     const WIDGET_COUNT: usize = 18;
     const SONG_NAME: usize = 0;
+    const INITIAL_TEMPO: usize = 1;
+    const INITIAL_SPEED: usize = 2;
+    const GLOBAL_VOLUME: usize = 3;
+    const MIXING_VOLUME: usize = 4;
+    const SEPERATION: usize = 5;
     const OLD_EFFECTS: usize = 6;
     const COMPATIBLE_GXX: usize = 7;
     const MODULE_PATH: usize = 14;
     const SAMPLE_PATH: usize = 15;
     const INSTRUMENT_PATH: usize = 16;
 
-    pub fn new(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub fn new() -> Self {
         // widget 0
         let song_name = TextIn::new(
             CharPosition::new(17, 16),
@@ -170,7 +216,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(2),
                 ..Default::default()
             },
-            event_loop_proxy.clone(),
+            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
             |value| println!("initial tempo set to: {}", value),
         );
         // widget 2
@@ -185,7 +231,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(3),
                 ..Default::default()
             },
-            event_loop_proxy.clone(),
+            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
             |value| println!("initial speed set to: {}", value),
         );
         // widget 3
@@ -200,7 +246,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(4),
                 ..Default::default()
             },
-            event_loop_proxy.clone(),
+            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
             |value| println!("gloabl volume set to: {}", value),
         );
         // widget 4
@@ -215,7 +261,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(5),
                 ..Default::default()
             },
-            event_loop_proxy.clone(),
+            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
             |value| println!("mixing volume set to: {}", value),
         );
         // widget 5
@@ -230,7 +276,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(6),
                 ..Default::default()
             },
-            event_loop_proxy.clone(),
+            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::Seperation(n))),
             |value| println!("seperation set to: {}", value),
         );
 
@@ -448,12 +494,31 @@ impl SongDirectoryConfigPage {
         }
     }
 
-    pub fn get_song_name(&self) -> &str {
+    fn song_name(&mut self) -> &mut TextIn {
         (*self.widgets[Self::SONG_NAME])
-            .as_any()
-            .downcast_ref::<TextIn>()
+            .as_any_mut()
+            .downcast_mut::<TextIn>()
             .unwrap()
-            .get_str()
+    }
+
+    fn initial_tempo(&mut self) -> &mut Slider<31, 255> {
+        (*self.widgets[Self::INITIAL_TEMPO]).as_any_mut().downcast_mut().unwrap()
+    }
+
+    fn initial_speed(&mut self) -> &mut Slider<1, 255> {
+        (*self.widgets[Self::INITIAL_SPEED]).as_any_mut().downcast_mut().unwrap()
+    }
+
+    fn global_volume(&mut self) -> &mut Slider<0, 128> {
+        (*self.widgets[Self::GLOBAL_VOLUME]).as_any_mut().downcast_mut().unwrap()
+    }
+
+    fn mixing_volume(&mut self) -> &mut Slider<0, 128> {
+        (*self.widgets[Self::MIXING_VOLUME]).as_any_mut().downcast_mut().unwrap()
+    }
+
+    fn seperation(&mut self) -> &mut Slider<0, 128> {
+        (*self.widgets[Self::SEPERATION]).as_any_mut().downcast_mut().unwrap()
     }
 
     pub fn get_old_effects_state(&self) -> bool {

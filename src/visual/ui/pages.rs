@@ -2,34 +2,45 @@ mod help_page;
 mod song_directory_config_page;
 
 use help_page::HelpPage;
-use song_directory_config_page::SongDirectoryConfigPage;
+use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
     event::{KeyEvent, Modifiers},
-    event_loop::EventLoopProxy,
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
 use crate::visual::{
-    draw_buffer::DrawBuffer, event_loop::CustomWinitEvent, ui::widgets::widget::RequestRedraw,
+    draw_buffer::DrawBuffer, event_loop::GlobalEvent
 };
 
 pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer);
 
-    fn update(&mut self) -> RequestRedraw;
     fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse;
 }
 
 pub enum PageResponse {
     RequestRedraw,
+    GlobalEvent(GlobalEvent),
     None,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PagesEnum {
     Help,
     SongDirectoryConfig,
+}
+
+pub enum PageEvent {
+    Sdc(SDCChange),
+}
+
+impl PageEvent {
+    fn get_page(&self) -> PagesEnum {
+        match self {
+            PageEvent::Sdc(_) => PagesEnum::SongDirectoryConfig,
+        }
+    }
 }
 
 pub struct AllPages {
@@ -41,10 +52,10 @@ pub struct AllPages {
 }
 
 impl AllPages {
-    pub fn new(event_loop_proxy: EventLoopProxy<CustomWinitEvent>) -> Self {
+    pub fn new() -> Self {
         AllPages {
             help: HelpPage::new(),
-            song_directory_config: SongDirectoryConfigPage::new(event_loop_proxy),
+            song_directory_config: SongDirectoryConfigPage::new(),
             current: PagesEnum::SongDirectoryConfig,
             const_draw_needed: true,
         }
@@ -78,14 +89,14 @@ impl AllPages {
         self.const_draw_needed = false;
     }
 
-    pub fn update(&mut self) -> RequestRedraw {
-        let help = self.help.update();
-        let song_directory_config = self.song_directory_config.update();
-        match self.current {
-            PagesEnum::Help => help,
-            PagesEnum::SongDirectoryConfig => song_directory_config,
-        }
-    }
+    // pub fn update(&mut self) -> RequestRedraw {
+    //     let help = self.help.update();
+    //     let song_directory_config = self.song_directory_config.update();
+    //     match self.current {
+    //         PagesEnum::Help => help,
+    //         PagesEnum::SongDirectoryConfig => song_directory_config,
+    //     }
+    // }
 
     // add key_events for changing pages here
     pub fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse {
@@ -112,6 +123,19 @@ impl AllPages {
                     .song_directory_config
                     .process_key_event(modifiers, key_event),
             };
+        }
+    }
+
+    pub fn process_page_event(&mut self, change: PageEvent) -> PageResponse {
+        let page = change.get_page();
+        let response = match change {
+            PageEvent::Sdc(change) => self.song_directory_config.ui_change(change),
+        };
+
+        if page == self.current {
+            response
+        } else {
+            PageResponse::None
         }
     }
 }

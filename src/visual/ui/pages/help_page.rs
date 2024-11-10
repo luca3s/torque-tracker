@@ -4,7 +4,7 @@ use crate::visual::{
     ui::widgets::{
         button::Button,
         text_in::TextIn,
-        widget::{NextWidget, RequestRedraw, WidgetAny, WidgetResponse},
+        widget::{NextWidget, WidgetAny, WidgetResponse},
     },
 };
 
@@ -27,10 +27,6 @@ impl Page for HelpPage {
         draw_buffer.draw_rect(0, CharRect::PAGE_AREA);
     }
 
-    fn update(&mut self) -> RequestRedraw {
-        false
-    }
-
     fn process_key_event(
         &mut self,
         modifiers: &winit::event::Modifiers,
@@ -46,6 +42,7 @@ impl Page for HelpPage {
             }
             WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
             WidgetResponse::None => PageResponse::None,
+            WidgetResponse::GlobalEvent(e) => PageResponse::GlobalEvent(e),
         }
     }
 }
@@ -67,7 +64,7 @@ impl HelpPage {
             NextWidget::default(),
             |new_text| println!("text changed to {new_text}"),
         );
-        text_in.set_string("test").unwrap();
+        text_in.set_string("test".to_owned()).unwrap();
 
         Self {
             widgets: [Box::new(quit_button), Box::new(text_in)],

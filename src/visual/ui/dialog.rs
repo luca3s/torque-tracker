@@ -3,13 +3,15 @@ pub mod slider_dialog;
 
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::visual::{draw_buffer::DrawBuffer, ui::pages::PagesEnum};
+use crate::visual::{draw_buffer::DrawBuffer, event_loop::GlobalEvent, ui::pages::PagesEnum};
 
 pub enum DialogResponse {
     RequestRedraw,
     // should also close all Dialogs
     SwitchToPage(PagesEnum),
     Close,
+    /// (global_event to be sent, should close the current dialog)
+    GlobalEvent(GlobalEvent, bool),
     None,
 }
 

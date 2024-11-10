@@ -5,7 +5,7 @@ use winit::{
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::visual::draw_buffer::DrawBuffer;
+use crate::visual::{draw_buffer::DrawBuffer, event_loop::GlobalEvent};
 
 pub type RequestRedraw = bool;
 
@@ -23,6 +23,7 @@ pub trait Widget {
 pub enum WidgetResponse {
     SwitchFocus(usize),
     RequestRedraw,
+    GlobalEvent(GlobalEvent),
     None,
 }
 
