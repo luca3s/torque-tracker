@@ -3,7 +3,7 @@ pub mod slider_dialog;
 
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::visual::{draw_buffer::DrawBuffer, event_loop::GlobalEvent, ui::pages::PagesEnum};
+use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer, ui::pages::PagesEnum};
 
 pub enum DialogResponse {
     RequestRedraw,

@@ -7,11 +7,12 @@ edition = "2021"
 
 [dependencies]
 font8x8 = "0.3.1"
-pollster = "0.4.0"
 wgpu = "23.0.0"
 ascii = "1.1.0"
 winit = "0.30.5"
 tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }
+smol = "2.0.2"
+# widget_list_derive = { version = "0.1.0", path = "../widget_list_derive" }
 # symphonia = "0.5.4"
 
 # [profile.dev]

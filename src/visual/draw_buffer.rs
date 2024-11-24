@@ -5,7 +5,7 @@ use super::{
 use font8x8::UnicodeFonts;
 
 pub(crate) struct DrawBuffer {
-    pub framebuffer: [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+    pub framebuffer: Box<[[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1]>,
     color_palette: Palette<RGB10A2>,
 }
 
@@ -14,7 +14,7 @@ impl DrawBuffer {
 
     pub fn new() -> Self {
         Self {
-            framebuffer: [[0; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+            framebuffer: Box::new([[0; WINDOW_SIZE.0]; WINDOW_SIZE.1]),
             color_palette: Palette::CAMOUFLAGE.into(),
         }
     }
@@ -187,6 +187,7 @@ impl DrawBuffer {
         }
     }
 
+    /// for debugging. draws a pixel in the middle of the char
     fn mark_char(&mut self, position: CharPosition) {
         self.framebuffer[(position.y() + 4) * WINDOW_SIZE.0][position.x() + 4] =
             self.color_palette.get_raw(1);

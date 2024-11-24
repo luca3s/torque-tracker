@@ -1,15 +1,15 @@
-use std::{cell::OnceCell, rc::Rc};
-
 use winit::{
     event::{KeyEvent, Modifiers},
     keyboard::{Key, NamedKey},
 };
 
 use crate::visual::{
-    coordinates::{CharPosition, CharRect}, event_loop::GlobalEvent, ui::widgets::{
+    app::GlobalEvent,
+    coordinates::{CharPosition, CharRect},
+    ui::widgets::{
         text_in::TextIn,
         widget::{NextWidget, Widget, WidgetResponse},
-    }
+    },
 };
 
 use super::{Dialog, DialogResponse};

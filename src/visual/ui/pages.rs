@@ -8,9 +8,9 @@ use winit::{
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::visual::{
-    draw_buffer::DrawBuffer, event_loop::GlobalEvent
-};
+use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer};
+
+use super::widgets::widget::Widget;
 
 pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
@@ -18,6 +18,11 @@ pub trait Page {
 
     fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse;
 }
+
+// trait WidgetList {
+//     const WIDGET_COUNT: usize;
+//     fn widget_list(&mut self) -> [&mut dyn Widget; Self::WIDGET_COUNT];
+// }
 
 pub enum PageResponse {
     RequestRedraw,
@@ -99,7 +104,11 @@ impl AllPages {
     // }
 
     // add key_events for changing pages here
-    pub fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse {
+    pub fn process_key_event(
+        &mut self,
+        modifiers: &Modifiers,
+        key_event: &KeyEvent,
+    ) -> PageResponse {
         if key_event.logical_key == Key::Named(NamedKey::F1) {
             self.switch_page(PagesEnum::Help);
             println!("open help page");

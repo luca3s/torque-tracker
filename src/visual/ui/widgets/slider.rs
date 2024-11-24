@@ -3,9 +3,10 @@ use std::ops::{AddAssign, Deref, SubAssign};
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
-    event_loop::GlobalEvent, ui::dialog::slider_dialog::SliderDialog,
+    ui::dialog::slider_dialog::SliderDialog,
 };
 
 use super::widget::{NextWidget, Widget, WidgetResponse};

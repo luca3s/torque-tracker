@@ -1,11 +1,8 @@
-use winit::{
-    event_loop::EventLoopProxy,
-    keyboard::{Key, NamedKey},
-};
+use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
-    event_loop::GlobalEvent,
     ui::pages::PagesEnum,
 };
 
@@ -101,7 +98,10 @@ impl Dialog for PageMenu {
                             Menu::Settings => Self::settings(),
                         };
 
-                        return DialogResponse::GlobalEvent(GlobalEvent::OpenDialog(Box::new(menu)), false);
+                        return DialogResponse::GlobalEvent(
+                            GlobalEvent::OpenDialog(Box::new(menu)),
+                            false,
+                        );
                     }
                     PageOrPageMenu::Page(page) => return DialogResponse::SwitchToPage(*page),
                     PageOrPageMenu::NotYetImplemented => {
@@ -133,8 +133,6 @@ impl Dialog for PageMenu {
 }
 
 impl PageMenu {
-    const WIDTH: usize = 20;
-
     const fn new(
         name: &'static str,
         pos: CharPosition,

@@ -145,10 +145,7 @@ impl TextIn {
     }
 
     // not tested
-    pub fn set_string(
-        &mut self,
-        new_str: String,
-    ) -> Result<(), ascii::FromAsciiError<String>> {
+    pub fn set_string(&mut self, new_str: String) -> Result<(), ascii::FromAsciiError<String>> {
         self.text = AsciiString::from_ascii(new_str)?;
         self.text.truncate(self.width);
         self.cursor_pos = self.text.len();
