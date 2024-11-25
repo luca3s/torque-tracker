@@ -19,10 +19,34 @@ pub trait Page {
     fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse;
 }
 
-// trait WidgetList {
-//     const WIDGET_COUNT: usize;
-//     fn widget_list(&mut self) -> [&mut dyn Widget; Self::WIDGET_COUNT];
-// }
+macro_rules! create_indices {
+    // no names
+    () => (
+        const WIDGET_COUNT: usize = 0;
+    );
+    // only one name
+    ($name:ident) => (
+        const $name: usize = 0usize;
+        const WIDGET_COUNT: usize = 1;
+    );
+    // inital with more than one name
+    ($name:ident, $($n:ident),+) => (
+        const $name: usize = 0;
+        crate::visual::ui::pages::create_indices!($($n),* 1usize);
+    );
+    // last name
+    ($name:ident $num:expr) => (
+        const $name: usize = $num;
+        const WIDGET_COUNT: usize = Self::$name + 1usize;
+    );
+    // loop over names
+    ($name:ident, $($n:ident),+ $num:expr) => (
+        const $name: usize = $num;
+        crate::visual::ui::pages::create_indices!($($n),+ (Self::$name + 1usize));
+    );
+}
+
+pub(crate) use create_indices;
 
 pub enum PageResponse {
     RequestRedraw,

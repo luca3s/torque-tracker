@@ -19,9 +19,12 @@ pub struct HelpPage {
 impl Page for HelpPage {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
         let selected = self.selected_widget;
-        self.widgets().iter()
-            .enumerate()
-            .for_each(|(num, widget)| widget.draw(draw_buffer, num == selected));
+        // self.widgets().iter()
+        //     .enumerate()
+        //     .for_each(|(num, widget)| widget.draw(draw_buffer, num == selected));
+        for idx in 0..Self::WIDGET_COUNT {
+            self.get_widget(idx).draw(draw_buffer, selected == idx);
+        }
     }
 
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer) {
@@ -34,7 +37,7 @@ impl Page for HelpPage {
         key_event: &winit::event::KeyEvent,
     ) -> PageResponse {
         let selected = self.selected_widget;
-        let response = self.widgets()[selected].process_input(modifiers, key_event);
+        let response = self.get_widget(selected).process_input(modifiers, key_event);
         match response {
             WidgetResponse::SwitchFocus(next) => {
                 // can panic here, because all involved values should be compile time
@@ -50,10 +53,14 @@ impl Page for HelpPage {
 }
 
 impl HelpPage {
-    const WIDGET_COUNT: usize = 2;
+    super::create_indices!(TEXT_IN, QUIT_BUTTON);
 
-    fn widgets(&mut self) -> [&mut dyn Widget; Self::WIDGET_COUNT] {
-        [&mut self.quit_button, &mut self.text_in]
+    fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
+        match idx {
+            Self::QUIT_BUTTON => &mut self.quit_button,
+            Self::TEXT_IN => &mut self.text_in,
+            _ => panic!(),
+        }
     }
 
     pub fn new() -> Self {

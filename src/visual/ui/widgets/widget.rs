@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use winit::{
     event::{KeyEvent, Modifiers},
     keyboard::{Key, ModifiersState, NamedKey},
@@ -29,22 +27,6 @@ impl From<Option<usize>> for WidgetResponse {
         }
     }
 }
-
-// type needed due to limitation in type system. see: https://lucumr.pocoo.org/2022/1/7/as-any-hack/
-// pub(crate) trait WidgetAny: Any + Widget {
-//     fn as_any(&self) -> &dyn Any;
-//     fn as_any_mut(&mut self) -> &mut dyn Any;
-// }
-
-// // implement WidgetAny for all Widget Types
-// impl<T: Any + Widget> WidgetAny for T {
-//     fn as_any(&self) -> &dyn Any {
-//         self
-//     }
-//     fn as_any_mut(&mut self) -> &mut dyn Any {
-//         self
-//     }
-// }
 
 #[derive(Default)]
 pub(crate) struct NextWidget {
