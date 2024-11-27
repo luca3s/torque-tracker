@@ -19,9 +19,6 @@ pub struct HelpPage {
 impl Page for HelpPage {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
         let selected = self.selected_widget;
-        // self.widgets().iter()
-        //     .enumerate()
-        //     .for_each(|(num, widget)| widget.draw(draw_buffer, num == selected));
         for idx in 0..Self::WIDGET_COUNT {
             self.get_widget(idx).draw(draw_buffer, selected == idx);
         }
@@ -54,14 +51,6 @@ impl Page for HelpPage {
 
 impl HelpPage {
     super::create_indices!(TEXT_IN, QUIT_BUTTON);
-
-    fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
-        match idx {
-            Self::QUIT_BUTTON => &mut self.quit_button,
-            Self::TEXT_IN => &mut self.text_in,
-            _ => panic!(),
-        }
-    }
 
     pub fn new() -> Self {
         let quit_button = Button::new(

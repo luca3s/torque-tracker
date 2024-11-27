@@ -171,7 +171,7 @@ impl SongDirectoryConfigPage {
         SAMPLES,
         STEREO,
         MONO,
-        LINERA_SLIDES,
+        LINEAR_SLIDES,
         AMIGA_SLIDES,
         MODULE_PATH,
         SAMPLE_PATH,
@@ -205,30 +205,6 @@ impl SongDirectoryConfigPage {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-        }
-    }
-
-    fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
-        match idx {
-            Self::SONG_NAME => &mut self.song_name,
-            Self::INITIAL_TEMPO => &mut self.initial_tempo,
-            Self::INITIAL_SPEED => &mut self.initial_speed,
-            Self::GLOBAL_VOLUME => &mut self.global_volume,
-            Self::MIXING_VOLUME => &mut self.mixing_volume,
-            Self::SEPERATION => &mut self.seperation,
-            Self::COMPATIBLE_GXX => &mut self.compatible_gxx,
-            Self::OLD_EFFECTS => &mut self.old_effects,
-            Self::MODULE_PATH => &mut self.module_path,
-            Self::SAMPLE_PATH => &mut self.sample_path,
-            Self::INSTRUMENT_PATH => &mut self.instrument_path,
-            Self::AMIGA_SLIDES => &mut self.amiga_slides,
-            Self::INSTRUMENTS => &mut self.instruments,
-            Self::SAMPLES => &mut self.samples,
-            Self::STEREO => &mut self.stereo,
-            Self::MONO => &mut self.mono,
-            Self::LINERA_SLIDES => &mut self.linear_slides,
-            Self::SAVE => &mut self.save,
-            _ => panic!(),
         }
     }
 
@@ -385,7 +361,7 @@ impl SongDirectoryConfigPage {
                 left: Some(Self::MONO),
                 right: Some(Self::MONO),
                 up: Some(Self::INSTRUMENTS),
-                down: Some(Self::LINERA_SLIDES),
+                down: Some(Self::LINEAR_SLIDES),
                 tab: Some(Self::MONO),
                 shift_tab: Some(Self::MONO),
             },
@@ -430,12 +406,12 @@ impl SongDirectoryConfigPage {
             "Amiga",
             CharRect::new(35, 37, 31, 45),
             NextWidget {
-                left: Some(Self::LINERA_SLIDES),
-                right: Some(Self::LINERA_SLIDES),
+                left: Some(Self::LINEAR_SLIDES),
+                right: Some(Self::LINEAR_SLIDES),
                 up: Some(Self::MONO),
                 down: Some(Self::MODULE_PATH),
-                tab: Some(Self::LINERA_SLIDES),
-                shift_tab: Some(Self::LINERA_SLIDES),
+                tab: Some(Self::LINEAR_SLIDES),
+                shift_tab: Some(Self::LINEAR_SLIDES),
             },
             PitchSlides::Amiga,
             pitch_slides_rc,
@@ -446,7 +422,7 @@ impl SongDirectoryConfigPage {
             CharPosition::new(13, 42),
             64,
             NextWidget {
-                up: Some(Self::LINERA_SLIDES),
+                up: Some(Self::LINEAR_SLIDES),
                 down: Some(Self::SAMPLE_PATH),
                 tab: Some(Self::SAMPLE_PATH),
                 shift_tab: Some(Self::AMIGA_SLIDES), // whyy???

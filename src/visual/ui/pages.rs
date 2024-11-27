@@ -20,6 +20,12 @@ pub trait Page {
 }
 
 macro_rules! create_indices {
+    (@function $($upper:ident),*) => {
+        fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
+            $(if idx == Self::$upper { casey::lower!(&mut self.$upper) } else)*
+            { panic!() }
+        }
+    };
     // no names
     () => (
         const WIDGET_COUNT: usize = 0;
@@ -30,9 +36,10 @@ macro_rules! create_indices {
         const WIDGET_COUNT: usize = 1;
     );
     // inital with more than one name
-    ($name:ident, $($n:ident),+) => (
-        const $name: usize = 0;
-        crate::visual::ui::pages::create_indices!($($n),* 1usize);
+    ($($n:ident),+) => (
+        // const $name: usize = 0;
+        crate::visual::ui::pages::create_indices!($($n),* 0);
+        crate::visual::ui::pages::create_indices!(@function $($n),*);
     );
     // last name
     ($name:ident $num:expr) => (
