@@ -10,10 +10,16 @@ use crate::visual::{
 
 use super::{Page, PageResponse, Widget};
 
+super::create_widget_list!(
+    HelpPage; {
+        text_in: TextIn,
+        quit_button: Button
+    }
+);
+
 pub struct HelpPage {
+    widgets: WidgetList,
     selected_widget: usize,
-    quit_button: Button,
-    text_in: TextIn,
 }
 
 impl Page for HelpPage {
@@ -50,8 +56,6 @@ impl Page for HelpPage {
 }
 
 impl HelpPage {
-    super::create_indices!(text_in, quit_button);
-
     pub fn new() -> Self {
         let quit_button = Button::new(
             "quit",
@@ -68,8 +72,7 @@ impl HelpPage {
         text_in.set_string("test".to_owned()).unwrap();
 
         Self {
-            quit_button,
-            text_in,
+            widgets: WidgetList { text_in, quit_button },
             selected_widget: 0,
         }
     }

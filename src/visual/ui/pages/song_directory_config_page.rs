@@ -43,32 +43,37 @@ pub enum SDCChange {
     Seperation(i16),
 }
 
+super::create_widget_list!(
+    SongDirectoryConfigPage;
+    {
+        song_name: TextIn,
+        initial_tempo: Slider<31, 255>,
+        initial_speed: Slider<1, 255>,
+        global_volume: Slider<0, 128>,
+        mixing_volume: Slider<0, 128>,
+        seperation: Slider<0, 128>,
+
+        old_effects: Toggle<bool>,
+        compatible_gxx: Toggle<bool>,
+        
+        instruments: ToggleButton<Control>,
+        samples: ToggleButton<Control>,
+        
+        stereo: ToggleButton<Playback>,
+        mono: ToggleButton<Playback>,
+
+        linear_slides: ToggleButton<PitchSlides>,
+        amiga_slides: ToggleButton<PitchSlides>,
+        
+        module_path: TextInScroll,
+        sample_path: TextInScroll,
+        instrument_path: TextInScroll,
+        save: Button
+    }
+);
+
 pub struct SongDirectoryConfigPage {
-    // widgets:
-    song_name: TextIn,
-    initial_tempo: Slider<31, 255>,
-    initial_speed: Slider<1, 255>,
-    global_volume: Slider<0, 128>,
-    mixing_volume: Slider<0, 128>,
-    seperation: Slider<0, 128>,
-
-    old_effects: Toggle<bool>,
-    compatible_gxx: Toggle<bool>,
-    
-    instruments: ToggleButton<Control>,
-    samples: ToggleButton<Control>,
-    
-    stereo: ToggleButton<Playback>,
-    mono: ToggleButton<Playback>,
-
-    linear_slides: ToggleButton<PitchSlides>,
-    amiga_slides: ToggleButton<PitchSlides>,
-    
-    module_path: TextInScroll,
-    sample_path: TextInScroll,
-    instrument_path: TextInScroll,
-    save: Button,
-    
+    widgets: WidgetList,
     selected_widget: usize,
 }
 
@@ -158,50 +163,29 @@ impl Page for SongDirectoryConfigPage {
 }
 
 impl SongDirectoryConfigPage {
-    super::create_indices!(
-        song_name,
-        initial_tempo,
-        initial_speed,
-        global_volume,
-        mixing_volume,
-        seperation,
-        old_effects,
-        compatible_gxx,
-        instruments,
-        samples,
-        stereo,
-        mono,
-        linear_slides,
-        amiga_slides,
-        module_path,
-        sample_path,
-        instrument_path,
-        save
-    );
-
     pub fn ui_change(&mut self, change: SDCChange) -> PageResponse {
         match change {
-            SDCChange::SetSongName(s) => match self.song_name.set_string(s) {
+            SDCChange::SetSongName(s) => match self.widgets.song_name.set_string(s) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::InitialTempo(n) => match self.initial_tempo.number.try_set(n) {
+            SDCChange::InitialTempo(n) => match self.widgets.initial_tempo.number.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::InitialSpeed(n) => match self.initial_speed.number.try_set(n) {
+            SDCChange::InitialSpeed(n) => match self.widgets.initial_speed.number.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::GlobalVolume(n) => match self.global_volume.number.try_set(n) {
+            SDCChange::GlobalVolume(n) => match self.widgets.global_volume.number.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::MixingVolume(n) => match self.mixing_volume.number.try_set(n) {
+            SDCChange::MixingVolume(n) => match self.widgets.mixing_volume.number.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::Seperation(n) => match self.seperation.number.try_set(n) {
+            SDCChange::Seperation(n) => match self.widgets.seperation.number.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
@@ -466,24 +450,26 @@ impl SongDirectoryConfigPage {
         );
         Self {
             selected_widget: 0,
-            song_name,
-            initial_tempo,
-            initial_speed,
-            global_volume,
-            mixing_volume,
-            seperation,
-            old_effects,
-            compatible_gxx,
-            instruments,
-            samples,
-            stereo,
-            mono,
-            linear_slides,
-            amiga_slides,
-            module_path,
-            sample_path,
-            instrument_path,
-            save,
+            widgets: WidgetList {
+                song_name,
+                initial_tempo,
+                initial_speed,
+                global_volume,
+                mixing_volume,
+                seperation,
+                old_effects,
+                compatible_gxx,
+                instruments,
+                samples,
+                stereo,
+                mono,
+                linear_slides,
+                amiga_slides,
+                module_path,
+                sample_path,
+                instrument_path,
+                save,
+            }
         }
     }
 }

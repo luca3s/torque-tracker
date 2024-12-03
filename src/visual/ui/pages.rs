@@ -19,31 +19,34 @@ pub trait Page {
     fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse;
 }
 
-macro_rules! create_indices {
+/// creates a struct called WidgetList with all the specified fields.
+/// 
+/// inserts a const index for every field in WidgetList into the specified struct
+/// as well as a function to query for the Widgets from a those indices.
+/// 
+/// Needs at least one fields to work. If it is less, just write from hand.
+macro_rules! create_widget_list {
     (@function $($name:ident),*) => {
         fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
             paste::paste! (
-                $(if idx == Self::[<$name:upper>] { &mut self.$name } else)*
+                $(if idx == Self::[<$name:upper>] { &mut self.widgets.$name } else)*
                 { panic!() }
             )
         }
     };
-    // no names
-    () => (
-        const WIDGET_COUNT: usize = 0;
-    );
-    // only one name
-    ($name:ident) => (
-        casey::upper!(const $name: usize = 0usize);
-        const WIDGET_COUNT: usize = 1;
-    );
     // inital with more than one name
-    ($name:ident, $($n:ident),*) => (
-        paste::paste!(
-            const [<$name:upper>]: usize = 0;
-        );
-        crate::visual::ui::pages::create_indices!($($n),* ; $name);
-        crate::visual::ui::pages::create_indices!(@function $($n),*);
+    ($page:ident; { $name:ident: $type:ty, $($n:ident: $t:ty),* }) => (
+        struct WidgetList {
+            $name: $type,
+            $($n: $t),*
+        }
+        impl $page {
+            paste::paste!(
+                const [<$name:upper>]: usize = 0;
+            );
+            crate::visual::ui::pages::create_widget_list!($($n),* ; $name);
+            crate::visual::ui::pages::create_widget_list!(@function $($n),*);
+        }
     );
     // last name
     ($name:ident ; $prev:ident) => (
@@ -59,11 +62,11 @@ macro_rules! create_indices {
         paste::paste!(
             const [<$name:upper>]: usize = Self::[<$prev:upper>] + 1;
         );
-        crate::visual::ui::pages::create_indices!($($n),+ ; $name);
+        crate::visual::ui::pages::create_widget_list!($($n),+ ; $name);
     );
 }
 
-pub(crate) use create_indices;
+pub(crate) use create_widget_list;
 
 pub enum PageResponse {
     RequestRedraw,
