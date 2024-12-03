@@ -159,24 +159,24 @@ impl Page for SongDirectoryConfigPage {
 
 impl SongDirectoryConfigPage {
     super::create_indices!(
-        SONG_NAME,
-        INITIAL_TEMPO,
-        INITIAL_SPEED,
-        GLOBAL_VOLUME,
-        MIXING_VOLUME,
-        SEPERATION,
-        OLD_EFFECTS,
-        COMPATIBLE_GXX,
-        INSTRUMENTS,
-        SAMPLES,
-        STEREO,
-        MONO,
-        LINEAR_SLIDES,
-        AMIGA_SLIDES,
-        MODULE_PATH,
-        SAMPLE_PATH,
-        INSTRUMENT_PATH,
-        SAVE
+        song_name,
+        initial_tempo,
+        initial_speed,
+        global_volume,
+        mixing_volume,
+        seperation,
+        old_effects,
+        compatible_gxx,
+        instruments,
+        samples,
+        stereo,
+        mono,
+        linear_slides,
+        amiga_slides,
+        module_path,
+        sample_path,
+        instrument_path,
+        save
     );
 
     pub fn ui_change(&mut self, change: SDCChange) -> PageResponse {

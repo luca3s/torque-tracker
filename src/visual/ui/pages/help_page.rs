@@ -50,7 +50,7 @@ impl Page for HelpPage {
 }
 
 impl HelpPage {
-    super::create_indices!(TEXT_IN, QUIT_BUTTON);
+    super::create_indices!(text_in, quit_button);
 
     pub fn new() -> Self {
         let quit_button = Button::new(

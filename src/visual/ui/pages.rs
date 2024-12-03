@@ -20,10 +20,12 @@ pub trait Page {
 }
 
 macro_rules! create_indices {
-    (@function $($upper:ident),*) => {
+    (@function $($name:ident),*) => {
         fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
-            $(if idx == Self::$upper { casey::lower!(&mut self.$upper) } else)*
-            { panic!() }
+            paste::paste! (
+                $(if idx == Self::[<$name:upper>] { &mut self.$name } else)*
+                { panic!() }
+            )
         }
     };
     // no names
@@ -32,24 +34,32 @@ macro_rules! create_indices {
     );
     // only one name
     ($name:ident) => (
-        const $name: usize = 0usize;
+        casey::upper!(const $name: usize = 0usize);
         const WIDGET_COUNT: usize = 1;
     );
     // inital with more than one name
-    ($($n:ident),+) => (
-        // const $name: usize = 0;
-        crate::visual::ui::pages::create_indices!($($n),* 0);
+    ($name:ident, $($n:ident),*) => (
+        paste::paste!(
+            const [<$name:upper>]: usize = 0;
+        );
+        crate::visual::ui::pages::create_indices!($($n),* ; $name);
         crate::visual::ui::pages::create_indices!(@function $($n),*);
     );
     // last name
-    ($name:ident $num:expr) => (
-        const $name: usize = $num;
-        const WIDGET_COUNT: usize = Self::$name + 1usize;
+    ($name:ident ; $prev:ident) => (
+        // const $name: usize = $num;
+        paste::paste!(
+            const [<$name:upper>]: usize = Self::[<$prev:upper>] + 1;
+            const WIDGET_COUNT: usize = Self::[<$name:upper>] + 1usize;
+        );
     );
     // loop over names
-    ($name:ident, $($n:ident),+ $num:expr) => (
-        const $name: usize = $num;
-        crate::visual::ui::pages::create_indices!($($n),+ (Self::$name + 1usize));
+    ($name:ident, $($n:ident),+ ; $prev:ident) => (
+        // const $name: usize = $num;
+        paste::paste!(
+            const [<$name:upper>]: usize = Self::[<$prev:upper>] + 1;
+        );
+        crate::visual::ui::pages::create_indices!($($n),+ ; $name);
     );
 }
 
