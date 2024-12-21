@@ -30,7 +30,7 @@ macro_rules! create_widget_list {
         fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
             paste::paste! (
                 $(if idx == Self::[<$name:upper>] { &mut self.widgets.$name } else)*
-                { panic!() }
+                { panic!("invalid index {:?}", idx) }
             )
         }
     };
@@ -45,7 +45,7 @@ macro_rules! create_widget_list {
                 const [<$name:upper>]: usize = 0;
             );
             crate::visual::ui::pages::create_widget_list!($($n),* ; $name);
-            crate::visual::ui::pages::create_widget_list!(@function $($n),*);
+            crate::visual::ui::pages::create_widget_list!(@function $name, $($n),*);
         }
     );
     // last name
@@ -123,7 +123,6 @@ impl AllPages {
         if self.const_draw_needed {
             self.draw_constant(draw_buffer);
         }
-
         match self.current {
             PagesEnum::Help => self.help.draw(draw_buffer),
             PagesEnum::SongDirectoryConfig => self.song_directory_config.draw(draw_buffer),

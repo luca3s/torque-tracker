@@ -449,7 +449,7 @@ impl SongDirectoryConfigPage {
             || println!("save preferences"),
         );
         Self {
-            selected_widget: 0,
+            selected_widget: Self::SONG_NAME,
             widgets: WidgetList {
                 song_name,
                 initial_tempo,

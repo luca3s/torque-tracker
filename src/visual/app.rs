@@ -164,7 +164,6 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
                 ui_pages.draw(draw_buffer);
-
                 dialog_manager.draw(draw_buffer);
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
