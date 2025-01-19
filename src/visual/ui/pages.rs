@@ -20,10 +20,10 @@ pub trait Page {
 }
 
 /// creates a struct called WidgetList with all the specified fields.
-/// 
+///
 /// inserts a const index for every field in WidgetList into the specified struct
 /// as well as a function to query for the Widgets from a those indices.
-/// 
+///
 /// Needs at least one fields to work. If it is less, just write from hand.
 macro_rules! create_widget_list {
     (@function $($name:ident),*) => {

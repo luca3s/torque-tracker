@@ -40,7 +40,9 @@ impl Page for HelpPage {
         key_event: &winit::event::KeyEvent,
     ) -> PageResponse {
         let selected = self.selected_widget;
-        let response = self.get_widget(selected).process_input(modifiers, key_event);
+        let response = self
+            .get_widget(selected)
+            .process_input(modifiers, key_event);
         match response {
             WidgetResponse::SwitchFocus(next) => {
                 // can panic here, because all involved values should be compile time
@@ -72,7 +74,10 @@ impl HelpPage {
         text_in.set_string("test".to_owned()).unwrap();
 
         Self {
-            widgets: WidgetList { text_in, quit_button },
+            widgets: WidgetList {
+                text_in,
+                quit_button,
+            },
             selected_widget: 0,
         }
     }

@@ -63,9 +63,9 @@ impl WorkerThreads {
         self.audio_extra.get_or_insert_with(|| {
             let (send, recv) = smol::channel::unbounded();
             let thread = std::thread::Builder::new()
-            .name("2nd Background Worker".into())
-            .spawn(Self::worker_task(recv))
-            .unwrap();
+                .name("2nd Background Worker".into())
+                .spawn(Self::worker_task(recv))
+                .unwrap();
 
             (thread, send)
         });
@@ -90,12 +90,11 @@ impl WorkerThreads {
         self.send_close();
         self.close_audio();
         self.standard.join().unwrap();
-
     }
 }
 
-pub struct App<'a> {
-    window_gpu: Option<(Arc<Window>, GPUState<'a>)>,
+pub struct App {
+    window_gpu: Option<(Arc<Window>, GPUState)>,
     draw_buffer: DrawBuffer,
     modifiers: Modifiers,
     ui_pages: AllPages,
@@ -105,7 +104,7 @@ pub struct App<'a> {
     worker_threads: Option<WorkerThreads>,
 }
 
-impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
+impl ApplicationHandler<GlobalEvent> for App {
     fn new_events(&mut self, _: &ActiveEventLoop, start_cause: winit::event::StartCause) {
         if start_cause == winit::event::StartCause::Init {
             // LazyLock::force(&AUDIO);
@@ -146,9 +145,7 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
         let window = window.as_ref();
 
         match event {
-            WindowEvent::CloseRequested => {
-                event_loop.exit()
-            }
+            WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(physical_size) => {
                 gpu_state.resize(physical_size);
                 window.request_redraw();
@@ -262,7 +259,7 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
     }
 }
 
-impl<'a> App<'a> {
+impl App {
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
             window_gpu: None,

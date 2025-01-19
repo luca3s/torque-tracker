@@ -55,16 +55,16 @@ super::create_widget_list!(
 
         old_effects: Toggle<bool>,
         compatible_gxx: Toggle<bool>,
-        
+
         instruments: ToggleButton<Control>,
         samples: ToggleButton<Control>,
-        
+
         stereo: ToggleButton<Playback>,
         mono: ToggleButton<Playback>,
 
         linear_slides: ToggleButton<PitchSlides>,
         amiga_slides: ToggleButton<PitchSlides>,
-        
+
         module_path: TextInScroll,
         sample_path: TextInScroll,
         instrument_path: TextInScroll,
@@ -149,7 +149,10 @@ impl Page for SongDirectoryConfigPage {
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
     ) -> PageResponse {
-        match self.get_widget(self.selected_widget).process_input(modifiers, key_event) {
+        match self
+            .get_widget(self.selected_widget)
+            .process_input(modifiers, key_event)
+        {
             WidgetResponse::SwitchFocus(next) => {
                 assert!(next < Self::WIDGET_COUNT);
                 self.selected_widget = next;
@@ -469,7 +472,7 @@ impl SongDirectoryConfigPage {
                 sample_path,
                 instrument_path,
                 save,
-            }
+            },
         }
     }
 }
