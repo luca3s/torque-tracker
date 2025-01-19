@@ -1,11 +1,77 @@
+use std::{io::Write, str::from_utf8};
+
+use tracker_engine::project::pattern::Pattern;
+
 use crate::visual::{
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
 };
 
-pub struct Header {}
+pub enum HeaderEvent {
+    SetCursorRow(u16),
+    SetMaxCursorRow(u16),
+    SetCursorPattern(usize),
+    SetMaxCursorPattern(usize),
+    SetOrder(usize),
+    SetSample(usize),
+    SetSpeed(usize),
+    SetTempo(usize),
+}
+
+#[derive(Debug)]
+pub struct Header {
+    row: u16,
+    max_row: u16,
+    pattern: usize,
+    max_pattern: usize,
+}
+
+impl Default for Header {
+    fn default() -> Self {
+        Self {
+            row: 0,
+            max_row: Pattern::DEFAULT_ROWS,
+            pattern: 0,
+            max_pattern: 0,
+        }
+    }
+}
 
 impl Header {
+    /// Header always needs a redraw after processing an event
+    pub fn process_event(&mut self, event: HeaderEvent) {
+        match event {
+            HeaderEvent::SetCursorRow(r) => self.row = r,
+            HeaderEvent::SetCursorPattern(p) => self.pattern = p,
+            HeaderEvent::SetOrder(_) => todo!(),
+            HeaderEvent::SetSample(_) => todo!(),
+            HeaderEvent::SetSpeed(_) => todo!(),
+            HeaderEvent::SetTempo(_) => todo!(),
+            HeaderEvent::SetMaxCursorRow(r) => self.max_row = r,
+            HeaderEvent::SetMaxCursorPattern(p) => self.max_pattern = p,
+        }
+    }
+
+    pub fn draw(&self, draw_buffer: &mut DrawBuffer) {
+        let mut buf = [0; 3];
+        // row
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:03}", self.row).unwrap();
+        draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(12, 7), 5, 0);
+        // row max
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:03}", self.max_row).unwrap();
+        draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(16, 7), 5, 0);
+        // pattern
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:03}", self.pattern).unwrap();
+        draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(12, 6), 5, 0);
+        // max pattern
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:03}", self.max_pattern).unwrap();
+        draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(16, 6), 5, 0);
+    }
+
     pub fn draw_constant(&self, buffer: &mut DrawBuffer) {
         buffer.draw_rect(2, CharRect::new(0, 11, 0, 79));
         buffer.draw_string("Rust Tracker", CharPosition::new(34, 1), 0, 2);

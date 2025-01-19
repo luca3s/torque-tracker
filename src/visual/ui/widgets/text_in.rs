@@ -1,8 +1,11 @@
+use std::collections::VecDeque;
+
 use ascii::{AsciiChar, AsciiString};
 use font8x8::UnicodeFonts;
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, WINDOW_SIZE},
     draw_buffer::DrawBuffer,
 };
@@ -24,7 +27,7 @@ pub struct TextIn {
 impl Widget for TextIn {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
         draw_buffer.draw_string_length(self.text.as_str(), self.pos, self.width, 2, 0);
-        // draw the cursor by overdrawing a lette
+        // draw the cursor by overdrawing a letter
         if selected {
             let cursor_char_pos = self.pos + CharPosition::new(self.cursor_pos, 0);
             if self.cursor_pos < self.text.len() {
@@ -46,6 +49,7 @@ impl Widget for TextIn {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        _event: &mut VecDeque<GlobalEvent>,
     ) -> WidgetResponse {
         if !key_event.state.is_pressed() {
             return WidgetResponse::None;

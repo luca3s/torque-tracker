@@ -1,23 +1,31 @@
+pub mod confirm;
 pub mod page_menu;
 pub mod slider_dialog;
 
+use std::collections::VecDeque;
+
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer, ui::pages::PagesEnum};
+use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer};
 
 pub enum DialogResponse {
     RequestRedraw,
     // should also close all Dialogs
-    SwitchToPage(PagesEnum),
+    // SwitchToPage(PagesEnum),
     Close,
     /// (global_event to be sent, should close the current dialog)
-    GlobalEvent(GlobalEvent, bool),
+    // GlobalEvent(GlobalEvent, bool),
     None,
 }
 
 pub trait Dialog {
     fn draw(&self, draw_buffer: &mut DrawBuffer);
-    fn process_input(&mut self, key_event: &KeyEvent, modifiers: &Modifiers) -> DialogResponse;
+    fn process_input(
+        &mut self,
+        key_event: &KeyEvent,
+        modifiers: &Modifiers,
+        events: &mut VecDeque<GlobalEvent>,
+    ) -> DialogResponse;
 }
 
 pub struct DialogManager {

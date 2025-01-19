@@ -1,6 +1,9 @@
+use std::collections::VecDeque;
+
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
 };
@@ -24,6 +27,7 @@ impl Widget for Button {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        _event: &mut VecDeque<GlobalEvent>,
     ) -> WidgetResponse {
         if key_event.logical_key == Key::Named(NamedKey::Space)
             || key_event.logical_key == Key::Named(NamedKey::Enter)
@@ -58,8 +62,8 @@ impl Widget for Button {
 }
 
 impl Button {
-    const TOPLEFT_COLOR: usize = 3;
-    const BOTRIGHT_COLOR: usize = 1;
+    const TOPLEFT_COLOR: u8 = 3;
+    const BOTRIGHT_COLOR: u8 = 1;
 
     pub fn new(
         text: &'static str,

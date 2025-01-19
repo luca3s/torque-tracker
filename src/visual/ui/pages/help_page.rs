@@ -1,4 +1,7 @@
+use std::collections::VecDeque;
+
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::widgets::{
@@ -25,7 +28,7 @@ pub struct HelpPage {
 impl Page for HelpPage {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
         let selected = self.selected_widget;
-        for idx in 0..Self::WIDGET_COUNT {
+        for idx in Self::INDEX_RANGE {
             self.get_widget(idx).draw(draw_buffer, selected == idx);
         }
     }
@@ -38,19 +41,19 @@ impl Page for HelpPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        event: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
         let selected = self.selected_widget;
-        let response = self.get_widget(selected).process_input(modifiers, key_event);
+        let response = self
+            .get_widget_mut(selected)
+            .process_input(modifiers, key_event, event);
         match response {
             WidgetResponse::SwitchFocus(next) => {
-                // can panic here, because all involved values should be compile time
-                assert!(next < Self::WIDGET_COUNT);
                 self.selected_widget = next;
                 PageResponse::RequestRedraw
             }
             WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
             WidgetResponse::None => PageResponse::None,
-            WidgetResponse::GlobalEvent(e) => PageResponse::GlobalEvent(e),
         }
     }
 }
@@ -72,7 +75,10 @@ impl HelpPage {
         text_in.set_string("test".to_owned()).unwrap();
 
         Self {
-            widgets: WidgetList { text_in, quit_button },
+            widgets: WidgetList {
+                text_in,
+                quit_button,
+            },
             selected_widget: 0,
         }
     }

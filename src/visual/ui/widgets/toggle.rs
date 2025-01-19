@@ -1,6 +1,9 @@
+use std::collections::VecDeque;
+
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect, WINDOW_SIZE},
     draw_buffer::DrawBuffer,
 };
@@ -39,6 +42,7 @@ impl<T: Copy> Widget for Toggle<T> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        _events: &mut VecDeque<GlobalEvent>,
     ) -> WidgetResponse {
         if key_event.logical_key == Key::Named(NamedKey::Space)
             && modifiers.state().is_empty()

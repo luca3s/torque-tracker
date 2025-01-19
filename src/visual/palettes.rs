@@ -1,4 +1,4 @@
-const PALETTE_SIZE: usize = 16;
+pub const PALETTE_SIZE: usize = 16;
 
 pub type RGB8 = [u8; 3];
 
@@ -53,8 +53,8 @@ impl Palette<RGB8> {
 }
 
 impl Palette<RGB10A2> {
-    pub fn get_raw(&self, index: usize) -> u32 {
-        self.0[index].0
+    pub fn get_raw(&self, index: u8) -> u32 {
+        self.0[index as usize].0
     }
 }
 

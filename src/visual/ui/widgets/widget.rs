@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use winit::{
     event::{KeyEvent, Modifiers},
     keyboard::{Key, ModifiersState, NamedKey},
@@ -8,14 +10,19 @@ use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer};
 pub(crate) trait Widget {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool);
     /// returns a Some(usize) if the next widget gets selected
-    fn process_input(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> WidgetResponse;
+    fn process_input(
+        &mut self,
+        modifiers: &Modifiers,
+        key_event: &KeyEvent,
+        events: &mut VecDeque<GlobalEvent>,
+    ) -> WidgetResponse;
 }
 
 // SwitchFocus also has to request a redraw
 pub(crate) enum WidgetResponse {
     SwitchFocus(usize),
     RequestRedraw,
-    GlobalEvent(GlobalEvent),
+    // GlobalEvent(GlobalEvent),
     None,
 }
 

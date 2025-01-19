@@ -1,0 +1,106 @@
+use winit::keyboard::{Key, NamedKey};
+
+use crate::visual::{
+    coordinates::{CharPosition, CharRect},
+    ui::{
+        pages::create_widget_list,
+        widgets::{
+            button::Button,
+            widget::{NextWidget, Widget, WidgetResponse},
+        },
+    },
+};
+
+use super::{Dialog, DialogResponse};
+
+create_widget_list!(
+    ConfirmDialog;
+    {
+        ok: Button,
+        cancel: Button
+    }
+);
+
+pub struct ConfirmDialog {
+    text: &'static str,
+    text_pos: CharPosition,
+    // computed from the string length
+    rect: CharRect,
+    selected: usize,
+    widgets: WidgetList,
+}
+
+impl ConfirmDialog {
+    const OK_RECT: CharRect = CharRect::new(30, 32, 42, 50);
+    const CANCEL_RECT: CharRect = CharRect::new(30, 32, 31, 38);
+    pub fn new(text: &'static str) -> Self {
+        let width = (text.len() + 8).max(22);
+        let per_side = width / 2;
+        Self {
+            text,
+            text_pos: CharPosition::new(40 - per_side + 4, 27),
+            selected: Self::OK,
+            widgets: WidgetList {
+                ok: Button::new(
+                    "Ok",
+                    Self::OK_RECT,
+                    NextWidget {
+                        left: Some(Self::CANCEL),
+                        right: Some(Self::CANCEL),
+                        tab: Some(Self::CANCEL),
+                        shift_tab: Some(Self::CANCEL),
+                        ..Default::default()
+                    },
+                    || println!("Ok"),
+                ),
+                cancel: Button::new(
+                    "Cancel",
+                    Self::CANCEL_RECT,
+                    NextWidget {
+                        left: Some(Self::OK),
+                        right: Some(Self::OK),
+                        tab: Some(Self::OK),
+                        shift_tab: Some(Self::OK),
+                        ..Default::default()
+                    },
+                    || println!("cancel"),
+                ),
+            },
+            rect: CharRect::new(27, 34, 40 - per_side, 40 + per_side),
+        }
+    }
+}
+
+impl Dialog for ConfirmDialog {
+    fn draw(&self, draw_buffer: &mut super::DrawBuffer) {
+        draw_buffer.show_colors();
+        draw_buffer.draw_string(self.text, self.text_pos, 0, 2);
+        for widget in 0..Self::WIDGET_COUNT {
+            let is_selected = widget == self.selected;
+            self.get_widget(widget).draw(draw_buffer, is_selected);
+        }
+    }
+
+    fn process_input(
+        &mut self,
+        key_event: &winit::event::KeyEvent,
+        modifiers: &winit::event::Modifiers,
+        events: &mut std::collections::VecDeque<crate::visual::app::GlobalEvent>,
+    ) -> DialogResponse {
+        if key_event.logical_key == Key::Named(NamedKey::Escape) && modifiers.state().is_empty() {
+            return DialogResponse::Close;
+        }
+
+        match self
+            .get_widget_mut(self.selected)
+            .process_input(modifiers, key_event, events)
+        {
+            WidgetResponse::SwitchFocus(s) => {
+                self.selected = s;
+                DialogResponse::RequestRedraw
+            }
+            WidgetResponse::RequestRedraw => DialogResponse::RequestRedraw,
+            WidgetResponse::None => DialogResponse::None,
+        }
+    }
+}

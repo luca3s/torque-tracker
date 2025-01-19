@@ -1,8 +1,13 @@
+use std::collections::VecDeque;
+
 use ascii::{AsciiChar, AsciiString};
 use font8x8::UnicodeFonts;
 use winit::keyboard::{Key, NamedKey};
 
-use crate::visual::coordinates::{CharPosition, WINDOW_SIZE};
+use crate::visual::{
+    app::GlobalEvent,
+    coordinates::{CharPosition, WINDOW_SIZE},
+};
 
 use super::widget::{NextWidget, Widget, WidgetResponse};
 
@@ -48,6 +53,7 @@ impl Widget for TextInScroll {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        _event: &mut VecDeque<GlobalEvent>,
     ) -> super::widget::WidgetResponse {
         if !key_event.state.is_pressed() {
             return WidgetResponse::None;

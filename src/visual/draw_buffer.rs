@@ -1,3 +1,5 @@
+use crate::visual::palettes;
+
 use super::{
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
     palettes::{Palette, RGB10A2},
@@ -10,7 +12,7 @@ pub(crate) struct DrawBuffer {
 }
 
 impl DrawBuffer {
-    pub const BACKGROUND_COLOR: usize = 2;
+    pub const BACKGROUND_COLOR: u8 = 2;
 
     pub fn new() -> Self {
         Self {
@@ -23,8 +25,8 @@ impl DrawBuffer {
         &mut self,
         char_data: [u8; 8],
         position: CharPosition,
-        fg_color: usize,
-        bg_color: usize,
+        fg_color: u8,
+        bg_color: u8,
     ) {
         // this is the top_left pixel
         let position = (position.x() * FONT_SIZE, position.y() * FONT_SIZE);
@@ -45,8 +47,8 @@ impl DrawBuffer {
         &mut self,
         string: &str,
         position: CharPosition,
-        fg_color: usize,
-        bg_color: usize,
+        fg_color: u8,
+        bg_color: u8,
     ) {
         for (num, char) in string.char_indices() {
             self.draw_char(
@@ -65,8 +67,8 @@ impl DrawBuffer {
         string: &str,
         position: CharPosition,
         lenght: usize,
-        fg_color: usize,
-        bg_color: usize,
+        fg_color: u8,
+        bg_color: u8,
     ) {
         if string.len() > lenght {
             self.draw_string(&string[..=lenght], position, fg_color, bg_color)
@@ -87,9 +89,9 @@ impl DrawBuffer {
     pub fn draw_box(
         &mut self,
         char_rect: CharRect,
-        background_color: usize,
-        top_left_color: usize,
-        bot_right_color: usize,
+        background_color: u8,
+        top_left_color: u8,
+        bot_right_color: u8,
     ) {
         // needs to be between 0 and FONT_SIZE
         const BOX_THICKNESS: usize = 1;
@@ -174,12 +176,12 @@ impl DrawBuffer {
         }
     }
 
-    pub fn draw_rect(&mut self, color: usize, rect: CharRect) {
+    pub fn draw_rect(&mut self, color: u8, rect: CharRect) {
         let pixel_rect = PixelRect::from(rect);
         self.draw_pixel_rect(color, pixel_rect)
     }
 
-    pub fn draw_pixel_rect(&mut self, color: usize, rect: PixelRect) {
+    pub fn draw_pixel_rect(&mut self, color: u8, rect: PixelRect) {
         let color = self.color_palette.get_raw(color);
 
         for line in &mut self.framebuffer[rect.top()..=rect.bot()] {
@@ -191,5 +193,11 @@ impl DrawBuffer {
     fn mark_char(&mut self, position: CharPosition) {
         self.framebuffer[(position.y() + 4) * WINDOW_SIZE.0][position.x() + 4] =
             self.color_palette.get_raw(1);
+    }
+
+    pub fn show_colors(&mut self) {
+        for i in 0..palettes::PALETTE_SIZE as u8 {
+            self.draw_rect(i, CharPosition::new(i as usize, 5).into());
+        }
     }
 }

@@ -1,6 +1,6 @@
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, collections::VecDeque, rc::Rc};
 
-use crate::visual::coordinates::CharRect;
+use crate::visual::{app::GlobalEvent, coordinates::CharRect};
 
 use super::{
     button::Button,
@@ -25,8 +25,9 @@ impl<T: Copy + PartialEq> Widget for ToggleButton<T> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        event: &mut VecDeque<GlobalEvent>,
     ) -> WidgetResponse {
-        self.button.process_input(modifiers, key_event)
+        self.button.process_input(modifiers, key_event, event)
     }
 }
 

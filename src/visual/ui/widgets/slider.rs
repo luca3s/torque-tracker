@@ -1,4 +1,7 @@
-use std::ops::{AddAssign, Deref, SubAssign};
+use std::{
+    collections::VecDeque,
+    ops::{AddAssign, Deref, SubAssign},
+};
 
 use winit::keyboard::{Key, NamedKey};
 
@@ -111,9 +114,9 @@ pub struct Slider<const MIN: i16, const MAX: i16> {
 
 impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
-        const BACKGROUND_COLOR: usize = 0;
-        const CURSOR_COLOR: usize = 2;
-        const CURSOR_SELECTED_COLOR: usize = 3;
+        const BACKGROUND_COLOR: u8 = 0;
+        const CURSOR_COLOR: u8 = 2;
+        const CURSOR_SELECTED_COLOR: u8 = 3;
 
         const CURSOR_WIDTH: usize = 4;
 
@@ -170,6 +173,7 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        event: &mut VecDeque<GlobalEvent>,
     ) -> WidgetResponse {
         if !key_event.state.is_pressed() {
             return WidgetResponse::None;
@@ -204,11 +208,11 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                 // only reason i can imagine is that if you know the behaviour you can move quite quickly through a slider
                 let amount = {
                     let mut amount = 1;
-                    if modifiers.state().shift_key() {
-                        amount *= 4;
-                    }
                     if modifiers.state().super_key() {
                         amount *= 2;
+                    }
+                    if modifiers.state().shift_key() {
+                        amount *= 4;
                     }
                     if modifiers.state().alt_key() {
                         amount *= 8;
@@ -226,7 +230,8 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
             if let Some(first_char) = chars.next() {
                 if first_char.is_ascii_digit() {
                     let dialog = SliderDialog::new(first_char, self.dialog_return);
-                    return WidgetResponse::GlobalEvent(GlobalEvent::OpenDialog(Box::new(dialog)));
+                    event.push_back(GlobalEvent::OpenDialog(Box::new(dialog)));
+                    return WidgetResponse::None;
                 }
             }
         } else {

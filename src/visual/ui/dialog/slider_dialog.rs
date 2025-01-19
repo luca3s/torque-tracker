@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use winit::{
     event::{KeyEvent, Modifiers},
     keyboard::{Key, NamedKey},
@@ -21,7 +23,6 @@ pub struct SliderDialog {
 
 impl Dialog for SliderDialog {
     fn draw(&self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
-        println!("draw slider dialog");
         draw_buffer.draw_box(CharRect::new(24, 28, 29, 50), 3, 2, 2);
         draw_buffer.draw_rect(2, CharRect::new(25, 27, 30, 49));
         draw_buffer.draw_string("Enter Value", CharPosition::new(32, 26), 3, 2);
@@ -29,24 +30,29 @@ impl Dialog for SliderDialog {
         self.text.draw(draw_buffer, true);
     }
 
-    fn process_input(&mut self, key_event: &KeyEvent, modifiers: &Modifiers) -> DialogResponse {
+    fn process_input(
+        &mut self,
+        key_event: &KeyEvent,
+        modifiers: &Modifiers,
+        event: &mut VecDeque<GlobalEvent>,
+    ) -> DialogResponse {
         if key_event.state.is_pressed() {
             if key_event.logical_key == Key::Named(NamedKey::Escape) {
                 return DialogResponse::Close;
             } else if key_event.logical_key == Key::Named(NamedKey::Enter) {
                 if let Ok(num) = self.text.get_str().parse::<i16>() {
-                    return DialogResponse::GlobalEvent((self.return_event)(num), true);
+                    event.push_back((self.return_event)(num));
+                    return DialogResponse::Close;
                 }
                 return DialogResponse::Close;
             }
         }
 
-        match self.text.process_input(modifiers, key_event) {
+        match self.text.process_input(modifiers, key_event, event) {
             // cant switch focus as this is the only widget
             WidgetResponse::SwitchFocus(_) => DialogResponse::None,
             WidgetResponse::RequestRedraw => DialogResponse::RequestRedraw,
             WidgetResponse::None => DialogResponse::None,
-            WidgetResponse::GlobalEvent(e) => DialogResponse::GlobalEvent(e, false),
         }
     }
 }

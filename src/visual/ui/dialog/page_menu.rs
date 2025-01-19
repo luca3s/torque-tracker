@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
@@ -36,9 +38,9 @@ pub struct PageMenu {
 
 impl Dialog for PageMenu {
     fn draw(&self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
-        const BACKGROUND_COLOR: usize = 2;
-        const TOPLEFT_COLOR: usize = 3;
-        const BOTRIGHT_COLOR: usize = 1;
+        const BACKGROUND_COLOR: u8 = 2;
+        const TOPLEFT_COLOR: u8 = 3;
+        const BOTRIGHT_COLOR: u8 = 1;
         let top_left = self.rect.top_left();
         let button_width = self.rect.width() - 3;
 
@@ -81,6 +83,7 @@ impl Dialog for PageMenu {
         &mut self,
         key_event: &winit::event::KeyEvent,
         _modifiers: &winit::event::Modifiers,
+        event: &mut VecDeque<GlobalEvent>,
     ) -> DialogResponse {
         if key_event.logical_key == Key::Named(NamedKey::Enter) {
             if key_event.state.is_pressed() {
@@ -98,12 +101,14 @@ impl Dialog for PageMenu {
                             Menu::Settings => Self::settings(),
                         };
 
-                        return DialogResponse::GlobalEvent(
-                            GlobalEvent::OpenDialog(Box::new(menu)),
-                            false,
-                        );
+                        event.push_back(GlobalEvent::OpenDialog(Box::new(menu)));
+                        return DialogResponse::None;
                     }
-                    PageOrPageMenu::Page(page) => return DialogResponse::SwitchToPage(*page),
+                    PageOrPageMenu::Page(page) => {
+                        event.push_back(GlobalEvent::GoToPage(*page));
+                        return DialogResponse::Close;
+                        // return DialogResponse::SwitchToPage(*page)
+                    }
                     PageOrPageMenu::NotYetImplemented => {
                         println!("Not yet implementes");
                         return DialogResponse::RequestRedraw;

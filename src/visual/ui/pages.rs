@@ -1,7 +1,11 @@
 mod help_page;
+mod pattern;
 mod song_directory_config_page;
 
+use std::collections::VecDeque;
+
 use help_page::HelpPage;
+use pattern::PatternPage;
 use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
     event::{KeyEvent, Modifiers},
@@ -16,20 +20,31 @@ pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer);
 
-    fn process_key_event(&mut self, modifiers: &Modifiers, key_event: &KeyEvent) -> PageResponse;
+    fn process_key_event(
+        &mut self,
+        modifiers: &Modifiers,
+        key_event: &KeyEvent,
+        events: &mut VecDeque<GlobalEvent>,
+    ) -> PageResponse;
 }
 
 /// creates a struct called WidgetList with all the specified fields.
-/// 
+///
 /// inserts a const index for every field in WidgetList into the specified struct
 /// as well as a function to query for the Widgets from a those indices.
-/// 
+///
 /// Needs at least one fields to work. If it is less, just write from hand.
 macro_rules! create_widget_list {
     (@function $($name:ident),*) => {
-        fn get_widget(&mut self, idx: usize) -> &mut dyn Widget {
+        fn get_widget_mut(&mut self, idx: usize) -> &mut dyn Widget {
             paste::paste! (
                 $(if idx == Self::[<$name:upper>] { &mut self.widgets.$name } else)*
+                { panic!("invalid index {:?}", idx) }
+            )
+        }
+        fn get_widget(&self, idx: usize) -> &dyn Widget {
+            paste::paste! (
+                $(if idx == Self::[<$name:upper>] { &self.widgets.$name } else)*
                 { panic!("invalid index {:?}", idx) }
             )
         }
@@ -40,10 +55,12 @@ macro_rules! create_widget_list {
             $name: $type,
             $($n: $t),*
         }
+
         impl $page {
             paste::paste!(
                 const [<$name:upper>]: usize = 0;
             );
+            const INDEX_RANGE: std::ops::Range<usize> = 0..Self::WIDGET_COUNT;
             crate::visual::ui::pages::create_widget_list!($($n),* ; $name);
             crate::visual::ui::pages::create_widget_list!(@function $name, $($n),*);
         }
@@ -70,7 +87,7 @@ pub(crate) use create_widget_list;
 
 pub enum PageResponse {
     RequestRedraw,
-    GlobalEvent(GlobalEvent),
+    // GlobalEvent(GlobalEvent),
     None,
 }
 
@@ -78,6 +95,7 @@ pub enum PageResponse {
 pub enum PagesEnum {
     Help,
     SongDirectoryConfig,
+    Pattern,
 }
 
 pub enum PageEvent {
@@ -95,6 +113,7 @@ impl PageEvent {
 pub struct AllPages {
     help: HelpPage,
     song_directory_config: SongDirectoryConfigPage,
+    pattern: PatternPage,
 
     const_draw_needed: bool,
     current: PagesEnum,
@@ -105,14 +124,21 @@ impl AllPages {
         AllPages {
             help: HelpPage::new(),
             song_directory_config: SongDirectoryConfigPage::new(),
+            pattern: PatternPage::new(),
             current: PagesEnum::SongDirectoryConfig,
             const_draw_needed: true,
         }
     }
 
-    pub fn switch_page(&mut self, next_page: PagesEnum) {
-        self.current = next_page;
-        self.request_draw_const();
+    /// requests a redraw if it is needed
+    pub fn switch_page(&mut self, next_page: PagesEnum) -> PageResponse {
+        if next_page != self.current {
+            self.current = next_page;
+            self.request_draw_const();
+            PageResponse::RequestRedraw
+        } else {
+            PageResponse::None
+        }
     }
 
     pub fn request_draw_const(&mut self) {
@@ -126,6 +152,7 @@ impl AllPages {
         match self.current {
             PagesEnum::Help => self.help.draw(draw_buffer),
             PagesEnum::SongDirectoryConfig => self.song_directory_config.draw(draw_buffer),
+            PagesEnum::Pattern => self.pattern.draw(draw_buffer),
         }
     }
 
@@ -133,48 +160,47 @@ impl AllPages {
         match self.current {
             PagesEnum::Help => self.help.draw_constant(draw_buffer),
             PagesEnum::SongDirectoryConfig => self.song_directory_config.draw_constant(draw_buffer),
+            PagesEnum::Pattern => self.pattern.draw_constant(draw_buffer),
         }
         self.const_draw_needed = false;
     }
-
-    // pub fn update(&mut self) -> RequestRedraw {
-    //     let help = self.help.update();
-    //     let song_directory_config = self.song_directory_config.update();
-    //     match self.current {
-    //         PagesEnum::Help => help,
-    //         PagesEnum::SongDirectoryConfig => song_directory_config,
-    //     }
-    // }
 
     // add key_events for changing pages here
     pub fn process_key_event(
         &mut self,
         modifiers: &Modifiers,
         key_event: &KeyEvent,
+        events: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
-        if key_event.logical_key == Key::Named(NamedKey::F1) {
-            self.switch_page(PagesEnum::Help);
-            println!("open help page");
-            PageResponse::RequestRedraw
-        } else if key_event.logical_key == Key::Named(NamedKey::F5) {
+        if key_event.logical_key == Key::Named(NamedKey::F1) && key_event.state.is_pressed() {
+            self.switch_page(PagesEnum::Help)
+        } else if key_event.logical_key == Key::Named(NamedKey::F2)
+            && modifiers.state().is_empty()
+            && key_event.state.is_pressed()
+        {
+            self.switch_page(PagesEnum::Pattern)
+        } else if key_event.logical_key == Key::Named(NamedKey::F5) && key_event.state.is_pressed()
+        {
             if modifiers.state() == ModifiersState::SHIFT {
                 println!("open preferences page")
             } else if modifiers.state().is_empty() {
                 println!("open info page");
             }
-            return PageResponse::None;
-        } else if key_event.logical_key == Key::Named(NamedKey::F12) && modifiers.state().is_empty()
+            PageResponse::None
+        } else if key_event.logical_key == Key::Named(NamedKey::F12)
+            && modifiers.state().is_empty()
+            && key_event.state.is_pressed()
         {
-            self.switch_page(PagesEnum::SongDirectoryConfig);
-            return PageResponse::RequestRedraw;
+            self.switch_page(PagesEnum::SongDirectoryConfig)
         } else {
             // make the current page handle the event
-            return match self.current {
-                PagesEnum::Help => self.help.process_key_event(modifiers, key_event),
+            match self.current {
+                PagesEnum::Help => self.help.process_key_event(modifiers, key_event, events),
                 PagesEnum::SongDirectoryConfig => self
                     .song_directory_config
-                    .process_key_event(modifiers, key_event),
-            };
+                    .process_key_event(modifiers, key_event, events),
+                PagesEnum::Pattern => self.pattern.process_key_event(modifiers, key_event, events),
+            }
         }
     }
 

@@ -1,11 +1,20 @@
 use std::{
-    mem::ManuallyDrop,
+    collections::VecDeque,
+    num::NonZeroU16,
     sync::{Arc, LazyLock},
     thread::JoinHandle,
+    time::Duration,
 };
 
+use cpal::{
+    traits::{DeviceTrait, HostTrait},
+    Stream,
+};
 use smol::{channel::Sender, lock::Mutex};
-use tracker_engine::playback::audio_manager::AudioManager;
+use tracker_engine::{
+    manager::{AudioManager, StreamHandle},
+    project::song::Song,
+};
 use winit::{
     application::ApplicationHandler,
     event::{Modifiers, WindowEvent},
@@ -18,38 +27,45 @@ use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
-        dialog::{page_menu::PageMenu, Dialog, DialogManager, DialogResponse},
-        header::Header,
-        pages::{AllPages, PageEvent, PageResponse},
+        dialog::{confirm::ConfirmDialog, page_menu::PageMenu, Dialog, DialogManager, DialogResponse},
+        header::{Header, HeaderEvent},
+        pages::{AllPages, PageEvent, PageResponse, PagesEnum},
     },
 };
 
-static EXECUTOR: smol::Executor = smol::Executor::new();
-static AUDIO: LazyLock<Mutex<AudioManager>> = LazyLock::new(|| Mutex::new(AudioManager::new()));
+pub static EXECUTOR: smol::Executor = smol::Executor::new();
+pub static AUDIO: LazyLock<Mutex<AudioManager<cpal::OutputStreamTimestamp>>> =
+    LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
 
 pub enum GlobalEvent {
     OpenDialog(Box<dyn Dialog>),
     PageEvent(PageEvent),
+    Header(HeaderEvent),
+    /// also closes all dialogs
+    GoToPage(PagesEnum),
 }
 
 struct WorkerThreads {
-    standard: JoinHandle<()>,
-    audio_extra: Option<(JoinHandle<()>, Sender<()>)>,
-    close_msg: Sender<()>,
+    join: [JoinHandle<()>; 2],
+    close_msg: [Sender<()>; 2],
 }
 
 impl WorkerThreads {
     fn new() -> Self {
-        let (send, recv) = smol::channel::unbounded();
-        let thread = std::thread::Builder::new()
+        let (send1, recv1) = smol::channel::unbounded();
+        let thread1 = std::thread::Builder::new()
             .name("Background Worker".into())
-            .spawn(Self::worker_task(recv))
+            .spawn(Self::worker_task(recv1))
+            .unwrap();
+        let (send2, recv2) = smol::channel::unbounded();
+        let thread2 = std::thread::Builder::new()
+            .name("Background Worker".into())
+            .spawn(Self::worker_task(recv2))
             .unwrap();
 
         Self {
-            standard: thread,
-            audio_extra: None,
-            close_msg: send,
+            join: [thread1, thread2],
+            close_msg: [send1, send2],
         }
     }
 
@@ -59,38 +75,16 @@ impl WorkerThreads {
         }
     }
 
-    fn start_audio(&mut self) {
-        self.audio_extra.get_or_insert_with(|| {
-            let (send, recv) = smol::channel::unbounded();
-            let thread = std::thread::Builder::new()
-            .name("2nd Background Worker".into())
-            .spawn(Self::worker_task(recv))
-            .unwrap();
-
-            (thread, send)
-        });
-    }
-
-    /// signals the audio thread to stop and waits until it does
-    fn close_audio(&mut self) {
-        if let Some((thread, send)) = self.audio_extra.take() {
-            _ = send.send_blocking(());
-            send.close();
-            thread.join().unwrap();
-        }
-    }
-
     /// prepares the closing of the threads by signalling them to stop
     fn send_close(&mut self) {
-        _ = self.close_msg.send_blocking(());
-        self.close_audio();
+        self.close_msg.iter().for_each(|s| _ = s.send_blocking(()));
     }
 
     fn close_all(mut self) {
         self.send_close();
-        self.close_audio();
-        self.standard.join().unwrap();
-
+        let [one, two] = self.join;
+        one.join().unwrap();
+        two.join().unwrap();
     }
 }
 
@@ -99,17 +93,69 @@ pub struct App<'a> {
     draw_buffer: DrawBuffer,
     modifiers: Modifiers,
     ui_pages: AllPages,
+    event_queue: VecDeque<GlobalEvent>,
     dialog_manager: DialogManager,
     header: Header,
     event_loop_proxy: EventLoopProxy<GlobalEvent>,
     worker_threads: Option<WorkerThreads>,
+    // task should be Task<!>, but that isn't stable yet
+    audio_stream: Option<(StreamHandle<Stream>, smol::Task<()>)>,
 }
 
-impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
+impl ApplicationHandler<GlobalEvent> for App<'_> {
     fn new_events(&mut self, _: &ActiveEventLoop, start_cause: winit::event::StartCause) {
         if start_cause == winit::event::StartCause::Init {
-            // LazyLock::force(&AUDIO);
-            self.worker_threads = Some(WorkerThreads::new())
+            LazyLock::force(&AUDIO);
+            self.worker_threads = Some(WorkerThreads::new());
+            // spawn a task to collect sample garbage every 10 seconds
+            EXECUTOR
+                .spawn(async {
+                    loop {
+                        println!("collect garbage");
+                        let mut lock = AUDIO.lock().await;
+                        lock.collect_garbage();
+                        drop(lock);
+                        smol::Timer::after(Duration::from_secs(10)).await;
+                    }
+                })
+                .detach();
+            // start the audio stream.
+            let device = cpal::default_host().default_output_device().unwrap();
+            let config = device.default_output_config().unwrap();
+            println!("default config {:?}", config);
+            println!("device: {:?}", device.name());
+            let config = tracker_engine::manager::OutputConfig {
+                buffer_size: 32,
+                channel_count: NonZeroU16::new(2).unwrap(),
+                sample_rate: config.sample_rate().0,
+            };
+            let mut lock = AUDIO.lock_blocking();
+            let stream = lock.init_audio(&device, config).unwrap();
+            // unwrap fine as we just created the stream.
+            // TODO: why is this 1 second?
+            let buffer_time = lock.buffer_time().unwrap();
+            dbg!(buffer_time);
+            drop(lock);
+
+            // spawn a task to process the audio playback status updates
+            let task = EXECUTOR.spawn(async move {
+                let mut buffer_time = buffer_time;
+                loop {
+                    let mut lock = AUDIO.lock().await;
+                    if let Some(status) = lock.playback_status() {
+                        println!("{status:?}");
+                    } else {
+                        eprintln!("background task running while no stream active");
+                    }
+                    if let Some(time) = lock.buffer_time() {
+                        buffer_time = time;
+                        dbg!(buffer_time);
+                    }
+                    drop(lock);
+                    smol::Timer::after(buffer_time).await;
+                }
+            });
+            self.audio_stream = Some((stream, task));
         }
     }
 
@@ -134,10 +180,12 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
             draw_buffer,
             modifiers,
             ui_pages,
+            event_queue,
             dialog_manager,
-            header: _,
+            header,
             event_loop_proxy: _,
             worker_threads: _,
+            audio_stream: _,
         } = self;
 
         // panic is fine because when i get a window_event a window exists
@@ -147,8 +195,8 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
 
         match event {
             WindowEvent::CloseRequested => {
-                event_loop.exit()
-            }
+                event_queue.push_back(GlobalEvent::OpenDialog(Box::new(ConfirmDialog::new("Close Tracker?"))));
+            },
             WindowEvent::Resized(physical_size) => {
                 gpu_state.resize(physical_size);
                 window.request_redraw();
@@ -163,6 +211,7 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
             }
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
+                header.draw(draw_buffer);
                 ui_pages.draw(draw_buffer);
                 dialog_manager.draw(draw_buffer);
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
@@ -185,7 +234,7 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
                 }
 
                 if let Some(dialog) = dialog_manager.active_dialog_mut() {
-                    match dialog.process_input(&event, modifiers) {
+                    match dialog.process_input(&event, modifiers, event_queue) {
                         DialogResponse::Close => {
                             dialog_manager.close_dialog();
                             // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
@@ -194,32 +243,17 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
                         }
                         DialogResponse::RequestRedraw => window.request_redraw(),
                         DialogResponse::None => (),
-                        DialogResponse::SwitchToPage(page) => {
-                            dialog_manager.close_all();
-                            ui_pages.switch_page(page);
-                            window.request_redraw();
-                        }
-                        DialogResponse::GlobalEvent(e, should_close) => {
-                            if should_close {
-                                dialog_manager.close_dialog();
-                                ui_pages.request_draw_const();
-                                window.request_redraw();
-                            }
-                            self.user_event(event_loop, e);
-                        }
                     }
                 } else {
                     if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
                     {
                         let main_menu = PageMenu::main();
-                        self.user_event(event_loop, GlobalEvent::OpenDialog(Box::new(main_menu)));
+                        event_queue.push_back(GlobalEvent::OpenDialog(Box::new(main_menu)));
                     }
 
-                    match self.ui_pages.process_key_event(&self.modifiers, &event) {
-                        PageResponse::RequestRedraw => _ = self.try_request_redraw(),
+                    match ui_pages.process_key_event(&self.modifiers, &event, event_queue) {
+                        PageResponse::RequestRedraw => window.request_redraw(),
                         PageResponse::None => (),
-                        // if the page wants to send a custom_event i don't really have to send it i can just handle it myself
-                        PageResponse::GlobalEvent(event) => self.user_event(event_loop, event),
                     }
                 }
             }
@@ -228,28 +262,31 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
 
             _ => (),
         }
+
+        while let Some(event) = self.event_queue.pop_front() {
+            self.user_event(event_loop, event);
+        }
     }
 
-    /// loops while the response the the event is a new event and processes that
-    fn user_event(&mut self, _: &ActiveEventLoop, mut event: GlobalEvent) {
-        loop {
-            match event {
-                GlobalEvent::OpenDialog(dialog) => {
-                    self.dialog_manager.open_dialog(dialog);
-                    _ = self.try_request_redraw();
-                    break;
-                }
-                GlobalEvent::PageEvent(c) => {
-                    match self.ui_pages.process_page_event(c) {
-                        PageResponse::RequestRedraw => {
-                            // i may get a user_event without an existing window
-                            _ = self.try_request_redraw();
-                            break;
-                        }
-                        PageResponse::None => break,
-                        PageResponse::GlobalEvent(new_event) => event = new_event,
-                    }
-                }
+    /// i may need to add the ability for events to add events to the event queue, but that should be possible
+    fn user_event(&mut self, _: &ActiveEventLoop, event: GlobalEvent) {
+        match event {
+            GlobalEvent::OpenDialog(dialog) => {
+                self.dialog_manager.open_dialog(dialog);
+                _ = self.try_request_redraw();
+            }
+            GlobalEvent::PageEvent(c) => match self.ui_pages.process_page_event(c) {
+                PageResponse::RequestRedraw => _ = self.try_request_redraw(),
+                PageResponse::None => (),
+            },
+            GlobalEvent::Header(header_event) => {
+                self.header.process_event(header_event);
+                _ = self.try_request_redraw();
+            }
+            GlobalEvent::GoToPage(pages_enum) => {
+                self.dialog_manager.close_all();
+                self.ui_pages.switch_page(pages_enum);
+                _ = self.try_request_redraw();
             }
         }
     }
@@ -262,7 +299,7 @@ impl<'a> ApplicationHandler<GlobalEvent> for App<'a> {
     }
 }
 
-impl<'a> App<'a> {
+impl App<'_> {
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
             window_gpu: None,
@@ -270,9 +307,11 @@ impl<'a> App<'a> {
             modifiers: Modifiers::default(),
             ui_pages: AllPages::new(),
             dialog_manager: DialogManager::new(),
-            header: Header {},
+            header: Header::default(),
             event_loop_proxy: proxy,
             worker_threads: None,
+            audio_stream: None,
+            event_queue: VecDeque::with_capacity(3),
         }
     }
 

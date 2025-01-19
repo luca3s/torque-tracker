@@ -1,4 +1,4 @@
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, collections::VecDeque, rc::Rc};
 
 use crate::visual::{
     app::GlobalEvent,
@@ -55,16 +55,16 @@ super::create_widget_list!(
 
         old_effects: Toggle<bool>,
         compatible_gxx: Toggle<bool>,
-        
+
         instruments: ToggleButton<Control>,
         samples: ToggleButton<Control>,
-        
+
         stereo: ToggleButton<Playback>,
         mono: ToggleButton<Playback>,
 
         linear_slides: ToggleButton<PitchSlides>,
         amiga_slides: ToggleButton<PitchSlides>,
-        
+
         module_path: TextInScroll,
         sample_path: TextInScroll,
         instrument_path: TextInScroll,
@@ -80,15 +80,15 @@ pub struct SongDirectoryConfigPage {
 impl Page for SongDirectoryConfigPage {
     fn draw(&mut self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
         let selected = self.selected_widget;
-        for idx in 0..Self::WIDGET_COUNT {
+        for idx in Self::INDEX_RANGE {
             self.get_widget(idx).draw(draw_buffer, idx == selected);
         }
     }
 
     fn draw_constant(&mut self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
-        const BACKGROUND_COLOR: usize = 2;
-        const TOPLEFT_COLOR: usize = 1;
-        const BOTRIGHT_COLOR: usize = 3;
+        const BACKGROUND_COLOR: u8 = 2;
+        const TOPLEFT_COLOR: u8 = 1;
+        const BOTRIGHT_COLOR: u8 = 3;
 
         // fill complete page
         draw_buffer.draw_rect(BACKGROUND_COLOR, CharRect::PAGE_AREA);
@@ -148,8 +148,12 @@ impl Page for SongDirectoryConfigPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
+        event: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
-        match self.get_widget(self.selected_widget).process_input(modifiers, key_event) {
+        match self
+            .get_widget_mut(self.selected_widget)
+            .process_input(modifiers, key_event, event)
+        {
             WidgetResponse::SwitchFocus(next) => {
                 assert!(next < Self::WIDGET_COUNT);
                 self.selected_widget = next;
@@ -157,7 +161,6 @@ impl Page for SongDirectoryConfigPage {
             }
             WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
             WidgetResponse::None => PageResponse::None,
-            WidgetResponse::GlobalEvent(e) => PageResponse::GlobalEvent(e),
         }
     }
 }
@@ -469,7 +472,7 @@ impl SongDirectoryConfigPage {
                 sample_path,
                 instrument_path,
                 save,
-            }
+            },
         }
     }
 }
