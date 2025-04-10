@@ -1,11 +1,16 @@
 use std::{
-    mem::ManuallyDrop,
+    num::NonZeroU16,
     sync::{Arc, LazyLock},
     thread::JoinHandle,
 };
 
+use cpal::{
+    traits::{DeviceTrait, HostTrait},
+    StreamConfig,
+};
 use smol::{channel::Sender, lock::Mutex};
-use tracker_engine::playback::audio_manager::AudioManager;
+use tracker_engine::{manager::AudioManager, project::song::Song};
+use triple_buffer::triple_buffer;
 use winit::{
     application::ApplicationHandler,
     event::{Modifiers, WindowEvent},
@@ -25,7 +30,8 @@ use super::{
 };
 
 static EXECUTOR: smol::Executor = smol::Executor::new();
-static AUDIO: LazyLock<Mutex<AudioManager>> = LazyLock::new(|| Mutex::new(AudioManager::new()));
+static AUDIO: LazyLock<Mutex<AudioManager>> =
+    LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
 
 pub enum GlobalEvent {
     OpenDialog(Box<dyn Dialog>),
@@ -33,23 +39,26 @@ pub enum GlobalEvent {
 }
 
 struct WorkerThreads {
-    standard: JoinHandle<()>,
-    audio_extra: Option<(JoinHandle<()>, Sender<()>)>,
-    close_msg: Sender<()>,
+    handles: [JoinHandle<()>; 2],
+    close_msg: [Sender<()>; 2],
 }
 
 impl WorkerThreads {
     fn new() -> Self {
-        let (send, recv) = smol::channel::unbounded();
-        let thread = std::thread::Builder::new()
-            .name("Background Worker".into())
-            .spawn(Self::worker_task(recv))
+        let (send1, recv1) = smol::channel::unbounded();
+        let thread1 = std::thread::Builder::new()
+            .name("Background Worker 1".into())
+            .spawn(Self::worker_task(recv1))
+            .unwrap();
+        let (send2, recv2) = smol::channel::unbounded();
+        let thread2 = std::thread::Builder::new()
+            .name("Background Worker 2".into())
+            .spawn(Self::worker_task(recv2))
             .unwrap();
 
         Self {
-            standard: thread,
-            audio_extra: None,
-            close_msg: send,
+            handles: [thread1, thread2],
+            close_msg: [send1, send2],
         }
     }
 
@@ -59,37 +68,17 @@ impl WorkerThreads {
         }
     }
 
-    fn start_audio(&mut self) {
-        self.audio_extra.get_or_insert_with(|| {
-            let (send, recv) = smol::channel::unbounded();
-            let thread = std::thread::Builder::new()
-                .name("2nd Background Worker".into())
-                .spawn(Self::worker_task(recv))
-                .unwrap();
-
-            (thread, send)
-        });
-    }
-
-    /// signals the audio thread to stop and waits until it does
-    fn close_audio(&mut self) {
-        if let Some((thread, send)) = self.audio_extra.take() {
-            _ = send.send_blocking(());
-            send.close();
-            thread.join().unwrap();
-        }
-    }
-
     /// prepares the closing of the threads by signalling them to stop
     fn send_close(&mut self) {
-        _ = self.close_msg.send_blocking(());
-        self.close_audio();
+        _ = self.close_msg[0].send_blocking(());
+        _ = self.close_msg[1].send_blocking(());
     }
 
     fn close_all(mut self) {
         self.send_close();
-        self.close_audio();
-        self.standard.join().unwrap();
+        let [handle1, handle2] = self.handles;
+        handle1.join().unwrap();
+        handle2.join().unwrap();
     }
 }
 
@@ -102,12 +91,16 @@ pub struct App {
     header: Header,
     event_loop_proxy: EventLoopProxy<GlobalEvent>,
     worker_threads: Option<WorkerThreads>,
+    audio_stream: Option<(
+        cpal::Stream,
+        triple_buffer::Output<Option<cpal::OutputStreamTimestamp>>,
+    )>,
 }
 
 impl ApplicationHandler<GlobalEvent> for App {
     fn new_events(&mut self, _: &ActiveEventLoop, start_cause: winit::event::StartCause) {
         if start_cause == winit::event::StartCause::Init {
-            // LazyLock::force(&AUDIO);
+            LazyLock::force(&AUDIO);
             self.worker_threads = Some(WorkerThreads::new())
         }
     }
@@ -137,6 +130,7 @@ impl ApplicationHandler<GlobalEvent> for App {
             header: _,
             event_loop_proxy: _,
             worker_threads: _,
+            audio_stream: _,
         } = self;
 
         // panic is fine because when i get a window_event a window exists
@@ -270,6 +264,7 @@ impl App {
             header: Header {},
             event_loop_proxy: proxy,
             worker_threads: None,
+            audio_stream: None,
         }
     }
 
@@ -295,6 +290,48 @@ impl App {
             let gpu_state = smol::block_on(GPUState::new(window.clone()));
             (window, gpu_state)
         });
+    }
+
+    // TODO: make this configurable
+    fn start_audio_stream(&mut self) {
+        assert!(self.audio_stream.is_none());
+        let host = cpal::default_host();
+        let device = host.default_output_device().unwrap();
+        let default_config = device.default_output_config().unwrap();
+        let mut guard = AUDIO.lock_blocking();
+        let mut worker = guard.get_callback::<f32>(tracker_engine::manager::OutputConfig {
+            buffer_size: 1024,
+            channel_count: NonZeroU16::new(2).unwrap(),
+            sample_rate: 44_100,
+        });
+        // keep the guard as short as possible to not block the async threads
+        drop(guard);
+        let (mut send, recv) = triple_buffer(&None);
+        let stream = device
+            .build_output_stream(
+                &default_config.config(),
+                move |data, info| {
+                    worker(data);
+                    send.write(Some(info.timestamp()));
+                },
+                |err| eprintln!("audio stream err: {err:?}"),
+                None,
+            )
+            .unwrap();
+        self.audio_stream = Some((stream, recv));
+    }
+
+    fn close_audio_stream(&mut self) {
+        _ = self.audio_stream.take().unwrap();
+        AUDIO.lock_blocking().stream_closed();
+    }
+}
+
+impl Drop for App {
+    fn drop(&mut self) {
+        if self.audio_stream.is_some() {
+            self.close_audio_stream();
+        }
     }
 }
 

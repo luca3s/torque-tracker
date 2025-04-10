@@ -13,6 +13,8 @@ winit = "0.30.5"
 tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }
 smol = "2.0.2"
 paste = "1.0.15"
+cpal = "0.15.3"
+triple_buffer = "8.1.0"
 # widget_list_derive = { version = "0.1.0", path = "../widget_list_derive" }
 # symphonia = "0.5.4"
 
