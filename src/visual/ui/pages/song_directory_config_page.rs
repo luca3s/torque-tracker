@@ -172,23 +172,23 @@ impl SongDirectoryConfigPage {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::InitialTempo(n) => match self.widgets.initial_tempo.number.try_set(n) {
+            SDCChange::InitialTempo(n) => match self.widgets.initial_tempo.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::InitialSpeed(n) => match self.widgets.initial_speed.number.try_set(n) {
+            SDCChange::InitialSpeed(n) => match self.widgets.initial_speed.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::GlobalVolume(n) => match self.widgets.global_volume.number.try_set(n) {
+            SDCChange::GlobalVolume(n) => match self.widgets.global_volume.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::MixingVolume(n) => match self.widgets.mixing_volume.number.try_set(n) {
+            SDCChange::MixingVolume(n) => match self.widgets.mixing_volume.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::Seperation(n) => match self.widgets.seperation.number.try_set(n) {
+            SDCChange::Seperation(n) => match self.widgets.seperation.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },

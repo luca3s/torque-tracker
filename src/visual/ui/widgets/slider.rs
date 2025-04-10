@@ -86,12 +86,12 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
         }
     }
 
-    pub fn try_set(&mut self, value: i16) -> Result<(), i16> {
+    pub fn try_set(&mut self, value: i16) -> Result<(), ()> {
         if MIN < value && value < MAX {
             self.inner = value;
             Ok(())
         } else {
-            Err(value)
+            Err(())
         }
     }
 
@@ -104,7 +104,7 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
 /// Slider needs more Space then is specified in Rect as it draws the current value with an offset of 2 right to the box.
 /// currently this always draws 3 chars, but this can only take values between -99 and 999. If values outside of that are needed, this implementation needs to change
 pub struct Slider<const MIN: i16, const MAX: i16> {
-    pub number: BoundNumber<MIN, MAX>,
+    number: BoundNumber<MIN, MAX>,
     position: CharPosition,
     width: usize,
     next_widget: NextWidget,
@@ -200,7 +200,7 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                     }
                     -1
                 } else {
-                    // unreachable as the outer if has already checked this. could be changed to unsafe_unreachable
+                    // unreachable as the outer if has already checked this.
                     unreachable!()
                 };
 
@@ -275,5 +275,9 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
             dialog_return,
             callback: Box::new(callback),
         }
+    }
+
+    pub fn try_set(&mut self, value: i16) -> Result<(), ()> {
+        self.number.try_set(value).inspect(|_| (self.callback)(value))
     }
 }

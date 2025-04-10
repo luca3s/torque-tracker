@@ -7,14 +7,14 @@ edition = "2021"
 
 [dependencies]
 font8x8 = "0.3.1"
-wgpu = "23.0.0"
+wgpu = "24.0.0"
 ascii = "1.1.0"
 winit = "0.30.5"
 tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }
 smol = "2.0.2"
 paste = "1.0.15"
 cpal = "0.15.3"
-# symphonia = "0.5.4"
+triple_buffer = "8.1.0"
 
 # [profile.dev]
 # debug = 0

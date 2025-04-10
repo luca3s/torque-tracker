@@ -6,15 +6,9 @@ use std::{
     time::Duration,
 };
 
-use cpal::{
-    traits::{DeviceTrait, HostTrait},
-    Stream,
-};
 use smol::{channel::Sender, lock::Mutex};
-use tracker_engine::{
-    manager::{AudioManager, StreamHandle},
-    project::song::Song,
-};
+use tracker_engine::{manager::AudioManager, project::song::Song};
+use triple_buffer::triple_buffer;
 use winit::{
     application::ApplicationHandler,
     event::{Modifiers, WindowEvent},
@@ -23,18 +17,22 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
+use cpal::traits::{DeviceTrait, HostTrait};
+
 use super::{
     draw_buffer::DrawBuffer,
     gpu::GPUState,
     ui::{
-        dialog::{confirm::ConfirmDialog, page_menu::PageMenu, Dialog, DialogManager, DialogResponse},
+        dialog::{
+            confirm::ConfirmDialog, page_menu::PageMenu, Dialog, DialogManager, DialogResponse,
+        },
         header::{Header, HeaderEvent},
         pages::{AllPages, PageEvent, PageResponse, PagesEnum},
     },
 };
 
 pub static EXECUTOR: smol::Executor = smol::Executor::new();
-pub static AUDIO: LazyLock<Mutex<AudioManager<cpal::OutputStreamTimestamp>>> =
+pub static AUDIO: LazyLock<Mutex<AudioManager>> =
     LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
 
 pub enum GlobalEvent {
@@ -46,7 +44,7 @@ pub enum GlobalEvent {
 }
 
 struct WorkerThreads {
-    join: [JoinHandle<()>; 2],
+    handles: [JoinHandle<()>; 2],
     close_msg: [Sender<()>; 2],
 }
 
@@ -54,17 +52,17 @@ impl WorkerThreads {
     fn new() -> Self {
         let (send1, recv1) = smol::channel::unbounded();
         let thread1 = std::thread::Builder::new()
-            .name("Background Worker".into())
+            .name("Background Worker 1".into())
             .spawn(Self::worker_task(recv1))
             .unwrap();
         let (send2, recv2) = smol::channel::unbounded();
         let thread2 = std::thread::Builder::new()
-            .name("Background Worker".into())
+            .name("Background Worker 2".into())
             .spawn(Self::worker_task(recv2))
             .unwrap();
 
         Self {
-            join: [thread1, thread2],
+            handles: [thread1, thread2],
             close_msg: [send1, send2],
         }
     }
@@ -77,19 +75,20 @@ impl WorkerThreads {
 
     /// prepares the closing of the threads by signalling them to stop
     fn send_close(&mut self) {
-        self.close_msg.iter().for_each(|s| _ = s.send_blocking(()));
+        _ = self.close_msg[0].send_blocking(());
+        _ = self.close_msg[1].send_blocking(());
     }
 
     fn close_all(mut self) {
         self.send_close();
-        let [one, two] = self.join;
-        one.join().unwrap();
-        two.join().unwrap();
+        let [handle1, handle2] = self.handles;
+        handle1.join().unwrap();
+        handle2.join().unwrap();
     }
 }
 
-pub struct App<'a> {
-    window_gpu: Option<(Arc<Window>, GPUState<'a>)>,
+pub struct App {
+    window_gpu: Option<(Arc<Window>, GPUState)>,
     draw_buffer: DrawBuffer,
     modifiers: Modifiers,
     ui_pages: AllPages,
@@ -98,11 +97,14 @@ pub struct App<'a> {
     header: Header,
     event_loop_proxy: EventLoopProxy<GlobalEvent>,
     worker_threads: Option<WorkerThreads>,
-    // task should be Task<!>, but that isn't stable yet
-    audio_stream: Option<(StreamHandle<Stream>, smol::Task<()>)>,
+    audio_stream: Option<(
+        cpal::Stream,
+        triple_buffer::Output<Option<cpal::OutputStreamTimestamp>>,
+        smol::Task<()>,
+    )>,
 }
 
-impl ApplicationHandler<GlobalEvent> for App<'_> {
+impl ApplicationHandler<GlobalEvent> for App {
     fn new_events(&mut self, _: &ActiveEventLoop, start_cause: winit::event::StartCause) {
         if start_cause == winit::event::StartCause::Init {
             LazyLock::force(&AUDIO);
@@ -119,43 +121,6 @@ impl ApplicationHandler<GlobalEvent> for App<'_> {
                     }
                 })
                 .detach();
-            // start the audio stream.
-            let device = cpal::default_host().default_output_device().unwrap();
-            let config = device.default_output_config().unwrap();
-            println!("default config {:?}", config);
-            println!("device: {:?}", device.name());
-            let config = tracker_engine::manager::OutputConfig {
-                buffer_size: 32,
-                channel_count: NonZeroU16::new(2).unwrap(),
-                sample_rate: config.sample_rate().0,
-            };
-            let mut lock = AUDIO.lock_blocking();
-            let stream = lock.init_audio(&device, config).unwrap();
-            // unwrap fine as we just created the stream.
-            // TODO: why is this 1 second?
-            let buffer_time = lock.buffer_time().unwrap();
-            dbg!(buffer_time);
-            drop(lock);
-
-            // spawn a task to process the audio playback status updates
-            let task = EXECUTOR.spawn(async move {
-                let mut buffer_time = buffer_time;
-                loop {
-                    let mut lock = AUDIO.lock().await;
-                    if let Some(status) = lock.playback_status() {
-                        println!("{status:?}");
-                    } else {
-                        eprintln!("background task running while no stream active");
-                    }
-                    if let Some(time) = lock.buffer_time() {
-                        buffer_time = time;
-                        dbg!(buffer_time);
-                    }
-                    drop(lock);
-                    smol::Timer::after(buffer_time).await;
-                }
-            });
-            self.audio_stream = Some((stream, task));
         }
     }
 
@@ -195,8 +160,10 @@ impl ApplicationHandler<GlobalEvent> for App<'_> {
 
         match event {
             WindowEvent::CloseRequested => {
-                event_queue.push_back(GlobalEvent::OpenDialog(Box::new(ConfirmDialog::new("Close Tracker?"))));
-            },
+                event_queue.push_back(GlobalEvent::OpenDialog(Box::new(ConfirmDialog::new(
+                    "Close Tracker?",
+                ))));
+            }
             WindowEvent::Resized(physical_size) => {
                 gpu_state.resize(physical_size);
                 window.request_redraw();
@@ -298,8 +265,7 @@ impl ApplicationHandler<GlobalEvent> for App<'_> {
         }
     }
 }
-
-impl App<'_> {
+impl App {
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
             window_gpu: None,
@@ -337,6 +303,67 @@ impl App<'_> {
             let gpu_state = smol::block_on(GPUState::new(window.clone()));
             (window, gpu_state)
         });
+    }
+
+    // TODO: make this configurable
+    fn start_audio_stream(&mut self) {
+        assert!(self.audio_stream.is_none());
+        let host = cpal::default_host();
+        let device = host.default_output_device().unwrap();
+        let default_config = device.default_output_config().unwrap();
+        let mut guard = AUDIO.lock_blocking();
+        let mut worker = guard.get_callback::<f32>(tracker_engine::manager::OutputConfig {
+            buffer_size: 1024,
+            channel_count: NonZeroU16::new(2).unwrap(),
+            sample_rate: 44_100,
+        });
+        let buffer_time = guard.buffer_time().unwrap();
+        // keep the guard as short as possible to not block the async threads
+        drop(guard);
+        let (mut send, recv) = triple_buffer(&None);
+        let stream = device
+            .build_output_stream(
+                &default_config.config(),
+                move |data, info| {
+                    worker(data);
+                    send.write(Some(info.timestamp()));
+                },
+                |err| eprintln!("audio stream err: {err:?}"),
+                None,
+            )
+            .unwrap();
+        // spawn a task to process the audio playback status updates
+        let task = EXECUTOR.spawn(async move {
+            let mut buffer_time = buffer_time;
+            loop {
+                let mut lock = AUDIO.lock().await;
+                if let Some(status) = lock.playback_status() {
+                    println!("{status:?}");
+                } else {
+                    eprintln!("background task running while no stream active");
+                }
+                if let Some(time) = lock.buffer_time() {
+                    buffer_time = time;
+                    dbg!(buffer_time);
+                }
+                drop(lock);
+                smol::Timer::after(buffer_time).await;
+            }
+        });
+        self.audio_stream = Some((stream, recv, task));
+    }
+
+    fn close_audio_stream(&mut self) {
+        _ = self.audio_stream.take().unwrap();
+        AUDIO.lock_blocking().stream_closed();
+    }
+}
+
+impl Drop for App {
+    fn drop(&mut self) {
+        if self.audio_stream.is_some() {
+            self.close_audio_stream();
+        }
     }
 }
 

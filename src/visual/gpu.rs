@@ -2,12 +2,12 @@ use wgpu::{
     include_wgsl, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState,
     ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d,
-    Face, FilterMode, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, Instance,
-    MultisampleState, Operations, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor,
-    PolygonMode, PowerPreference, PrimitiveState, PrimitiveTopology, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
-    RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor,
-    ShaderStages, Surface, SurfaceConfiguration, SurfaceError, Texture, TextureAspect,
+    Face, FilterMode, FragmentState, FrontFace, Instance, MultisampleState, Operations, Origin3d,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
+    PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType,
+    SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, Surface, SurfaceConfiguration,
+    SurfaceError, TexelCopyBufferLayout, TexelCopyTextureInfo, Texture, TextureAspect,
     TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
     TextureViewDescriptor, TextureViewDimension, VertexState,
 };
@@ -15,8 +15,8 @@ use winit::window::Window;
 
 use super::coordinates::{PIXEL_SIZE, WINDOW_SIZE};
 
-pub struct GPUState<'a> {
-    surface: Surface<'a>,
+pub struct GPUState {
+    surface: Surface<'static>,
 
     device: Device,
     queue: Queue,
@@ -30,7 +30,7 @@ pub struct GPUState<'a> {
     diffuse_bind_group: BindGroup,
 }
 
-impl GPUState<'_> {
+impl GPUState {
     /// Size of the Framebuffer in GPU speech
     const TEXTURE_SIZE: Extent3d = Extent3d {
         width: WINDOW_SIZE.0 as u32,
@@ -42,7 +42,7 @@ impl GPUState<'_> {
         let size = window.inner_size();
         let instance = Instance::default();
 
-        let surface = instance.create_surface(window.clone()).unwrap();
+        let surface: Surface<'static> = instance.create_surface(window).unwrap();
 
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
@@ -263,14 +263,14 @@ impl GPUState<'_> {
         const ROWS_PER_IMAGE: Option<u32> = Some(WINDOW_SIZE.1 as u32);
         // push framebuffer to GPU-Texture
         self.queue.write_texture(
-            ImageCopyTexture {
+            TexelCopyTextureInfo {
                 texture: &self.streaming_texture,
                 mip_level: 0,
                 origin: Origin3d::ZERO,
                 aspect: TextureAspect::All,
             },
             framebuffer,
-            ImageDataLayout {
+            TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: BYTES_PER_ROW,
                 rows_per_image: ROWS_PER_IMAGE,
