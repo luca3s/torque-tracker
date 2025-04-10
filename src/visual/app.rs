@@ -263,8 +263,12 @@ impl ApplicationHandler<GlobalEvent> for App {
             // wait for all the threads to close
             workers.close_all();
         }
+        if self.audio_stream.is_some() {
+            self.close_audio_stream();
+        }
     }
 }
+
 impl App {
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
@@ -343,6 +347,7 @@ impl App {
                     eprintln!("background task running while no stream active");
                 }
                 if let Some(time) = lock.buffer_time() {
+                    assert!(time == buffer_time);
                     buffer_time = time;
                     dbg!(buffer_time);
                 }
