@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 font8x8 = "0.3.1"
-wgpu = "24.0.0"
+wgpu = "25.0.0"
 ascii = "1.1.0"
 winit = "0.30.5"
 tracker-engine = { git = "https://github.com/luca3s/tracker-engine" }

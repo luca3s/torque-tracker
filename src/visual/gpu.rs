@@ -56,17 +56,15 @@ impl GPUState {
             .unwrap();
 
         let (device, queue) = adapter
-            .request_device(
-                &DeviceDescriptor {
-                    label: None,
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
-                    // i only have two buffers, one constant size and the other one changing with the window size
-                    // so i don't need a lot of allocations and they don't have to be that fast
-                    memory_hints: wgpu::MemoryHints::MemoryUsage,
-                },
-                None,
-            )
+            .request_device(&DeviceDescriptor {
+                label: None,
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+                // i only have two buffers, one constant size and the other one changing with the window size
+                // so i don't need a lot of allocations and they don't have to be that fast
+                memory_hints: wgpu::MemoryHints::MemoryUsage,
+                trace: wgpu::Trace::Off,
+            })
             .await
             .unwrap();
 
