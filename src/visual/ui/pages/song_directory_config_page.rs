@@ -451,7 +451,10 @@ impl SongDirectoryConfigPage {
                 up: Some(WidgetList::INSTRUMENT_PATH),
                 ..Default::default()
             },
-            || println!("save preferences"),
+            || {
+                println!("save preferences");
+                None
+            },
         );
         Self {
             selected_widget: WidgetList::SONG_NAME,

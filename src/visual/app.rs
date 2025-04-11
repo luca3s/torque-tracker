@@ -41,6 +41,8 @@ pub enum GlobalEvent {
     Header(HeaderEvent),
     /// also closes all dialogs
     GoToPage(PagesEnum),
+    CloseDialog,
+    CloseApp,
 }
 
 struct WorkerThreads {
@@ -161,6 +163,8 @@ impl ApplicationHandler<GlobalEvent> for App {
             WindowEvent::CloseRequested => {
                 event_queue.push_back(GlobalEvent::OpenDialog(Box::new(ConfirmDialog::new(
                     "Close Tracker?",
+                    || Some(GlobalEvent::CloseApp),
+                    || Some(GlobalEvent::CloseDialog),
                 ))));
             }
             WindowEvent::Resized(physical_size) => {
@@ -235,7 +239,7 @@ impl ApplicationHandler<GlobalEvent> for App {
     }
 
     /// i may need to add the ability for events to add events to the event queue, but that should be possible
-    fn user_event(&mut self, _: &ActiveEventLoop, event: GlobalEvent) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: GlobalEvent) {
         match event {
             GlobalEvent::OpenDialog(dialog) => {
                 self.dialog_manager.open_dialog(dialog);
@@ -254,6 +258,8 @@ impl ApplicationHandler<GlobalEvent> for App {
                 self.ui_pages.switch_page(pages_enum);
                 _ = self.try_request_redraw();
             }
+            GlobalEvent::CloseDialog => self.dialog_manager.close_dialog(),
+            GlobalEvent::CloseApp => event_loop.exit(),
         }
     }
 

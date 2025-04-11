@@ -44,6 +44,7 @@ impl<T: Copy + PartialEq + 'static> ToggleButton<T> {
         let button = Button::new(text, rect, next_widget, move || {
             button_clone.set(variant);
             (cb)(variant);
+            None
         });
         Self {
             button,

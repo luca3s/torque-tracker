@@ -67,7 +67,10 @@ impl HelpPage {
             "quit",
             CharRect::new(30, 32, 2, 10),
             NextWidget::default(),
-            || println!("quit"),
+            || {
+                println!("quit");
+                None
+            },
         );
         let mut text_in = TextIn::new(
             CharPosition::new(3, 26),

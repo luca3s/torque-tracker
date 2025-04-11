@@ -1,6 +1,7 @@
 use winit::keyboard::{Key, NamedKey};
 
 use crate::visual::{
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     ui::{
         pages::create_widget_list,
@@ -32,7 +33,11 @@ pub struct ConfirmDialog {
 impl ConfirmDialog {
     const OK_RECT: CharRect = CharRect::new(30, 32, 42, 50);
     const CANCEL_RECT: CharRect = CharRect::new(30, 32, 31, 38);
-    pub fn new(text: &'static str) -> Self {
+    pub fn new(
+        text: &'static str,
+        ok_event: impl Fn() -> Option<GlobalEvent> + 'static,
+        cancel_event: impl Fn() -> Option<GlobalEvent> + 'static,
+    ) -> Self {
         let width = (text.len() + 8).max(22);
         let per_side = width / 2;
         Self {
@@ -50,7 +55,7 @@ impl ConfirmDialog {
                         shift_tab: Some(WidgetList::CANCEL),
                         ..Default::default()
                     },
-                    || println!("Ok"),
+                    ok_event,
                 ),
                 cancel: Button::new(
                     "Cancel",
@@ -62,7 +67,7 @@ impl ConfirmDialog {
                         shift_tab: Some(WidgetList::OK),
                         ..Default::default()
                     },
-                    || println!("cancel"),
+                    cancel_event,
                 ),
             },
             rect: CharRect::new(27, 34, 40 - per_side, 40 + per_side),

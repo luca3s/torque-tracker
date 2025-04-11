@@ -15,7 +15,7 @@ pub struct Button {
     rect: CharRect,
     pressed: bool,
     next_widget: NextWidget,
-    callback: Box<dyn Fn()>,
+    callback: Box<dyn Fn() -> Option<GlobalEvent>>,
 }
 
 impl Widget for Button {
@@ -27,7 +27,7 @@ impl Widget for Button {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        _event: &mut VecDeque<GlobalEvent>,
+        events: &mut VecDeque<GlobalEvent>,
     ) -> WidgetResponse {
         if key_event.logical_key == Key::Named(NamedKey::Space)
             || key_event.logical_key == Key::Named(NamedKey::Enter)
@@ -41,7 +41,9 @@ impl Widget for Button {
                     // meaning if the user pressed the key, then changed focus to another button and then releases
                     // no button should be triggered
                     if self.pressed {
-                        (self.callback)();
+                        if let Some(event) = (self.callback)() {
+                            events.push_back(event);
+                        }
                     }
                     self.pressed = false;
                     return WidgetResponse::RequestRedraw;
@@ -69,7 +71,7 @@ impl Button {
         text: &'static str,
         rect: CharRect,
         next_widget: NextWidget,
-        cb: impl Fn() + 'static,
+        cb: impl Fn() -> Option<GlobalEvent> + 'static,
     ) -> Self {
         // is 3 rows high, because bot and top are inclusive
         assert!(
