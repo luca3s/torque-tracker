@@ -28,3 +28,100 @@ or
     - criterion
     - bencher
     - flamegraph
+
+
+Make Cmd Q not close the App immediately
+see talk with winit maintainer on how to do this (from official winit matrix https://matrix.to/#/#rust-windowing:matrix.org):
+I investigated my issue a bit further and found https://github.com/rust-windowing/winit/pull/1583 where a default macOs menubar was added. This apparently also added the Cmd Q shortcut. On press this sends a command to the application to quit. I believe it would be good if this also triggered CloseRequested, although the Command isn't really associated to any specific window (so it's not a WindowEvent, but an ApplicationEvent). It seems like i have to add my own menu bar instead of using the default one.
+feat: added MacOS menu by casperstorm · Pull Request #1583 · rust-windowing/winit - GitHub
+This is an WIP PR which shows a way we could add a generic MacOS menu into winit. Let me know what you think, if this is something you could see in this repo, then we could collaborate about the de...
+kchibisov
+what are you trying to achieve?
+luca3s
+I want to show a popup when a user presses Cmd Q.
+kchibisov
+have you tried the link?
+luca3s
+
+kchibisov
+
+    luca3s: I think you can use https://docs.rs/winit/latest/winit/platform/macos/trait.WindowExtMacOS.html#tymethod.set_document_edited IIRC it should make a prompt I that's what you want.
+
+This one? yes it behaved the same as before
+kchibisov
+if you set it to true?
+luca3s
+Yes. I even added an assert that is_document_edited returns true.
+madsmtm
+
+    luca3s
+    I investigated my issue a bit further and found https://github.com/rust-windowing/winit/pull/1583 where a default macOs menubar was added. This apparently also added the Cmd Q shortcut. On press this sends a command to the application to quit. I believe it would be good if this also triggered CloseRequested, although the Command isn't really associated to any specific window (so it's not a WindowEvent, but an ApplicationEvent). It seems like i have to add my own menu bar instead of using the default one.
+
+The menu bar action should probably use stop: instead of terminate:
+luca3s
+Hm i just tried to change that, but it doesn't change the behaviour. My setup is working, when i put a nonsense string in there the Cmd Q shortcut stops working completely.
+Another thing i noticed now is that this apparently is independent of the dock right click menu, which also has a option to quit the application. Do you know where this is defined? Or is it a Macos default?
+madsmtm
+Specifies to call NSApplication methods, respectively -[NSApplication stop:] or -[NSApplication terminate:]
+stop(_:) | Apple Developer Documentation - Apple Developer Documentation
+Stops the main event loop.
+terminate(_:) | Apple Developer Documentation - Apple Developer Documentation
+Terminates the receiver.
+Pretty sure dock menu cannot be changed though
+Or then again, maybe it can with https://developer.apple.com/documentation/appkit/nsapplicationdelegate/applicationdockmenu(_:)?language=objc
+applicationDockMenu(_:) | Apple Developer Documentation - Apple Developer Documentation
+Returns the app’s dock menu.
+luca3s
+
+    madsmtm
+    Pretty sure dock menu cannot be changed though
+
+I have an App that uses SDL2 that reacts to the Dock in the same way as to Cmd Q and close via window decorators. So it is definetly possible.
+luca3s
+
+    madsmtm
+    Specifies to call NSApplication methods, respectively -[NSApplication stop:] or -[NSApplication terminate:]
+
+it sounds like stop: should work... hm maybe i did something wrong. It should just be replacing terminate: with stop: inside of the "sel" macro right? From the Documentation it seems like one could also use https://developer.apple.com/documentation/appkit/nsapplicationdelegate/applicationshouldterminate(_:)?language=objc to cancel termination.
+applicationShouldTerminate(_:) | Apple Developer Documentation - Apple Developer Documentation
+Returns a value that indicates if the app should terminate.
+madsmtm
+No, applicationShouldTerminate is called by AppKit when shutting down, you don't request it yourself
+And yeah, replace in sel! macro
+Ah, you mean intercept applicationShouldTerminate
+Or override it
+Yeah, that could be done, though we recently decided not to install our own NSApplicationDelegate
+See https://github.com/rust-windowing/winit/pull/3758
+Allow the user to register the application delegate on macOS and iOS by madsmtm · Pull Request #3758 · rust-windowing/winit - GitHub
+Register for event-loop lifecycle events using the NSNotification API instead of application delegates. This gives the user full control over the application delegate, which opens several doors for...
+So that's something you'd have to implement yourself
+(In the next version of winit at least)
+luca3s
+
+    madsmtm
+    So that's something you'd have to implement yourself
+
+is that in regard to the Dock menu behaviour or also the menu bar behaviour? Dock is not that important to me honestly
+madsmtm
+menu bar
+Though doing so, you'd handle dock correctly as well
+luca3s
+Let's say i only want to change the menu bar behaviour. Would you recommend to overwrite the menu entry with my own or implement applicationShouldTerminate? I have never worked with MacOs APIs
+madsmtm
+
+Hmm. Kinda difficult with Winit v0.30, since that takes control over the NSApplicationDelegate. If you're stuck on that version, I think I'd recommend forking, and modifying the NSApplicationDelegate, somewhere around here:
+https://github.com/rust-windowing/winit/blob/v0.30.x/src/platform_impl/macos/app_state.rs#L63-L73
+
+To implement applicationShouldTerminate.
+winit/src/platform_impl/macos/app_state.rs at v0.30.x · rust-windowing/winit - GitHub
+Window handling library in pure Rust. Contribute to rust-windowing/winit development by creating an account on GitHub.
+With Winit v0.31, you'd do the same, except instead of forking, you'd add an object similar to the ApplicationDelegate in Winit v0.30 using objc2, and register it with NSApplication::setDelegate.
+Thinking about it, I don't think changing terminate: to stop: would really solve your problem
+Since both of those still shut down the application
+I guess with stop:, you have the benefit of being able to start it again (EventLoop::run_on_demand).
+luca3s
+Is winit 0.31 out? It's not time sensitive at all so i could wait for that. Would it be possible to use something like https://docs.rs/muda/latest/muda/ to overwrite the Menu Bar entry and send me a winit event? That way i wouldn't use stop or terminate and it would be a lot easier for me. I don't really want to overwrite all the ways to close the App, just Cmd Q as it is so easy to press by mistake.
+muda - Rust
+muda is a Menu Utilities library for Desktop Applications.
+madsmtm
+Right, yeah, muda is an option
