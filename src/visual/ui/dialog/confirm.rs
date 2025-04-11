@@ -14,7 +14,6 @@ use crate::visual::{
 use super::{Dialog, DialogResponse};
 
 create_widget_list!(
-    ConfirmDialog;
     {
         ok: Button,
         cancel: Button
@@ -39,16 +38,16 @@ impl ConfirmDialog {
         Self {
             text,
             text_pos: CharPosition::new(40 - per_side + 4, 27),
-            selected: Self::OK,
+            selected: WidgetList::OK,
             widgets: WidgetList {
                 ok: Button::new(
                     "Ok",
                     Self::OK_RECT,
                     NextWidget {
-                        left: Some(Self::CANCEL),
-                        right: Some(Self::CANCEL),
-                        tab: Some(Self::CANCEL),
-                        shift_tab: Some(Self::CANCEL),
+                        left: Some(WidgetList::CANCEL),
+                        right: Some(WidgetList::CANCEL),
+                        tab: Some(WidgetList::CANCEL),
+                        shift_tab: Some(WidgetList::CANCEL),
                         ..Default::default()
                     },
                     || println!("Ok"),
@@ -57,10 +56,10 @@ impl ConfirmDialog {
                     "Cancel",
                     Self::CANCEL_RECT,
                     NextWidget {
-                        left: Some(Self::OK),
-                        right: Some(Self::OK),
-                        tab: Some(Self::OK),
-                        shift_tab: Some(Self::OK),
+                        left: Some(WidgetList::OK),
+                        right: Some(WidgetList::OK),
+                        tab: Some(WidgetList::OK),
+                        shift_tab: Some(WidgetList::OK),
                         ..Default::default()
                     },
                     || println!("cancel"),
@@ -75,9 +74,11 @@ impl Dialog for ConfirmDialog {
     fn draw(&self, draw_buffer: &mut super::DrawBuffer) {
         draw_buffer.show_colors();
         draw_buffer.draw_string(self.text, self.text_pos, 0, 2);
-        for widget in 0..Self::WIDGET_COUNT {
+        for widget in 0..WidgetList::WIDGET_COUNT {
             let is_selected = widget == self.selected;
-            self.get_widget(widget).draw(draw_buffer, is_selected);
+            self.widgets
+                .get_widget(widget)
+                .draw(draw_buffer, is_selected);
         }
     }
 
@@ -92,6 +93,7 @@ impl Dialog for ConfirmDialog {
         }
 
         match self
+            .widgets
             .get_widget_mut(self.selected)
             .process_input(modifiers, key_event, events)
         {

@@ -14,7 +14,7 @@ use crate::visual::{
 use super::{Page, PageResponse, Widget};
 
 super::create_widget_list!(
-    HelpPage; {
+   {
         text_in: TextIn,
         quit_button: Button
     }
@@ -28,8 +28,10 @@ pub struct HelpPage {
 impl Page for HelpPage {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
         let selected = self.selected_widget;
-        for idx in Self::INDEX_RANGE {
-            self.get_widget(idx).draw(draw_buffer, selected == idx);
+        for idx in WidgetList::INDEX_RANGE {
+            self.widgets
+                .get_widget(idx)
+                .draw(draw_buffer, selected == idx);
         }
     }
 
@@ -45,6 +47,7 @@ impl Page for HelpPage {
     ) -> PageResponse {
         let selected = self.selected_widget;
         let response = self
+            .widgets
             .get_widget_mut(selected)
             .process_input(modifiers, key_event, event);
         match response {

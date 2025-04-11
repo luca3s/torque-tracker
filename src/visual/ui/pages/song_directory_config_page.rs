@@ -44,7 +44,6 @@ pub enum SDCChange {
 }
 
 super::create_widget_list!(
-    SongDirectoryConfigPage;
     {
         song_name: TextIn,
         initial_tempo: Slider<31, 255>,
@@ -80,8 +79,10 @@ pub struct SongDirectoryConfigPage {
 impl Page for SongDirectoryConfigPage {
     fn draw(&mut self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
         let selected = self.selected_widget;
-        for idx in Self::INDEX_RANGE {
-            self.get_widget(idx).draw(draw_buffer, idx == selected);
+        for idx in WidgetList::INDEX_RANGE {
+            self.widgets
+                .get_widget(idx)
+                .draw(draw_buffer, idx == selected);
         }
     }
 
@@ -151,11 +152,12 @@ impl Page for SongDirectoryConfigPage {
         event: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
         match self
+            .widgets
             .get_widget_mut(self.selected_widget)
             .process_input(modifiers, key_event, event)
         {
             WidgetResponse::SwitchFocus(next) => {
-                assert!(next < Self::WIDGET_COUNT);
+                assert!(next < WidgetList::WIDGET_COUNT);
                 self.selected_widget = next;
                 PageResponse::RequestRedraw
             }
@@ -200,8 +202,8 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 16),
             25,
             NextWidget {
-                down: Some(Self::INITIAL_TEMPO),
-                tab: Some(Self::INITIAL_TEMPO),
+                down: Some(WidgetList::INITIAL_TEMPO),
+                tab: Some(WidgetList::INITIAL_TEMPO),
                 ..Default::default()
             },
             |s| println!("new song name: {}", s),
@@ -212,10 +214,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 19),
             32,
             NextWidget {
-                up: Some(Self::SONG_NAME),
-                shift_tab: Some(Self::SONG_NAME),
-                down: Some(Self::INITIAL_SPEED),
-                tab: Some(Self::INITIAL_SPEED),
+                up: Some(WidgetList::SONG_NAME),
+                shift_tab: Some(WidgetList::SONG_NAME),
+                down: Some(WidgetList::INITIAL_SPEED),
+                tab: Some(WidgetList::INITIAL_SPEED),
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
@@ -226,10 +228,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 20),
             32,
             NextWidget {
-                up: Some(Self::INITIAL_TEMPO),
-                shift_tab: Some(Self::INITIAL_TEMPO),
-                down: Some(Self::GLOBAL_VOLUME),
-                tab: Some(Self::GLOBAL_VOLUME),
+                up: Some(WidgetList::INITIAL_TEMPO),
+                shift_tab: Some(WidgetList::INITIAL_TEMPO),
+                down: Some(WidgetList::GLOBAL_VOLUME),
+                tab: Some(WidgetList::GLOBAL_VOLUME),
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
@@ -240,10 +242,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 23),
             16,
             NextWidget {
-                up: Some(Self::INITIAL_SPEED),
-                shift_tab: Some(Self::INITIAL_SPEED),
-                down: Some(Self::MIXING_VOLUME),
-                tab: Some(Self::MIXING_VOLUME),
+                up: Some(WidgetList::INITIAL_SPEED),
+                shift_tab: Some(WidgetList::INITIAL_SPEED),
+                down: Some(WidgetList::MIXING_VOLUME),
+                tab: Some(WidgetList::MIXING_VOLUME),
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
@@ -254,10 +256,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 24),
             16,
             NextWidget {
-                up: Some(Self::GLOBAL_VOLUME),
-                shift_tab: Some(Self::GLOBAL_VOLUME),
-                down: Some(Self::SEPERATION),
-                tab: Some(Self::SEPERATION),
+                up: Some(WidgetList::GLOBAL_VOLUME),
+                shift_tab: Some(WidgetList::GLOBAL_VOLUME),
+                down: Some(WidgetList::SEPERATION),
+                tab: Some(WidgetList::SEPERATION),
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
@@ -268,10 +270,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 25),
             16,
             NextWidget {
-                up: Some(Self::MIXING_VOLUME),
-                shift_tab: Some(Self::MIXING_VOLUME),
-                down: Some(Self::OLD_EFFECTS),
-                tab: Some(Self::OLD_EFFECTS),
+                up: Some(WidgetList::MIXING_VOLUME),
+                shift_tab: Some(WidgetList::MIXING_VOLUME),
+                down: Some(WidgetList::OLD_EFFECTS),
+                tab: Some(WidgetList::OLD_EFFECTS),
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::Seperation(n))),
@@ -282,12 +284,12 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 26),
             16,
             NextWidget {
-                left: Some(Self::SEPERATION),
-                right: Some(Self::COMPATIBLE_GXX),
-                up: Some(Self::SEPERATION),
-                down: Some(Self::COMPATIBLE_GXX),
-                tab: Some(Self::COMPATIBLE_GXX),
-                shift_tab: Some(Self::SEPERATION),
+                left: Some(WidgetList::SEPERATION),
+                right: Some(WidgetList::COMPATIBLE_GXX),
+                up: Some(WidgetList::SEPERATION),
+                down: Some(WidgetList::COMPATIBLE_GXX),
+                tab: Some(WidgetList::COMPATIBLE_GXX),
+                shift_tab: Some(WidgetList::SEPERATION),
             },
             &[(false, "Off"), (true, "On")],
             |onoff| println!("Old Effects: {}", onoff),
@@ -297,12 +299,12 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 27),
             16,
             NextWidget {
-                left: Some(Self::OLD_EFFECTS),
-                right: Some(Self::INSTRUMENTS),
-                up: Some(Self::OLD_EFFECTS),
-                down: Some(Self::INSTRUMENTS),
-                tab: Some(Self::INSTRUMENTS),
-                shift_tab: Some(Self::OLD_EFFECTS),
+                left: Some(WidgetList::OLD_EFFECTS),
+                right: Some(WidgetList::INSTRUMENTS),
+                up: Some(WidgetList::OLD_EFFECTS),
+                down: Some(WidgetList::INSTRUMENTS),
+                tab: Some(WidgetList::INSTRUMENTS),
+                shift_tab: Some(WidgetList::OLD_EFFECTS),
             },
             &[(false, "Off"), (true, "On")],
             |onoff| println!("Compatible Gxx: {}", onoff),
@@ -313,12 +315,12 @@ impl SongDirectoryConfigPage {
             "Instruments",
             CharRect::new(29, 31, 16, 30),
             NextWidget {
-                left: Some(Self::SAMPLES),
-                right: Some(Self::SAMPLES),
-                up: Some(Self::COMPATIBLE_GXX),
-                down: Some(Self::STEREO),
-                tab: Some(Self::SAMPLES),
-                shift_tab: Some(Self::SAMPLES),
+                left: Some(WidgetList::SAMPLES),
+                right: Some(WidgetList::SAMPLES),
+                up: Some(WidgetList::COMPATIBLE_GXX),
+                down: Some(WidgetList::STEREO),
+                tab: Some(WidgetList::SAMPLES),
+                shift_tab: Some(WidgetList::SAMPLES),
             },
             Control::Instruments,
             control_rc.clone(),
@@ -328,12 +330,12 @@ impl SongDirectoryConfigPage {
             "Samples",
             CharRect::new(29, 31, 31, 45),
             NextWidget {
-                left: Some(Self::INSTRUMENTS),
-                right: Some(Self::INSTRUMENTS),
-                up: Some(Self::COMPATIBLE_GXX),
-                down: Some(Self::MONO),
-                tab: Some(Self::INSTRUMENTS),
-                shift_tab: Some(Self::INSTRUMENTS),
+                left: Some(WidgetList::INSTRUMENTS),
+                right: Some(WidgetList::INSTRUMENTS),
+                up: Some(WidgetList::COMPATIBLE_GXX),
+                down: Some(WidgetList::MONO),
+                tab: Some(WidgetList::INSTRUMENTS),
+                shift_tab: Some(WidgetList::INSTRUMENTS),
             },
             Control::Samples,
             control_rc,
@@ -345,12 +347,12 @@ impl SongDirectoryConfigPage {
             "Stereo",
             CharRect::new(32, 34, 16, 30),
             NextWidget {
-                left: Some(Self::MONO),
-                right: Some(Self::MONO),
-                up: Some(Self::INSTRUMENTS),
-                down: Some(Self::LINEAR_SLIDES),
-                tab: Some(Self::MONO),
-                shift_tab: Some(Self::MONO),
+                left: Some(WidgetList::MONO),
+                right: Some(WidgetList::MONO),
+                up: Some(WidgetList::INSTRUMENTS),
+                down: Some(WidgetList::LINEAR_SLIDES),
+                tab: Some(WidgetList::MONO),
+                shift_tab: Some(WidgetList::MONO),
             },
             Playback::Stereo,
             stereo_mono_rs.clone(),
@@ -361,12 +363,12 @@ impl SongDirectoryConfigPage {
             "Mono",
             CharRect::new(32, 34, 31, 45),
             NextWidget {
-                left: Some(Self::STEREO),
-                right: Some(Self::STEREO),
-                up: Some(Self::SAMPLES),
-                down: Some(Self::AMIGA_SLIDES),
-                tab: Some(Self::STEREO),
-                shift_tab: Some(Self::STEREO),
+                left: Some(WidgetList::STEREO),
+                right: Some(WidgetList::STEREO),
+                up: Some(WidgetList::SAMPLES),
+                down: Some(WidgetList::AMIGA_SLIDES),
+                tab: Some(WidgetList::STEREO),
+                shift_tab: Some(WidgetList::STEREO),
             },
             Playback::Mono,
             stereo_mono_rs,
@@ -378,12 +380,12 @@ impl SongDirectoryConfigPage {
             "Linear",
             CharRect::new(35, 37, 16, 30),
             NextWidget {
-                left: Some(Self::AMIGA_SLIDES),
-                right: Some(Self::AMIGA_SLIDES),
-                up: Some(Self::STEREO),
-                down: Some(Self::MODULE_PATH),
-                tab: Some(Self::AMIGA_SLIDES),
-                shift_tab: Some(Self::AMIGA_SLIDES),
+                left: Some(WidgetList::AMIGA_SLIDES),
+                right: Some(WidgetList::AMIGA_SLIDES),
+                up: Some(WidgetList::STEREO),
+                down: Some(WidgetList::MODULE_PATH),
+                tab: Some(WidgetList::AMIGA_SLIDES),
+                shift_tab: Some(WidgetList::AMIGA_SLIDES),
             },
             PitchSlides::Linear,
             pitch_slides_rc.clone(),
@@ -393,12 +395,12 @@ impl SongDirectoryConfigPage {
             "Amiga",
             CharRect::new(35, 37, 31, 45),
             NextWidget {
-                left: Some(Self::LINEAR_SLIDES),
-                right: Some(Self::LINEAR_SLIDES),
-                up: Some(Self::MONO),
-                down: Some(Self::MODULE_PATH),
-                tab: Some(Self::LINEAR_SLIDES),
-                shift_tab: Some(Self::LINEAR_SLIDES),
+                left: Some(WidgetList::LINEAR_SLIDES),
+                right: Some(WidgetList::LINEAR_SLIDES),
+                up: Some(WidgetList::MONO),
+                down: Some(WidgetList::MODULE_PATH),
+                tab: Some(WidgetList::LINEAR_SLIDES),
+                shift_tab: Some(WidgetList::LINEAR_SLIDES),
             },
             PitchSlides::Amiga,
             pitch_slides_rc,
@@ -409,10 +411,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(13, 42),
             64,
             NextWidget {
-                up: Some(Self::LINEAR_SLIDES),
-                down: Some(Self::SAMPLE_PATH),
-                tab: Some(Self::SAMPLE_PATH),
-                shift_tab: Some(Self::AMIGA_SLIDES), // whyy???
+                up: Some(WidgetList::LINEAR_SLIDES),
+                down: Some(WidgetList::SAMPLE_PATH),
+                tab: Some(WidgetList::SAMPLE_PATH),
+                shift_tab: Some(WidgetList::AMIGA_SLIDES), // whyy???
                 ..Default::default()
             },
             |text| println!("Module path set to {text}"),
@@ -421,10 +423,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(13, 43),
             64,
             NextWidget {
-                up: Some(Self::MODULE_PATH),
-                shift_tab: Some(Self::MODULE_PATH),
-                down: Some(Self::INSTRUMENT_PATH),
-                tab: Some(Self::INSTRUMENT_PATH),
+                up: Some(WidgetList::MODULE_PATH),
+                shift_tab: Some(WidgetList::MODULE_PATH),
+                down: Some(WidgetList::INSTRUMENT_PATH),
+                tab: Some(WidgetList::INSTRUMENT_PATH),
                 ..Default::default()
             },
             |text| println!("Sample path set to {text}"),
@@ -433,10 +435,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(13, 44),
             64,
             NextWidget {
-                up: Some(Self::MODULE_PATH),
-                shift_tab: Some(Self::MODULE_PATH),
-                down: Some(Self::SAVE),
-                tab: Some(Self::SAVE),
+                up: Some(WidgetList::MODULE_PATH),
+                shift_tab: Some(WidgetList::MODULE_PATH),
+                down: Some(WidgetList::SAVE),
+                tab: Some(WidgetList::SAVE),
                 ..Default::default()
             },
             |text| println!("Instrument path set to {text}"),
@@ -446,13 +448,13 @@ impl SongDirectoryConfigPage {
             "Save all Preferences",
             CharRect::new(46, 48, 28, 51),
             NextWidget {
-                up: Some(Self::INSTRUMENT_PATH),
+                up: Some(WidgetList::INSTRUMENT_PATH),
                 ..Default::default()
             },
             || println!("save preferences"),
         );
         Self {
-            selected_widget: Self::SONG_NAME,
+            selected_widget: WidgetList::SONG_NAME,
             widgets: WidgetList {
                 song_name,
                 initial_tempo,

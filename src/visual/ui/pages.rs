@@ -38,25 +38,25 @@ macro_rules! create_widget_list {
     (@function $($name:ident),*) => {
         fn get_widget_mut(&mut self, idx: usize) -> &mut dyn Widget {
             paste::paste! (
-                $(if idx == Self::[<$name:upper>] { &mut self.widgets.$name } else)*
+                $(if idx == Self::[<$name:upper>] { &mut self.$name } else)*
                 { panic!("invalid index {:?}", idx) }
             )
         }
         fn get_widget(&self, idx: usize) -> &dyn Widget {
             paste::paste! (
-                $(if idx == Self::[<$name:upper>] { &self.widgets.$name } else)*
+                $(if idx == Self::[<$name:upper>] { &self.$name } else)*
                 { panic!("invalid index {:?}", idx) }
             )
         }
     };
     // inital with more than one name
-    ($page:ident; { $name:ident: $type:ty, $($n:ident: $t:ty),* }) => (
+    ({ $name:ident: $type:ty, $($n:ident: $t:ty),* }) => (
         struct WidgetList {
             $name: $type,
             $($n: $t),*
         }
 
-        impl $page {
+        impl WidgetList {
             paste::paste!(
                 const [<$name:upper>]: usize = 0;
             );

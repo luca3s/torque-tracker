@@ -113,7 +113,6 @@ impl ApplicationHandler<GlobalEvent> for App {
             EXECUTOR
                 .spawn(async {
                     loop {
-                        println!("collect garbage");
                         let mut lock = AUDIO.lock().await;
                         lock.collect_garbage();
                         drop(lock);
