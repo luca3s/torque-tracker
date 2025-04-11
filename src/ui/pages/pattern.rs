@@ -7,7 +7,7 @@ use tracker_engine::project::{
 };
 use winit::keyboard::{Key, NamedKey, SmolStr};
 
-use crate::visual::{
+use crate::{
     app::{GlobalEvent, AUDIO},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,

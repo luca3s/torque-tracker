@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::visual::{
+use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,

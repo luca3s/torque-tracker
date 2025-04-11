@@ -5,7 +5,7 @@ use winit::{
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer};
+use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
 
 pub(crate) trait Widget {
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool);

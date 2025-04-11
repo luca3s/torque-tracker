@@ -1,4 +1,4 @@
-use crate::visual::palettes;
+use crate::palettes;
 
 use super::{
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},

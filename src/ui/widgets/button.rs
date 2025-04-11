@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use winit::keyboard::{Key, NamedKey};
 
-use crate::visual::{
+use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,

@@ -2,7 +2,7 @@ use std::{io::Write, str::from_utf8};
 
 use tracker_engine::project::pattern::Pattern;
 
-use crate::visual::{
+use crate::{
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
 };

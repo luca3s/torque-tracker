@@ -5,7 +5,7 @@ use std::{
 
 use winit::keyboard::{Key, NamedKey};
 
-use crate::visual::{
+use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
@@ -278,6 +278,8 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
     }
 
     pub fn try_set(&mut self, value: i16) -> Result<(), ()> {
-        self.number.try_set(value).inspect(|_| (self.callback)(value))
+        self.number
+            .try_set(value)
+            .inspect(|_| (self.callback)(value))
     }
 }

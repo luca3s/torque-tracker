@@ -1,6 +1,6 @@
 use winit::keyboard::{Key, NamedKey};
 
-use crate::visual::{
+use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     ui::{
@@ -91,7 +91,7 @@ impl Dialog for ConfirmDialog {
         &mut self,
         key_event: &winit::event::KeyEvent,
         modifiers: &winit::event::Modifiers,
-        events: &mut std::collections::VecDeque<crate::visual::app::GlobalEvent>,
+        events: &mut std::collections::VecDeque<GlobalEvent>,
     ) -> DialogResponse {
         if key_event.logical_key == Key::Named(NamedKey::Escape) && modifiers.state().is_empty() {
             return DialogResponse::Close;

@@ -12,7 +12,7 @@ use winit::{
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer};
+use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
 
 use super::widgets::widget::Widget;
 
@@ -61,8 +61,8 @@ macro_rules! create_widget_list {
                 const [<$name:upper>]: usize = 0;
             );
             const INDEX_RANGE: std::ops::Range<usize> = 0..Self::WIDGET_COUNT;
-            crate::visual::ui::pages::create_widget_list!($($n),* ; $name);
-            crate::visual::ui::pages::create_widget_list!(@function $name, $($n),*);
+            crate::ui::pages::create_widget_list!($($n),* ; $name);
+            crate::ui::pages::create_widget_list!(@function $name, $($n),*);
         }
     );
     // last name
@@ -79,7 +79,7 @@ macro_rules! create_widget_list {
         paste::paste!(
             const [<$name:upper>]: usize = Self::[<$prev:upper>] + 1;
         );
-        crate::visual::ui::pages::create_widget_list!($($n),+ ; $name);
+        crate::ui::pages::create_widget_list!($($n),+ ; $name);
     );
 }
 

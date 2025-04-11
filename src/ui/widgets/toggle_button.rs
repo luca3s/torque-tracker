@@ -1,6 +1,6 @@
 use std::{cell::Cell, collections::VecDeque, rc::Rc};
 
-use crate::visual::{app::GlobalEvent, coordinates::CharRect};
+use crate::{app::GlobalEvent, coordinates::CharRect, draw_buffer::DrawBuffer};
 
 use super::{
     button::Button,
@@ -16,7 +16,7 @@ pub struct ToggleButton<T: Copy + PartialEq> {
 }
 
 impl<T: Copy + PartialEq> Widget for ToggleButton<T> {
-    fn draw(&self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer, selected: bool) {
+    fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
         self.button
             .draw_overwrite_pressed(draw_buffer, selected, self.variant == self.state.get())
     }

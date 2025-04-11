@@ -1,8 +1,9 @@
 use std::{cell::Cell, collections::VecDeque, rc::Rc};
 
-use crate::visual::{
+use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
+    draw_buffer::DrawBuffer,
     ui::widgets::{
         button::Button,
         slider::Slider,
@@ -77,7 +78,7 @@ pub struct SongDirectoryConfigPage {
 }
 
 impl Page for SongDirectoryConfigPage {
-    fn draw(&mut self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
+    fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
         let selected = self.selected_widget;
         for idx in WidgetList::INDEX_RANGE {
             self.widgets
@@ -86,7 +87,7 @@ impl Page for SongDirectoryConfigPage {
         }
     }
 
-    fn draw_constant(&mut self, draw_buffer: &mut crate::visual::draw_buffer::DrawBuffer) {
+    fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer) {
         const BACKGROUND_COLOR: u8 = 2;
         const TOPLEFT_COLOR: u8 = 1;
         const BOTRIGHT_COLOR: u8 = 3;

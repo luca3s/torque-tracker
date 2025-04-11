@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::visual::{app::GlobalEvent, draw_buffer::DrawBuffer};
+use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
 
 pub enum DialogResponse {
     RequestRedraw,
