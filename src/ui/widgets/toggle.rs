@@ -8,7 +8,7 @@ use crate::{
     draw_buffer::DrawBuffer,
 };
 
-use super::widget::{NextWidget, Widget, WidgetResponse};
+use super::{NextWidget, Widget, WidgetResponse};
 
 pub struct Toggle<T: Copy + 'static> {
     pos: CharPosition,

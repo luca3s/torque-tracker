@@ -10,7 +10,7 @@ use crate::{
     draw_buffer::DrawBuffer,
 };
 
-use super::widget::{NextWidget, Widget, WidgetResponse};
+use super::{NextWidget, Widget, WidgetResponse};
 
 pub struct TextInScroll {
     pos: CharPosition,
@@ -55,7 +55,7 @@ impl Widget for TextInScroll {
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
         _event: &mut VecDeque<GlobalEvent>,
-    ) -> super::widget::WidgetResponse {
+    ) -> WidgetResponse {
         if !key_event.state.is_pressed() {
             return WidgetResponse::None;
         }

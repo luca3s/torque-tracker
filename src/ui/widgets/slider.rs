@@ -12,7 +12,7 @@ use crate::{
     ui::dialog::slider_dialog::SliderDialog,
 };
 
-use super::widget::{NextWidget, Widget, WidgetResponse};
+use super::{NextWidget, Widget, WidgetResponse};
 
 pub struct BoundNumber<const MIN: i16, const MAX: i16> {
     inner: i16,

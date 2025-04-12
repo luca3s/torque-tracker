@@ -4,11 +4,7 @@ use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{
-        button::Button,
-        text_in::TextIn,
-        widget::{NextWidget, WidgetResponse},
-    },
+    ui::widgets::{button::Button, text_in::TextIn, NextWidget, WidgetResponse},
 };
 
 use super::{Page, PageResponse, Widget};

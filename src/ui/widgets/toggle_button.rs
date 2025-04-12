@@ -2,10 +2,7 @@ use std::{cell::Cell, collections::VecDeque, rc::Rc};
 
 use crate::{app::GlobalEvent, coordinates::CharRect, draw_buffer::DrawBuffer};
 
-use super::{
-    button::Button,
-    widget::{NextWidget, Widget, WidgetResponse},
-};
+use super::{button::Button, NextWidget, Widget, WidgetResponse};
 
 // dont need to store a callback as it gets pushed into the inner button callback
 pub struct ToggleButton<T: Copy + PartialEq> {

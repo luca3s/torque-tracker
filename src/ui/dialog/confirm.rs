@@ -5,10 +5,7 @@ use crate::{
     coordinates::{CharPosition, CharRect},
     ui::{
         pages::create_widget_list,
-        widgets::{
-            button::Button,
-            widget::{NextWidget, Widget, WidgetResponse},
-        },
+        widgets::{button::Button, NextWidget, Widget, WidgetResponse},
     },
 };
 

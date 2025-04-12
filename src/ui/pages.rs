@@ -14,7 +14,7 @@ use winit::{
 
 use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
 
-use super::widgets::widget::Widget;
+use super::widgets::Widget;
 
 pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);

@@ -9,10 +9,7 @@ use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{
-        text_in::TextIn,
-        widget::{NextWidget, Widget, WidgetResponse},
-    },
+    ui::widgets::{text_in::TextIn, NextWidget, Widget, WidgetResponse},
 };
 
 use super::{Dialog, DialogResponse};

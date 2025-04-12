@@ -10,7 +10,7 @@ use crate::{
     draw_buffer::DrawBuffer,
 };
 
-use super::widget::{NextWidget, Widget, WidgetResponse};
+use super::{NextWidget, Widget, WidgetResponse};
 
 /// text has max_len of the rect that was given, because the text_in cannot scroll
 /// use text_in_scroll for that
