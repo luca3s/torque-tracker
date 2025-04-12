@@ -6,9 +6,18 @@ use super::{
 };
 use font8x8::UnicodeFonts;
 
-pub(crate) struct DrawBuffer {
+pub struct DrawBuffer {
     pub framebuffer: Box<[[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1]>,
     color_palette: Palette<RGB10A2>,
+}
+
+impl Default for DrawBuffer {
+    fn default() -> Self {
+        Self {
+            framebuffer: Box::new([[0; WINDOW_SIZE.0]; WINDOW_SIZE.1]),
+            color_palette: Palette::CAMOUFLAGE.into(),
+        }
+    }
 }
 
 impl DrawBuffer {

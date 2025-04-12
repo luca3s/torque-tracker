@@ -12,7 +12,7 @@ use crate::{
     ui::dialog::slider_dialog::SliderDialog,
 };
 
-use super::{NextWidget, Widget, WidgetResponse};
+use super::{NextWidget, StandardResponse, Widget, WidgetResponse};
 
 pub struct BoundNumber<const MIN: i16, const MAX: i16> {
     inner: i16,
@@ -103,16 +103,17 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
 
 /// Slider needs more Space then is specified in Rect as it draws the current value with an offset of 2 right to the box.
 /// currently this always draws 3 chars, but this can only take values between -99 and 999. If values outside of that are needed, this implementation needs to change
-pub struct Slider<const MIN: i16, const MAX: i16> {
+pub struct Slider<const MIN: i16, const MAX: i16, R> {
     number: BoundNumber<MIN, MAX>,
     position: CharPosition,
     width: usize,
     next_widget: NextWidget,
     dialog_return: fn(i16) -> GlobalEvent,
-    callback: Box<dyn Fn(i16)>,
+    callback: Box<dyn Fn(i16) -> R>,
 }
 
-impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
+impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
+    type Response = R;
     fn draw(&self, draw_buffer: &mut DrawBuffer, selected: bool) {
         const BACKGROUND_COLOR: u8 = 0;
         const CURSOR_COLOR: u8 = 2;
@@ -174,9 +175,9 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
         event: &mut VecDeque<GlobalEvent>,
-    ) -> WidgetResponse {
+    ) -> WidgetResponse<R> {
         if !key_event.state.is_pressed() {
-            return WidgetResponse::None;
+            return WidgetResponse::default();
         }
 
         // move the slider
@@ -221,8 +222,10 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                 };
 
                 self.number += amount * direction;
-                (self.callback)(*self.number);
-                return WidgetResponse::RequestRedraw;
+                return WidgetResponse {
+                    standard: StandardResponse::RequestRedraw,
+                    extra: Some((self.callback)(*self.number)),
+                };
             }
         // set the value directly, by opening a pop-up
         } else if let Key::Character(text) = &key_event.logical_key {
@@ -231,21 +234,18 @@ impl<const MIN: i16, const MAX: i16> Widget for Slider<MIN, MAX> {
                 if first_char.is_ascii_digit() {
                     let dialog = SliderDialog::new(first_char, self.dialog_return);
                     event.push_back(GlobalEvent::OpenDialog(Box::new(dialog)));
-                    return WidgetResponse::None;
+                    return WidgetResponse::default();
                 }
             }
         } else {
-            return self
-                .next_widget
-                .process_key_event(key_event, modifiers)
-                .into();
+            return self.next_widget.process_key_event(key_event, modifiers);
         }
 
-        WidgetResponse::None
+        WidgetResponse::default()
     }
 }
 
-impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
+impl<const MIN: i16, const MAX: i16, R> Slider<MIN, MAX, R> {
     /// next_widget left and right must be None, because they cant be called
     pub fn new(
         inital_value: i16,
@@ -253,7 +253,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
         width: usize,
         next_widget: NextWidget,
         dialog_return: fn(i16) -> GlobalEvent,
-        callback: impl Fn(i16) + 'static,
+        callback: impl Fn(i16) -> R + 'static,
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
         // panic is fine, because this object only is generated with compile time values
@@ -277,9 +277,7 @@ impl<const MIN: i16, const MAX: i16> Slider<MIN, MAX> {
         }
     }
 
-    pub fn try_set(&mut self, value: i16) -> Result<(), ()> {
-        self.number
-            .try_set(value)
-            .inspect(|_| (self.callback)(value))
+    pub fn try_set(&mut self, value: i16) -> Result<R, ()> {
+        self.number.try_set(value).map(|_| (self.callback)(value))
     }
 }

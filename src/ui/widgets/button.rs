@@ -8,17 +8,18 @@ use crate::{
     draw_buffer::DrawBuffer,
 };
 
-use super::{NextWidget, Widget, WidgetResponse};
+use super::{NextWidget, StandardResponse, Widget, WidgetResponse};
 
-pub struct Button {
+pub struct Button<R> {
     text: &'static str,
     rect: CharRect,
     pressed: bool,
     next_widget: NextWidget,
-    callback: Box<dyn Fn() -> Option<GlobalEvent>>,
+    callback: Box<dyn Fn() -> R>,
 }
 
-impl Widget for Button {
+impl<R> Widget for Button<R> {
+    type Response = R;
     fn draw(&self, buffer: &mut DrawBuffer, selected: bool) {
         self.draw_overwrite_pressed(buffer, selected, false);
     }
@@ -27,43 +28,40 @@ impl Widget for Button {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        events: &mut VecDeque<GlobalEvent>,
-    ) -> WidgetResponse {
+        _: &mut VecDeque<GlobalEvent>,
+    ) -> WidgetResponse<R> {
         if key_event.logical_key == Key::Named(NamedKey::Space)
             || key_event.logical_key == Key::Named(NamedKey::Enter)
         {
             if !key_event.repeat {
                 if key_event.state.is_pressed() {
                     self.pressed = true;
-                    return WidgetResponse::RequestRedraw;
+                    return WidgetResponse::default();
                 } else {
                     // only call the callback on a release event if the button was pressed in before
                     // meaning if the user pressed the key, then changed focus to another button and then releases
                     // no button should be triggered
-                    if self.pressed {
-                        if let Some(event) = (self.callback)() {
-                            events.push_back(event);
-                        }
-                    }
+                    let response = if self.pressed {
+                        Some((self.callback)())
+                    } else {
+                        None
+                    };
                     self.pressed = false;
-                    return WidgetResponse::RequestRedraw;
+                    return WidgetResponse {
+                        standard: StandardResponse::RequestRedraw,
+                        extra: response,
+                    };
                 }
             }
         // if focus is changed stop being pressed
         } else {
-            match self.next_widget.process_key_event(key_event, modifiers) {
-                Some(next) => {
-                    self.pressed = false;
-                    return WidgetResponse::SwitchFocus(next);
-                }
-                None => return WidgetResponse::None,
-            }
+            return self.next_widget.process_key_event(key_event, modifiers);
         }
-        WidgetResponse::None
+        WidgetResponse::default()
     }
 }
 
-impl Button {
+impl<R> Button<R> {
     const TOPLEFT_COLOR: u8 = 3;
     const BOTRIGHT_COLOR: u8 = 1;
 
@@ -71,7 +69,7 @@ impl Button {
         text: &'static str,
         rect: CharRect,
         next_widget: NextWidget,
-        cb: impl Fn() -> Option<GlobalEvent> + 'static,
+        cb: impl Fn() -> R + 'static,
     ) -> Self {
         // is 3 rows high, because bot and top are inclusive
         assert!(

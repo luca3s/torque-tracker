@@ -14,8 +14,6 @@ use winit::{
 
 use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
 
-use super::widgets::Widget;
-
 pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer);
@@ -35,14 +33,14 @@ pub trait Page {
 ///
 /// Needs at least one fields to work. If it is less, just write from hand.
 macro_rules! create_widget_list {
-    (@function $($name:ident),*) => {
-        fn get_widget_mut(&mut self, idx: usize) -> &mut dyn Widget {
+    (@function rsp: $response:ty; $($name:ident),*) => {
+        fn get_widget_mut(&mut self, idx: usize) -> &mut dyn crate::ui::widgets::Widget<Response = $response> {
             paste::paste! (
                 $(if idx == Self::[<$name:upper>] { &mut self.$name } else)*
                 { panic!("invalid index {:?}", idx) }
             )
         }
-        fn get_widget(&self, idx: usize) -> &dyn Widget {
+        fn get_widget(&self, idx: usize) -> &dyn crate::ui::widgets::Widget<Response = $response> {
             paste::paste! (
                 $(if idx == Self::[<$name:upper>] { &self.$name } else)*
                 { panic!("invalid index {:?}", idx) }
@@ -50,26 +48,44 @@ macro_rules! create_widget_list {
         }
     };
     // inital with more than one name
-    ({ $name:ident: $type:ty, $($n:ident: $t:ty),* }) => (
-        struct WidgetList {
+    (response: $response:ty; $list_name: ident { $name:ident: $type:ty, $($n:ident: $t:ty),* }) => (
+        struct $list_name {
+            selected: usize,
             $name: $type,
             $($n: $t),*
         }
 
-        impl WidgetList {
+        impl $list_name {
             paste::paste!(
                 const [<$name:upper>]: usize = 0;
             );
             const INDEX_RANGE: std::ops::Range<usize> = 0..Self::WIDGET_COUNT;
+
+            pub fn draw_widgets(&self, draw_buffer: &mut crate::draw_buffer::DrawBuffer) {
+                for widget in Self::INDEX_RANGE {
+                    let is_selected = widget == self.selected;
+                    self.get_widget(widget).draw(draw_buffer, is_selected);
+                }
+            }
+
+            pub fn process_input(
+                &mut self,
+                key_event: &winit::event::KeyEvent,
+                modifiers: &winit::event::Modifiers,
+                events: &mut std::collections::VecDeque<crate::app::GlobalEvent>,
+            ) -> WidgetResponse<$response> {
+                self.get_widget_mut(self.selected).process_input(modifiers, key_event, events)
+            }
+
             crate::ui::pages::create_widget_list!($($n),* ; $name);
-            crate::ui::pages::create_widget_list!(@function $name, $($n),*);
+            crate::ui::pages::create_widget_list!(@function rsp: $response; $name, $($n),*);
         }
     );
     // last name
     ($name:ident ; $prev:ident) => (
         // const $name: usize = $num;
         paste::paste!(
-            const [<$name:upper>]: usize = Self::[<$prev:upper>] + 1;
+            const [<$name:upper>]: usize = Self::[<$prev:upper>] + 1usize;
             const WIDGET_COUNT: usize = Self::[<$name:upper>] + 1usize;
         );
     );

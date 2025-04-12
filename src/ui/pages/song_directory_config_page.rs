@@ -6,7 +6,7 @@ use crate::{
     draw_buffer::DrawBuffer,
     ui::widgets::{
         button::Button, slider::Slider, text_in::TextIn, text_in_scroll::TextInScroll,
-        toggle::Toggle, toggle_button::ToggleButton, NextWidget, Widget, WidgetResponse,
+        toggle::Toggle, toggle_button::ToggleButton, NextWidget, StandardResponse, WidgetResponse,
     },
 };
 
@@ -40,46 +40,42 @@ pub enum SDCChange {
 }
 
 super::create_widget_list!(
+    response: ();
+    WidgetList
     {
-        song_name: TextIn,
-        initial_tempo: Slider<31, 255>,
-        initial_speed: Slider<1, 255>,
-        global_volume: Slider<0, 128>,
-        mixing_volume: Slider<0, 128>,
-        seperation: Slider<0, 128>,
+        song_name: TextIn<()>,
+        initial_tempo: Slider<31, 255, ()>,
+        initial_speed: Slider<1, 255, ()>,
+        global_volume: Slider<0, 128, ()>,
+        mixing_volume: Slider<0, 128, ()>,
+        seperation: Slider<0, 128, ()>,
 
-        old_effects: Toggle<bool>,
-        compatible_gxx: Toggle<bool>,
+        old_effects: Toggle<bool, ()>,
+        compatible_gxx: Toggle<bool, ()>,
 
-        instruments: ToggleButton<Control>,
-        samples: ToggleButton<Control>,
+        instruments: ToggleButton<Control, ()>,
+        samples: ToggleButton<Control, ()>,
 
-        stereo: ToggleButton<Playback>,
-        mono: ToggleButton<Playback>,
+        stereo: ToggleButton<Playback, ()>,
+        mono: ToggleButton<Playback, ()>,
 
-        linear_slides: ToggleButton<PitchSlides>,
-        amiga_slides: ToggleButton<PitchSlides>,
+        linear_slides: ToggleButton<PitchSlides, ()>,
+        amiga_slides: ToggleButton<PitchSlides, ()>,
 
-        module_path: TextInScroll,
-        sample_path: TextInScroll,
-        instrument_path: TextInScroll,
-        save: Button
+        module_path: TextInScroll<()>,
+        sample_path: TextInScroll<()>,
+        instrument_path: TextInScroll<()>,
+        save: Button<()>
     }
 );
 
 pub struct SongDirectoryConfigPage {
     widgets: WidgetList,
-    selected_widget: usize,
 }
 
 impl Page for SongDirectoryConfigPage {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
-        let selected = self.selected_widget;
-        for idx in WidgetList::INDEX_RANGE {
-            self.widgets
-                .get_widget(idx)
-                .draw(draw_buffer, idx == selected);
-        }
+        self.widgets.draw_widgets(draw_buffer);
     }
 
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer) {
@@ -145,20 +141,19 @@ impl Page for SongDirectoryConfigPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        event: &mut VecDeque<GlobalEvent>,
+        events: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
         match self
             .widgets
-            .get_widget_mut(self.selected_widget)
-            .process_input(modifiers, key_event, event)
+            .process_input(key_event, modifiers, events)
+            .standard
         {
-            WidgetResponse::SwitchFocus(next) => {
-                assert!(next < WidgetList::WIDGET_COUNT);
-                self.selected_widget = next;
+            StandardResponse::SwitchFocus(next) => {
+                self.widgets.selected = next;
                 PageResponse::RequestRedraw
             }
-            WidgetResponse::RequestRedraw => PageResponse::RequestRedraw,
-            WidgetResponse::None => PageResponse::None,
+            StandardResponse::RequestRedraw => PageResponse::RequestRedraw,
+            StandardResponse::None => PageResponse::None,
         }
     }
 }
@@ -205,7 +200,7 @@ impl SongDirectoryConfigPage {
             |s| println!("new song name: {}", s),
         );
 
-        let initial_tempo: Slider<31, 255> = Slider::new(
+        let initial_tempo = Slider::new(
             125,
             CharPosition::new(17, 19),
             32,
@@ -219,7 +214,7 @@ impl SongDirectoryConfigPage {
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
             |value| println!("initial tempo set to: {}", value),
         );
-        let initial_speed: Slider<1, 255> = Slider::new(
+        let initial_speed = Slider::new(
             6,
             CharPosition::new(17, 20),
             32,
@@ -233,7 +228,7 @@ impl SongDirectoryConfigPage {
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
             |value| println!("initial speed set to: {}", value),
         );
-        let global_volume: Slider<0, 128> = Slider::new(
+        let global_volume = Slider::new(
             128,
             CharPosition::new(17, 23),
             16,
@@ -247,7 +242,7 @@ impl SongDirectoryConfigPage {
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
             |value| println!("gloabl volume set to: {}", value),
         );
-        let mixing_volume: Slider<0, 128> = Slider::new(
+        let mixing_volume = Slider::new(
             48,
             CharPosition::new(17, 24),
             16,
@@ -261,7 +256,7 @@ impl SongDirectoryConfigPage {
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
             |value| println!("mixing volume set to: {}", value),
         );
-        let seperation: Slider<0, 128> = Slider::new(
+        let seperation = Slider::new(
             48,
             CharPosition::new(17, 25),
             16,
@@ -276,7 +271,7 @@ impl SongDirectoryConfigPage {
             |value| println!("seperation set to: {}", value),
         );
 
-        let old_effects: Toggle<bool> = Toggle::new(
+        let old_effects = Toggle::new(
             CharPosition::new(17, 26),
             16,
             NextWidget {
@@ -291,7 +286,7 @@ impl SongDirectoryConfigPage {
             |onoff| println!("Old Effects: {}", onoff),
         );
 
-        let compatible_gxx: Toggle<bool> = Toggle::new(
+        let compatible_gxx = Toggle::new(
             CharPosition::new(17, 27),
             16,
             NextWidget {
@@ -307,7 +302,7 @@ impl SongDirectoryConfigPage {
         );
 
         let control_rc = Rc::new(Cell::new(Control::Samples));
-        let instruments: ToggleButton<Control> = ToggleButton::new(
+        let instruments = ToggleButton::new(
             "Instruments",
             CharRect::new(29, 31, 16, 30),
             NextWidget {
@@ -322,7 +317,7 @@ impl SongDirectoryConfigPage {
             control_rc.clone(),
             |_| println!("Instruments activated"),
         );
-        let samples: ToggleButton<Control> = ToggleButton::new(
+        let samples = ToggleButton::new(
             "Samples",
             CharRect::new(29, 31, 31, 45),
             NextWidget {
@@ -339,7 +334,7 @@ impl SongDirectoryConfigPage {
         );
 
         let stereo_mono_rs = Rc::new(Cell::new(Playback::Stereo));
-        let stereo: ToggleButton<Playback> = ToggleButton::new(
+        let stereo = ToggleButton::new(
             "Stereo",
             CharRect::new(32, 34, 16, 30),
             NextWidget {
@@ -355,7 +350,7 @@ impl SongDirectoryConfigPage {
             |_| println!("stereo activated"),
         );
 
-        let mono: ToggleButton<Playback> = ToggleButton::new(
+        let mono = ToggleButton::new(
             "Mono",
             CharRect::new(32, 34, 31, 45),
             NextWidget {
@@ -372,7 +367,7 @@ impl SongDirectoryConfigPage {
         );
 
         let pitch_slides_rc = Rc::new(Cell::new(PitchSlides::Linear));
-        let linear_slides: ToggleButton<PitchSlides> = ToggleButton::new(
+        let linear_slides = ToggleButton::new(
             "Linear",
             CharRect::new(35, 37, 16, 30),
             NextWidget {
@@ -387,7 +382,7 @@ impl SongDirectoryConfigPage {
             pitch_slides_rc.clone(),
             |_| println!("pitch slides set to linear"),
         );
-        let amiga_slides: ToggleButton<PitchSlides> = ToggleButton::new(
+        let amiga_slides = ToggleButton::new(
             "Amiga",
             CharRect::new(35, 37, 31, 45),
             NextWidget {
@@ -449,11 +444,9 @@ impl SongDirectoryConfigPage {
             },
             || {
                 println!("save preferences");
-                None
             },
         );
         Self {
-            selected_widget: WidgetList::SONG_NAME,
             widgets: WidgetList {
                 song_name,
                 initial_tempo,
@@ -473,6 +466,7 @@ impl SongDirectoryConfigPage {
                 sample_path,
                 instrument_path,
                 save,
+                selected: WidgetList::SONG_NAME,
             },
         }
     }

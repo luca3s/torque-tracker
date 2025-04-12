@@ -9,13 +9,13 @@ use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{text_in::TextIn, NextWidget, Widget, WidgetResponse},
+    ui::widgets::{text_in::TextIn, NextWidget, StandardResponse, Widget},
 };
 
 use super::{Dialog, DialogResponse};
 
 pub struct SliderDialog {
-    text: TextIn,
+    text: TextIn<()>,
     return_event: fn(i16) -> GlobalEvent,
 }
 
@@ -32,25 +32,29 @@ impl Dialog for SliderDialog {
         &mut self,
         key_event: &KeyEvent,
         modifiers: &Modifiers,
-        event: &mut VecDeque<GlobalEvent>,
+        events: &mut VecDeque<GlobalEvent>,
     ) -> DialogResponse {
         if key_event.state.is_pressed() {
             if key_event.logical_key == Key::Named(NamedKey::Escape) {
                 return DialogResponse::Close;
             } else if key_event.logical_key == Key::Named(NamedKey::Enter) {
                 if let Ok(num) = self.text.get_str().parse::<i16>() {
-                    event.push_back((self.return_event)(num));
+                    events.push_back((self.return_event)(num));
                     return DialogResponse::Close;
                 }
                 return DialogResponse::Close;
             }
         }
 
-        match self.text.process_input(modifiers, key_event, event) {
+        match self
+            .text
+            .process_input(modifiers, key_event, events)
+            .standard
+        {
             // cant switch focus as this is the only widget
-            WidgetResponse::SwitchFocus(_) => DialogResponse::None,
-            WidgetResponse::RequestRedraw => DialogResponse::RequestRedraw,
-            WidgetResponse::None => DialogResponse::None,
+            StandardResponse::SwitchFocus(_) => DialogResponse::None,
+            StandardResponse::RequestRedraw => DialogResponse::RequestRedraw,
+            StandardResponse::None => DialogResponse::None,
         }
     }
 }
