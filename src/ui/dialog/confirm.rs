@@ -13,11 +13,11 @@ use crate::{
 use super::{Dialog, DialogResponse};
 
 create_widget_list!(
-    response: GlobalEvent;
+    response: Option<GlobalEvent>;
     WidgetList
     {
-        ok: Button<GlobalEvent>,
-        cancel: Button<GlobalEvent>
+        ok: Button<Option<GlobalEvent>>,
+        cancel: Button<Option<GlobalEvent>>
     }
 );
 
@@ -34,8 +34,8 @@ impl ConfirmDialog {
     const CANCEL_RECT: CharRect = CharRect::new(30, 32, 31, 38);
     pub fn new(
         text: &'static str,
-        ok_event: impl Fn() -> GlobalEvent + 'static,
-        cancel_event: impl Fn() -> GlobalEvent + 'static,
+        ok_event: impl Fn() -> Option<GlobalEvent> + Send + 'static,
+        cancel_event: impl Fn() -> Option<GlobalEvent> + Send + 'static,
     ) -> Self {
         let width = (text.len() + 8).max(22);
         let per_side = width / 2;
@@ -93,8 +93,10 @@ impl Dialog for ConfirmDialog {
 
         let WidgetResponse { standard, extra } =
             self.widgets.process_input(key_event, modifiers, events);
-        if let Some(global) = extra {
-            events.push_back(global);
+        if let Some(global_option) = extra {
+            if let Some(global) = global_option {
+                events.push_back(global);
+            }
             // if there is a response i also want to close myself
             return DialogResponse::Close;
         }

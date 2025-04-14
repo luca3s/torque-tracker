@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    fmt::Debug,
     num::NonZeroU16,
     sync::{Arc, LazyLock},
     thread::JoinHandle,
@@ -7,7 +8,10 @@ use std::{
 };
 
 use smol::{channel::Sender, lock::Mutex};
-use tracker_engine::{manager::AudioManager, project::song::Song};
+use tracker_engine::{
+    manager::{AudioManager, SongEdit},
+    project::song::Song,
+};
 use triple_buffer::triple_buffer;
 use winit::{
     application::ApplicationHandler,
@@ -35,14 +39,46 @@ pub static EXECUTOR: smol::Executor = smol::Executor::new();
 pub static AUDIO: LazyLock<Mutex<AudioManager>> =
     LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
 
+pub async fn get_song_edit(manager: &mut AudioManager) -> SongEdit<'_> {
+    loop {
+        if manager.try_edit_song().is_some() {
+            break;
+        }
+        smol::Timer::after(manager.buffer_time().expect(
+            "locking failed once, so audio must be active, so there must be a buffer_time",
+        ))
+        .await;
+    }
+    manager
+        .try_edit_song()
+        .expect("workaround until polonius. please polnius save me")
+}
+
 pub enum GlobalEvent {
-    OpenDialog(Box<dyn Dialog>),
+    OpenDialog(Box<dyn Dialog + Send>),
     PageEvent(PageEvent),
     Header(HeaderEvent),
     /// also closes all dialogs
     GoToPage(PagesEnum),
     CloseApp,
-    Empty,
+}
+
+impl Debug for GlobalEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GlobalEvent::OpenDialog(_) => write!(f, "GlobalEvent {{ OpenDialog }}"),
+            GlobalEvent::PageEvent(page_event) => {
+                write!(f, "GlobalEvent {{ PageEvent: {page_event:?} }}")
+            }
+            GlobalEvent::Header(header_event) => {
+                write!(f, "GlobalEvent {{ Header: {header_event:?} }}")
+            }
+            GlobalEvent::GoToPage(pages_enum) => {
+                write!(f, "GlobalEvent {{ GoToPage: {pages_enum:?} }}")
+            }
+            GlobalEvent::CloseApp => write!(f, "GlobalEvent {{ CloseApp }}"),
+        }
+    }
 }
 
 struct WorkerThreads {
@@ -163,8 +199,8 @@ impl ApplicationHandler<GlobalEvent> for App {
             WindowEvent::CloseRequested => {
                 event_queue.push_back(GlobalEvent::OpenDialog(Box::new(ConfirmDialog::new(
                     "Close Tracker?",
-                    || GlobalEvent::CloseApp,
-                    || GlobalEvent::Empty,
+                    || Some(GlobalEvent::CloseApp),
+                    || None,
                 ))));
             }
             WindowEvent::Resized(physical_size) => {
@@ -245,10 +281,12 @@ impl ApplicationHandler<GlobalEvent> for App {
                 self.dialog_manager.open_dialog(dialog);
                 _ = self.try_request_redraw();
             }
-            GlobalEvent::PageEvent(c) => match self.ui_pages.process_page_event(c) {
-                PageResponse::RequestRedraw => _ = self.try_request_redraw(),
-                PageResponse::None => (),
-            },
+            GlobalEvent::PageEvent(c) => {
+                match self.ui_pages.process_page_event(c, &mut self.event_queue) {
+                    PageResponse::RequestRedraw => _ = self.try_request_redraw(),
+                    PageResponse::None => (),
+                }
+            }
             GlobalEvent::Header(header_event) => {
                 self.header.process_event(header_event);
                 _ = self.try_request_redraw();
@@ -259,7 +297,6 @@ impl ApplicationHandler<GlobalEvent> for App {
                 _ = self.try_request_redraw();
             }
             GlobalEvent::CloseApp => event_loop.exit(),
-            GlobalEvent::Empty => (),
         }
     }
 
@@ -280,7 +317,7 @@ impl App {
             window_gpu: None,
             draw_buffer: DrawBuffer::new(),
             modifiers: Modifiers::default(),
-            ui_pages: AllPages::new(),
+            ui_pages: AllPages::new(proxy.clone()),
             dialog_manager: DialogManager::new(),
             header: Header::default(),
             event_loop_proxy: proxy,

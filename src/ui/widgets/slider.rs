@@ -109,7 +109,7 @@ pub struct Slider<const MIN: i16, const MAX: i16, R> {
     width: usize,
     next_widget: NextWidget,
     dialog_return: fn(i16) -> GlobalEvent,
-    callback: Box<dyn Fn(i16) -> R>,
+    callback: Box<dyn Fn(i16) -> R + Send>,
 }
 
 impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
@@ -253,7 +253,7 @@ impl<const MIN: i16, const MAX: i16, R> Slider<MIN, MAX, R> {
         width: usize,
         next_widget: NextWidget,
         dialog_return: fn(i16) -> GlobalEvent,
-        callback: impl Fn(i16) -> R + 'static,
+        callback: impl Fn(i16) -> R + Send + 'static,
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
         // panic is fine, because this object only is generated with compile time values

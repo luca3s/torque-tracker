@@ -20,7 +20,7 @@ pub struct TextIn<R> {
     width: usize,
     text: AsciiString,
     next_widget: NextWidget,
-    callback: Box<dyn Fn(&str) -> R>,
+    callback: Box<dyn Fn(&str) -> R + Send>,
     cursor_pos: usize,
 }
 
@@ -134,7 +134,7 @@ impl<R> TextIn<R> {
         pos: CharPosition,
         width: usize,
         next_widget: NextWidget,
-        cb: impl Fn(&str) -> R + 'static,
+        cb: impl Fn(&str) -> R + Send + 'static,
     ) -> Self {
         assert!(pos.x() + width < WINDOW_SIZE.0);
         // right and left keys are used in the widget itself. doeesnt make sense to put NextWidget there

@@ -1,14 +1,17 @@
-use std::{collections::VecDeque, io::Write, str::from_utf8, time::Duration};
+use std::{collections::VecDeque, io::Write, str::from_utf8};
 
 use tracker_engine::project::{
     note_event::{Note, NoteEvent},
     pattern::{InPatternPosition, Pattern, PatternOperation},
     song::SongOperation,
 };
-use winit::keyboard::{Key, NamedKey, SmolStr};
+use winit::{
+    event_loop::EventLoopProxy,
+    keyboard::{Key, NamedKey, SmolStr},
+};
 
 use crate::{
-    app::{GlobalEvent, AUDIO},
+    app::{get_song_edit, GlobalEvent, AUDIO, EXECUTOR},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,
 };
@@ -59,11 +62,17 @@ impl InEventPosition {
 }
 
 #[derive(Debug)]
+pub enum PatternPageEvent {
+    Loaded(Pattern, usize),
+}
+
+#[derive(Debug)]
 pub struct PatternPage {
     pattern_index: usize,
     pattern: Pattern,
     cursor_position: (InPatternPosition, InEventPosition),
     draw_position: InPatternPosition,
+    event_proxy: EventLoopProxy<GlobalEvent>,
 }
 
 impl PatternPage {
@@ -78,7 +87,24 @@ impl PatternPage {
     const ROW_HIGHTLIGHT_MINOR: u16 = 4;
     const ROW_HIGHTLIGHT_MAJOR: u16 = 16;
 
-    pub fn new() -> Self {
+    pub fn process_event(
+        &mut self,
+        event: PatternPageEvent,
+        events: &mut VecDeque<GlobalEvent>,
+    ) -> PageResponse {
+        match event {
+            PatternPageEvent::Loaded(pattern, idx) => {
+                self.pattern = pattern;
+                events.push_back(GlobalEvent::Header(HeaderEvent::SetCursorPattern(idx)));
+                events.push_back(GlobalEvent::Header(HeaderEvent::SetMaxCursorRow(
+                    self.pattern.row_count(),
+                )));
+                PageResponse::RequestRedraw
+            }
+        }
+    }
+
+    pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
             pattern_index: 0,
             pattern: Pattern::default(),
@@ -87,6 +113,7 @@ impl PatternPage {
                 InEventPosition::Note,
             ),
             draw_position: InPatternPosition { row: 0, channel: 0 },
+            event_proxy: proxy,
         }
     }
 
@@ -131,30 +158,39 @@ impl PatternPage {
         true
     }
 
-    fn load_pattern(&mut self, idx: usize, event: &mut VecDeque<GlobalEvent>) {
-        self.pattern_index = idx;
-        self.pattern = AUDIO.lock_blocking().get_song().patterns[idx].clone();
-        event.push_back(GlobalEvent::Header(HeaderEvent::SetCursorPattern(idx)));
-        event.push_back(GlobalEvent::Header(HeaderEvent::SetMaxCursorRow(
-            self.pattern.row_count(),
-        )));
+    fn load_pattern(&mut self, idx: usize) {
+        let proxy = self.event_proxy.clone();
+        EXECUTOR
+            .spawn(async move {
+                let lock = AUDIO.lock().await;
+                let pattern = lock.get_song().patterns[idx].clone();
+                drop(lock);
+                proxy
+                    .send_event(GlobalEvent::PageEvent(super::PageEvent::Pattern(
+                        PatternPageEvent::Loaded(pattern, idx),
+                    )))
+                    .unwrap();
+            })
+            .detach();
     }
 
     fn set_event(&mut self, position: InPatternPosition, event: NoteEvent) {
         self.pattern.set_event(position, event);
-        // maybe change to sending a background task if this takes too long on the UI thread
-        let mut lock = AUDIO.lock_blocking();
-        let mut edit = loop {
-            if let Some(edit) = lock.try_edit_song() {
-                break edit;
-            }
-            std::thread::sleep(lock.buffer_time().unwrap_or(Duration::from_millis(10)));
-        };
-        edit.apply_operation(SongOperation::PatternOperation(
-            self.pattern_index,
-            PatternOperation::SetEvent { position, event },
-        ))
-        .unwrap();
+        let index = self.pattern_index;
+        // could in theory lead to race conditions as operations could be applied in different order.
+        // This is extremely unlikely as editing happens on human time scales while the applying is much faster.
+        // If this turns out to be a problem switch to a channel and a continuesly running coroutine.
+        EXECUTOR
+            .spawn(async move {
+                let mut lock = AUDIO.lock().await;
+                let mut edit = get_song_edit(&mut lock).await;
+                edit.apply_operation(SongOperation::PatternOperation(
+                    index,
+                    PatternOperation::SetEvent { position, event },
+                ))
+                .unwrap();
+            })
+            .detach();
     }
 }
 
@@ -349,12 +385,12 @@ impl Page for PatternPage {
 
         if key_event.logical_key == Key::Character(SmolStr::new_static("+")) {
             if self.pattern_index != Self::MAX_PATTERN {
-                self.load_pattern(self.pattern_index + 1, event);
+                self.load_pattern(self.pattern_index + 1);
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Character(SmolStr::new_static("-")) {
             if self.pattern_index != 0 {
-                self.load_pattern(self.pattern_index - 1, event);
+                self.load_pattern(self.pattern_index - 1);
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown) {

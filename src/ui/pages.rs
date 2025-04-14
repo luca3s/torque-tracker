@@ -5,10 +5,11 @@ mod song_directory_config_page;
 use std::collections::VecDeque;
 
 use help_page::HelpPage;
-use pattern::PatternPage;
+use pattern::{PatternPage, PatternPageEvent};
 use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
     event::{KeyEvent, Modifiers},
+    event_loop::EventLoopProxy,
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
@@ -107,21 +108,24 @@ pub enum PageResponse {
     None,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PagesEnum {
     Help,
     SongDirectoryConfig,
     Pattern,
 }
 
+#[derive(Debug)]
 pub enum PageEvent {
     Sdc(SDCChange),
+    Pattern(PatternPageEvent),
 }
 
 impl PageEvent {
     fn get_page(&self) -> PagesEnum {
         match self {
             PageEvent::Sdc(_) => PagesEnum::SongDirectoryConfig,
+            PageEvent::Pattern(_) => PagesEnum::Pattern,
         }
     }
 }
@@ -136,11 +140,11 @@ pub struct AllPages {
 }
 
 impl AllPages {
-    pub fn new() -> Self {
+    pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         AllPages {
             help: HelpPage::new(),
             song_directory_config: SongDirectoryConfigPage::new(),
-            pattern: PatternPage::new(),
+            pattern: PatternPage::new(proxy),
             current: PagesEnum::SongDirectoryConfig,
             const_draw_needed: true,
         }
@@ -220,10 +224,15 @@ impl AllPages {
         }
     }
 
-    pub fn process_page_event(&mut self, change: PageEvent) -> PageResponse {
-        let page = change.get_page();
-        let response = match change {
+    pub fn process_page_event(
+        &mut self,
+        event: PageEvent,
+        events: &mut VecDeque<GlobalEvent>,
+    ) -> PageResponse {
+        let page = event.get_page();
+        let response = match event {
             PageEvent::Sdc(change) => self.song_directory_config.ui_change(change),
+            PageEvent::Pattern(event) => self.pattern.process_event(event, events),
         };
 
         if page == self.current {

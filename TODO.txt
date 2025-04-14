@@ -30,6 +30,8 @@ or
     - flamegraph
 
 
+start using Accesskit
+
 Make Cmd Q not close the App immediately
 see talk with winit maintainer on how to do this (from official winit matrix https://matrix.to/#/#rust-windowing:matrix.org):
 I investigated my issue a bit further and found https://github.com/rust-windowing/winit/pull/1583 where a default macOs menubar was added. This apparently also added the Cmd Q shortcut. On press this sends a command to the application to quit. I believe it would be good if this also triggered CloseRequested, although the Command isn't really associated to any specific window (so it's not a WindowEvent, but an ApplicationEvent). It seems like i have to add my own menu bar instead of using the default one.

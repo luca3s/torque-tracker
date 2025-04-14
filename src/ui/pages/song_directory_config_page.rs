@@ -30,6 +30,7 @@ enum PitchSlides {
     Amiga,
 }
 
+#[derive(Debug)]
 pub enum SDCChange {
     SetSongName(String),
     InitialTempo(i16),

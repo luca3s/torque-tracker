@@ -7,6 +7,7 @@ use crate::{
     draw_buffer::DrawBuffer,
 };
 
+#[derive(Debug)]
 pub enum HeaderEvent {
     SetCursorRow(u16),
     SetMaxCursorRow(u16),
