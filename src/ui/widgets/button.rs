@@ -15,7 +15,7 @@ pub struct Button<R> {
     rect: CharRect,
     pressed: bool,
     next_widget: NextWidget,
-    callback: Box<dyn Fn() -> R>,
+    callback: fn() -> R,
 }
 
 impl<R> Widget for Button<R> {
@@ -65,12 +65,7 @@ impl<R> Button<R> {
     const TOPLEFT_COLOR: u8 = 3;
     const BOTRIGHT_COLOR: u8 = 1;
 
-    pub fn new(
-        text: &'static str,
-        rect: CharRect,
-        next_widget: NextWidget,
-        cb: impl Fn() -> R + 'static,
-    ) -> Self {
+    pub fn new(text: &'static str, rect: CharRect, next_widget: NextWidget, cb: fn() -> R) -> Self {
         // is 3 rows high, because bot and top are inclusive
         assert!(
             rect.bot() - rect.top() >= 2,
@@ -79,7 +74,7 @@ impl<R> Button<R> {
         Button {
             text,
             rect,
-            callback: Box::new(cb),
+            callback: cb,
             pressed: false,
             next_widget,
         }

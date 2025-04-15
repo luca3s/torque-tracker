@@ -34,8 +34,8 @@ impl ConfirmDialog {
     const CANCEL_RECT: CharRect = CharRect::new(30, 32, 31, 38);
     pub fn new(
         text: &'static str,
-        ok_event: impl Fn() -> Option<GlobalEvent> + Send + 'static,
-        cancel_event: impl Fn() -> Option<GlobalEvent> + Send + 'static,
+        ok_event: fn() -> Option<GlobalEvent>,
+        cancel_event: fn() -> Option<GlobalEvent>,
     ) -> Self {
         let width = (text.len() + 8).max(22);
         let per_side = width / 2;
