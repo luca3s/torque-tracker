@@ -73,6 +73,7 @@ pub struct PatternPage {
     cursor_position: (InPatternPosition, InEventPosition),
     draw_position: InPatternPosition,
     event_proxy: EventLoopProxy<GlobalEvent>,
+    edit_queue: smol::channel::Sender<SongOperation>,
 }
 
 impl PatternPage {
@@ -95,7 +96,8 @@ impl PatternPage {
         match event {
             PatternPageEvent::Loaded(pattern, idx) => {
                 self.pattern = pattern;
-                events.push_back(GlobalEvent::Header(HeaderEvent::SetCursorPattern(idx)));
+                self.pattern_index = idx;
+                events.push_back(GlobalEvent::Header(HeaderEvent::SetPattern(idx)));
                 events.push_back(GlobalEvent::Header(HeaderEvent::SetMaxCursorRow(
                     self.pattern.row_count(),
                 )));
@@ -105,6 +107,18 @@ impl PatternPage {
     }
 
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
+        let (send, recv) = smol::channel::unbounded();
+        EXECUTOR
+            .spawn(async move {
+                while let Ok(msg) = recv.recv().await {
+                    let mut lock = AUDIO.lock().await;
+                    let mut edit = get_song_edit(&mut lock).await;
+                    edit.apply_operation(msg).unwrap();
+                    drop(edit);
+                    drop(lock);
+                }
+            })
+            .detach();
         Self {
             pattern_index: 0,
             pattern: Pattern::default(),
@@ -114,6 +128,7 @@ impl PatternPage {
             ),
             draw_position: InPatternPosition { row: 0, channel: 0 },
             event_proxy: proxy,
+            edit_queue: send,
         }
     }
 
@@ -177,20 +192,9 @@ impl PatternPage {
     fn set_event(&mut self, position: InPatternPosition, event: NoteEvent) {
         self.pattern.set_event(position, event);
         let index = self.pattern_index;
-        // could in theory lead to race conditions as operations could be applied in different order.
-        // This is extremely unlikely as editing happens on human time scales while the applying is much faster.
-        // If this turns out to be a problem switch to a channel and a continuesly running coroutine.
-        EXECUTOR
-            .spawn(async move {
-                let mut lock = AUDIO.lock().await;
-                let mut edit = get_song_edit(&mut lock).await;
-                edit.apply_operation(SongOperation::PatternOperation(
-                    index,
-                    PatternOperation::SetEvent { position, event },
-                ))
-                .unwrap();
-            })
-            .detach();
+        let op =
+            SongOperation::PatternOperation(index, PatternOperation::SetEvent { position, event });
+        self.edit_queue.send_blocking(op).unwrap();
     }
 }
 

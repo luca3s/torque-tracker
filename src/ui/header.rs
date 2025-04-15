@@ -11,7 +11,7 @@ use crate::{
 pub enum HeaderEvent {
     SetCursorRow(u16),
     SetMaxCursorRow(u16),
-    SetCursorPattern(usize),
+    SetPattern(usize),
     SetMaxCursorPattern(usize),
     SetOrder(usize),
     SetSample(usize),
@@ -43,7 +43,7 @@ impl Header {
     pub fn process_event(&mut self, event: HeaderEvent) {
         match event {
             HeaderEvent::SetCursorRow(r) => self.row = r,
-            HeaderEvent::SetCursorPattern(p) => self.pattern = p,
+            HeaderEvent::SetPattern(p) => self.pattern = p,
             HeaderEvent::SetOrder(_) => todo!(),
             HeaderEvent::SetSample(_) => todo!(),
             HeaderEvent::SetSpeed(_) => todo!(),
