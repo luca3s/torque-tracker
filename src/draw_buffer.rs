@@ -108,6 +108,7 @@ impl DrawBuffer {
         thickness: usize,
     ) {
         assert!(thickness <= FONT_SIZE);
+        assert!(thickness > 0);
         let pixel_rect = PixelRect::from(char_rect);
         let top_left_color = self.get_raw_color(top_left_color);
         let bot_right_color = self.get_raw_color(bot_right_color);

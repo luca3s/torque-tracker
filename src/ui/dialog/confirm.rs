@@ -30,22 +30,22 @@ pub struct ConfirmDialog {
 }
 
 impl ConfirmDialog {
-    const OK_RECT: CharRect = CharRect::new(30, 32, 42, 50);
-    const CANCEL_RECT: CharRect = CharRect::new(30, 32, 31, 38);
+    const OK_RECT: CharRect = CharRect::new(29, 31, 41, 50);
+    const CANCEL_RECT: CharRect = CharRect::new(29, 31, 30, 39);
     pub fn new(
         text: &'static str,
         ok_event: fn() -> Option<GlobalEvent>,
         cancel_event: fn() -> Option<GlobalEvent>,
     ) -> Self {
-        let width = (text.len() + 8).max(22);
+        let width = (text.len() + 10).max(22);
         let per_side = width / 2;
         Self {
             text,
-            text_pos: CharPosition::new(40 - per_side + 4, 27),
+            text_pos: CharPosition::new(40 - per_side + 5, 27),
             widgets: WidgetList {
                 selected: WidgetList::OK,
                 ok: Button::new(
-                    "Ok",
+                    "  Ok",
                     Self::OK_RECT,
                     NextWidget {
                         left: Some(WidgetList::CANCEL),
@@ -69,14 +69,15 @@ impl ConfirmDialog {
                     cancel_event,
                 ),
             },
-            rect: CharRect::new(27, 34, 40 - per_side, 40 + per_side),
+            rect: CharRect::new(25, 32, 40 - per_side, 40 + per_side),
         }
     }
 }
 
 impl Dialog for ConfirmDialog {
     fn draw(&self, draw_buffer: &mut DrawBuffer) {
-        draw_buffer.show_colors();
+        draw_buffer.draw_rect(2, self.rect);
+        draw_buffer.draw_out_border(self.rect, 3, 3, 2);
         draw_buffer.draw_string(self.text, self.text_pos, 0, 2);
         self.widgets.draw_widgets(draw_buffer);
     }
