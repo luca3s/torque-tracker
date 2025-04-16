@@ -30,6 +30,10 @@ impl DrawBuffer {
         }
     }
 
+    pub fn get_raw_color(&self, index: u8) -> u32 {
+        self.color_palette.get_raw(index)
+    }
+
     pub fn draw_char(
         &mut self,
         char_data: [u8; 8],
