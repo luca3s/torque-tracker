@@ -62,6 +62,7 @@ pub enum GlobalEvent {
     GoToPage(PagesEnum),
     CloseRequested,
     CloseApp,
+    ConstRedraw,
 }
 
 impl Debug for GlobalEvent {
@@ -79,6 +80,7 @@ impl Debug for GlobalEvent {
             }
             GlobalEvent::CloseApp => write!(f, "GlobalEvent {{ CloseApp }}"),
             GlobalEvent::CloseRequested => write!(f, "GlobalEvent {{ CloseRequested }}"),
+            GlobalEvent::ConstRedraw => write!(f, "GlobalEvent {{ ConstRedraw }}"),
         }
     }
 }
@@ -295,6 +297,10 @@ impl ApplicationHandler<GlobalEvent> for App {
             }
             GlobalEvent::CloseApp => event_loop.exit(),
             GlobalEvent::CloseRequested => Self::close_requested(&mut self.event_queue),
+            GlobalEvent::ConstRedraw => {
+                self.ui_pages.request_draw_const();
+                _ = self.try_request_redraw();
+            }
         }
     }
 

@@ -35,7 +35,7 @@ pub struct PageMenu {
     pressed: bool,
     button_names: &'static [&'static str],
     button_actions: &'static [PageOrPageMenu],
-    // event_loop_proxy: EventLoopProxy<GlobalEvent>,
+    sub_menu: Option<Box<Self>>,
 }
 
 impl Dialog for PageMenu {
@@ -63,18 +63,35 @@ impl Dialog for PageMenu {
             let top = top + (3 * num) + 4;
             Self::draw_button_box(
                 CharRect::new(top, top + 2, left + 2, left + self.rect.width() - 2),
-                self.pressed && self.selected == num,
+                (self.pressed || self.sub_menu.is_some()) && self.selected == num,
                 draw_buffer,
             );
+        }
+        if let Some(sub) = self.sub_menu.as_ref() {
+            sub.draw(draw_buffer);
         }
     }
 
     fn process_input(
         &mut self,
         key_event: &winit::event::KeyEvent,
-        _modifiers: &winit::event::Modifiers,
+        modifiers: &winit::event::Modifiers,
         event: &mut VecDeque<GlobalEvent>,
     ) -> DialogResponse {
+        if key_event.state.is_pressed() && key_event.logical_key == Key::Named(NamedKey::Escape) {
+            if self.sub_menu.is_some() {
+                self.sub_menu = None;
+                event.push_back(GlobalEvent::ConstRedraw);
+                return DialogResponse::RequestRedraw;
+            } else {
+                return DialogResponse::Close;
+            }
+        }
+
+        if let Some(sub) = self.sub_menu.as_mut() {
+            return sub.process_input(key_event, modifiers, event);
+        }
+
         if key_event.logical_key == Key::Named(NamedKey::Enter) {
             if key_event.state.is_pressed() {
                 self.pressed = true;
@@ -90,9 +107,8 @@ impl Dialog for PageMenu {
                             Menu::Instrument => Self::instrument(),
                             Menu::Settings => Self::settings(),
                         };
-
-                        event.push_back(GlobalEvent::OpenDialog(Box::new(|| Box::new(menu))));
-                        return DialogResponse::None;
+                        self.sub_menu = Some(Box::new(menu));
+                        return DialogResponse::RequestRedraw;
                     }
                     PageOrPageMenu::Page(page) => {
                         event.push_back(GlobalEvent::GoToPage(*page));
@@ -111,9 +127,7 @@ impl Dialog for PageMenu {
         }
 
         if key_event.state.is_pressed() {
-            if key_event.logical_key == Key::Named(NamedKey::Escape) {
-                return DialogResponse::Close;
-            } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp) && self.selected > 0 {
+            if key_event.logical_key == Key::Named(NamedKey::ArrowUp) && self.selected > 0 {
                 self.selected -= 1;
                 self.pressed = false;
                 return DialogResponse::RequestRedraw;
@@ -157,6 +171,7 @@ impl PageMenu {
             pressed: false,
             button_names,
             button_actions,
+            sub_menu: None,
         }
     }
 
