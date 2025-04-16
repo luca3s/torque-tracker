@@ -21,10 +21,10 @@ pub struct SliderDialog {
 
 impl Dialog for SliderDialog {
     fn draw(&self, draw_buffer: &mut DrawBuffer) {
-        draw_buffer.draw_box(CharRect::new(24, 28, 29, 50), 3, 2, 2);
+        draw_buffer.draw_in_box(CharRect::new(24, 28, 29, 50), 3, 2, 2);
         draw_buffer.draw_rect(2, CharRect::new(25, 27, 30, 49));
         draw_buffer.draw_string("Enter Value", CharPosition::new(32, 26), 3, 2);
-        draw_buffer.draw_box(CharRect::new(25, 27, 44, 49), 2, 1, 3);
+        draw_buffer.draw_in_box(CharRect::new(25, 27, 44, 49), 2, 1, 3);
         self.text.draw(draw_buffer, true);
     }
 

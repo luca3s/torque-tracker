@@ -99,7 +99,34 @@ impl DrawBuffer {
         }
     }
 
-    pub fn draw_box(
+    /// doesn't draw background. That should be done before calling this function
+    pub fn draw_out_border(
+        &mut self,
+        char_rect: CharRect,
+        top_left_color: u8,
+        bot_right_color: u8,
+        thickness: usize,
+    ) {
+        assert!(thickness <= FONT_SIZE);
+        let pixel_rect = PixelRect::from(char_rect);
+        let top_left_color = self.get_raw_color(top_left_color);
+        let bot_right_color = self.get_raw_color(bot_right_color);
+
+        for x in pixel_rect.left()..=pixel_rect.right() {
+            for y in 0..thickness {
+                self.framebuffer[pixel_rect.top() + y][x] = top_left_color;
+                self.framebuffer[pixel_rect.bot() - y][x] = bot_right_color;
+            }
+        }
+        for y in pixel_rect.top()..=pixel_rect.bot() {
+            for x in 0..thickness {
+                self.framebuffer[y][pixel_rect.right() - x] = bot_right_color;
+                self.framebuffer[y][pixel_rect.left() + x] = top_left_color;
+            }
+        }
+    }
+
+    pub fn draw_in_box(
         &mut self,
         char_rect: CharRect,
         background_color: u8,

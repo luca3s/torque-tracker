@@ -107,7 +107,7 @@ impl<R> Button<R> {
             false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
         };
 
-        buffer.draw_box(
+        buffer.draw_in_box(
             self.rect,
             DrawBuffer::BACKGROUND_COLOR,
             box_colors.0,

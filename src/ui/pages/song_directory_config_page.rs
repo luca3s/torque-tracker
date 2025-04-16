@@ -91,7 +91,7 @@ impl Page for SongDirectoryConfigPage {
         draw_buffer.draw_string("Song Variables", CharPosition::new(33, 13), 3, 2);
 
         draw_buffer.draw_string("Song Name", CharPosition::new(7, 16), 0, 2);
-        draw_buffer.draw_box(
+        draw_buffer.draw_in_box(
             CharRect::new(15, 17, 16, 43),
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
@@ -100,7 +100,7 @@ impl Page for SongDirectoryConfigPage {
 
         draw_buffer.draw_string("Initial Tempo", CharPosition::new(3, 19), 0, 2);
         draw_buffer.draw_string("Initial Speed", CharPosition::new(3, 20), 0, 2);
-        draw_buffer.draw_box(
+        draw_buffer.draw_in_box(
             CharRect::new(18, 21, 16, 50),
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
@@ -112,7 +112,7 @@ impl Page for SongDirectoryConfigPage {
         draw_buffer.draw_string("Seperation", CharPosition::new(6, 25), 0, 2);
         draw_buffer.draw_string("Old Effects", CharPosition::new(5, 26), 0, 2);
         draw_buffer.draw_string("Compatible Gxx", CharPosition::new(2, 27), 0, 2);
-        draw_buffer.draw_box(
+        draw_buffer.draw_in_box(
             CharRect::new(22, 28, 16, 34),
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
@@ -130,7 +130,7 @@ impl Page for SongDirectoryConfigPage {
         draw_buffer.draw_string("Module", CharPosition::new(6, 42), 0, 2);
         draw_buffer.draw_string("Sample", CharPosition::new(6, 43), 0, 2);
         draw_buffer.draw_string("Instrument", CharPosition::new(2, 44), 0, 2);
-        draw_buffer.draw_box(
+        draw_buffer.draw_in_box(
             CharRect::new(41, 45, 12, 78),
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,

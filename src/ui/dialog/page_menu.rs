@@ -46,8 +46,19 @@ impl Dialog for PageMenu {
 
         draw_buffer.draw_rect(Self::BACKGROUND_COLOR, self.rect);
         draw_buffer.draw_string(self.name, top_left + CharPosition::new(7, 2), 3, 2);
-        self.draw_outer_box(draw_buffer);
-
+        // self.draw_outer_box(draw_buffer);
+        draw_buffer.draw_out_border(self.rect, Self::TOPLEFT_COLOR, Self::TOPLEFT_COLOR, 2);
+        draw_buffer.draw_out_border(
+            CharRect::new(
+                self.rect.top() + 1,
+                self.rect.bot() - 1,
+                self.rect.left() + 1,
+                self.rect.right() - 1,
+            ),
+            Self::BOTRIGHT_COLOR,
+            Self::BOTRIGHT_COLOR,
+            1,
+        );
         for (num, button) in self.button_names.iter().enumerate() {
             let text_color = match self.selected == num {
                 true => 11,
@@ -61,11 +72,14 @@ impl Dialog for PageMenu {
                 Self::BACKGROUND_COLOR,
             );
             let top = top + (3 * num) + 4;
-            Self::draw_button_box(
-                CharRect::new(top, top + 2, left + 2, left + self.rect.width() - 2),
-                (self.pressed || self.sub_menu.is_some()) && self.selected == num,
-                draw_buffer,
-            );
+            let (top_left, bot_right) =
+                match (self.pressed || self.sub_menu.is_some()) && self.selected == num {
+                    true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
+                    false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
+                };
+            let rect = CharRect::new(top, top + 2, left + 2, left + self.rect.width() - 2);
+            draw_buffer.draw_out_border(rect, top_left, bot_right, 1);
+            Self::draw_button_corners(rect, draw_buffer);
         }
         if let Some(sub) = self.sub_menu.as_ref() {
             sub.draw(draw_buffer);
@@ -175,68 +189,10 @@ impl PageMenu {
         }
     }
 
-    // TODO: the original draws the inner border in the outer part of the next character, while
-    // this currently does it on the inner part of the same character.
-    //
-    // Not sure what i like more.
-    fn draw_outer_box(&self, draw_buffer: &mut DrawBuffer) {
-        let pixel_rect = PixelRect::from(self.rect);
-        let outer_color = draw_buffer.get_raw_color(Self::TOPLEFT_COLOR);
-        let inner_color = draw_buffer.get_raw_color(Self::BOTRIGHT_COLOR);
-        let framebuffer = &mut draw_buffer.framebuffer;
-
-        // upper & lower outer line
-        for x in pixel_rect.left()..=pixel_rect.right() {
-            framebuffer[pixel_rect.top()][x] = outer_color;
-            framebuffer[pixel_rect.top() + 1][x] = outer_color;
-            framebuffer[pixel_rect.bot()][x] = outer_color;
-            framebuffer[pixel_rect.bot() - 1][x] = outer_color;
-        }
-        // left & right outer line
-        for y in pixel_rect.top()..=pixel_rect.bot() {
-            framebuffer[y][pixel_rect.left()] = outer_color;
-            framebuffer[y][pixel_rect.left() + 1] = outer_color;
-            framebuffer[y][pixel_rect.right()] = outer_color;
-            framebuffer[y][pixel_rect.right() - 1] = outer_color;
-        }
-        // upper & lower inner line
-        for x in (pixel_rect.left() + FONT_SIZE - 1)..=(pixel_rect.right() - FONT_SIZE + 1) {
-            framebuffer[pixel_rect.top() + FONT_SIZE - 1][x] = inner_color;
-            framebuffer[pixel_rect.bot() - FONT_SIZE + 1][x] = inner_color;
-        }
-        // left & right inner line
-        for y in (pixel_rect.top() + FONT_SIZE - 1)..=(pixel_rect.bot() - FONT_SIZE + 1) {
-            framebuffer[y][pixel_rect.left() + FONT_SIZE - 1] = inner_color;
-            framebuffer[y][pixel_rect.right() - FONT_SIZE + 1] = inner_color;
-        }
-    }
-
-    fn draw_button_box(rect: CharRect, invert_colors: bool, draw_buffer: &mut DrawBuffer) {
+    fn draw_button_corners(rect: CharRect, draw_buffer: &mut DrawBuffer) {
         let corner_color = draw_buffer.get_raw_color(Self::BOTRIGHT_COLOR);
-        let (topleft, botright) = match invert_colors {
-            true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
-            false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
-        };
-        let topleft = draw_buffer.get_raw_color(topleft);
-        let botright = draw_buffer.get_raw_color(botright);
         let framebuffer = &mut draw_buffer.framebuffer;
         let pixel_rect = PixelRect::from(rect);
-        // draw top line
-        for x in pixel_rect.left()..=(pixel_rect.right() - FONT_SIZE) {
-            framebuffer[pixel_rect.top()][x] = topleft;
-        }
-        // draw bot line
-        for x in (pixel_rect.left() + FONT_SIZE)..=pixel_rect.right() {
-            framebuffer[pixel_rect.bot()][x] = botright;
-        }
-        // draw left line
-        for y in (pixel_rect.top())..=(pixel_rect.bot() - FONT_SIZE) {
-            framebuffer[y][pixel_rect.left()] = topleft;
-        }
-        // draw right line
-        for y in (pixel_rect.top() + FONT_SIZE)..=pixel_rect.bot() {
-            framebuffer[y][pixel_rect.right()] = botright;
-        }
         // draw top right corner
         for y in 0..FONT_SIZE {
             for x in y..FONT_SIZE {
