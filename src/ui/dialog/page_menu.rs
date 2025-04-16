@@ -102,7 +102,7 @@ impl Dialog for PageMenu {
                             Menu::Settings => Self::settings(),
                         };
 
-                        event.push_back(GlobalEvent::OpenDialog(Box::new(menu)));
+                        event.push_back(GlobalEvent::OpenDialog(Box::new(|| Box::new(menu))));
                         return DialogResponse::None;
                     }
                     PageOrPageMenu::Page(page) => {

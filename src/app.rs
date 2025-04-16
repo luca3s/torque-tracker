@@ -55,7 +55,7 @@ pub async fn get_song_edit(manager: &mut AudioManager) -> SongEdit<'_> {
 }
 
 pub enum GlobalEvent {
-    OpenDialog(Box<dyn Dialog + Send>),
+    OpenDialog(Box<dyn FnOnce() -> Box<dyn Dialog> + Send>),
     PageEvent(PageEvent),
     Header(HeaderEvent),
     /// also closes all dialogs
@@ -197,11 +197,13 @@ impl ApplicationHandler<GlobalEvent> for App {
 
         match event {
             WindowEvent::CloseRequested => {
-                event_queue.push_back(GlobalEvent::OpenDialog(Box::new(ConfirmDialog::new(
-                    "Close Tracker?",
-                    || Some(GlobalEvent::CloseApp),
-                    || None,
-                ))));
+                event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+                    Box::new(ConfirmDialog::new(
+                        "Close Tracker?",
+                        || Some(GlobalEvent::CloseApp),
+                        || None,
+                    ))
+                })));
             }
             WindowEvent::Resized(physical_size) => {
                 gpu_state.resize(physical_size);
@@ -253,8 +255,9 @@ impl ApplicationHandler<GlobalEvent> for App {
                 } else {
                     if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
                     {
-                        let main_menu = PageMenu::main();
-                        event_queue.push_back(GlobalEvent::OpenDialog(Box::new(main_menu)));
+                        event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+                            Box::new(PageMenu::main())
+                        })));
                     }
 
                     match ui_pages.process_key_event(&self.modifiers, &event, event_queue) {
@@ -278,7 +281,7 @@ impl ApplicationHandler<GlobalEvent> for App {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: GlobalEvent) {
         match event {
             GlobalEvent::OpenDialog(dialog) => {
-                self.dialog_manager.open_dialog(dialog);
+                self.dialog_manager.open_dialog(dialog());
                 _ = self.try_request_redraw();
             }
             GlobalEvent::PageEvent(c) => {

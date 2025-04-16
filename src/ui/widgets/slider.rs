@@ -233,7 +233,7 @@ impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
             if let Some(first_char) = chars.next() {
                 if first_char.is_ascii_digit() {
                     let dialog = SliderDialog::new(first_char, self.dialog_return);
-                    event.push_back(GlobalEvent::OpenDialog(Box::new(dialog)));
+                    event.push_back(GlobalEvent::OpenDialog(Box::new(|| Box::new(dialog))));
                     return WidgetResponse::default();
                 }
             }
