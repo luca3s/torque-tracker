@@ -60,6 +60,7 @@ pub enum GlobalEvent {
     Header(HeaderEvent),
     /// also closes all dialogs
     GoToPage(PagesEnum),
+    CloseRequested,
     CloseApp,
 }
 
@@ -77,6 +78,7 @@ impl Debug for GlobalEvent {
                 write!(f, "GlobalEvent {{ GoToPage: {pages_enum:?} }}")
             }
             GlobalEvent::CloseApp => write!(f, "GlobalEvent {{ CloseApp }}"),
+            GlobalEvent::CloseRequested => write!(f, "GlobalEvent {{ CloseRequested }}"),
         }
     }
 }
@@ -196,15 +198,7 @@ impl ApplicationHandler<GlobalEvent> for App {
         let window = window.as_ref();
 
         match event {
-            WindowEvent::CloseRequested => {
-                event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
-                    Box::new(ConfirmDialog::new(
-                        "Close Tracker?",
-                        || Some(GlobalEvent::CloseApp),
-                        || None,
-                    ))
-                })));
-            }
+            WindowEvent::CloseRequested => Self::close_requested(event_queue),
             WindowEvent::Resized(physical_size) => {
                 gpu_state.resize(physical_size);
                 window.request_redraw();
@@ -300,6 +294,7 @@ impl ApplicationHandler<GlobalEvent> for App {
                 _ = self.try_request_redraw();
             }
             GlobalEvent::CloseApp => event_loop.exit(),
+            GlobalEvent::CloseRequested => Self::close_requested(&mut self.event_queue),
         }
     }
 
@@ -328,6 +323,16 @@ impl App {
             audio_stream: None,
             event_queue: VecDeque::with_capacity(3),
         }
+    }
+
+    fn close_requested(events: &mut VecDeque<GlobalEvent>) {
+        events.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+            Box::new(ConfirmDialog::new(
+                "Close Tracker?",
+                || Some(GlobalEvent::CloseApp),
+                || None,
+            ))
+        })));
     }
 
     /// tries to request a redraw. if there currently is no window this fails

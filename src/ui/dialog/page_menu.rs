@@ -14,6 +14,7 @@ use super::{Dialog, DialogResponse};
 enum PageOrPageMenu {
     Menu(Menu),
     Page(PagesEnum),
+    CloseApp,
     // should be removed when possible
     NotYetImplemented,
 }
@@ -96,11 +97,14 @@ impl Dialog for PageMenu {
                     PageOrPageMenu::Page(page) => {
                         event.push_back(GlobalEvent::GoToPage(*page));
                         return DialogResponse::Close;
-                        // return DialogResponse::SwitchToPage(*page)
                     }
                     PageOrPageMenu::NotYetImplemented => {
                         println!("Not yet implementes");
                         return DialogResponse::RequestRedraw;
+                    }
+                    PageOrPageMenu::CloseApp => {
+                        event.push_back(GlobalEvent::CloseRequested);
+                        return DialogResponse::Close;
                     }
                 }
             }
@@ -156,6 +160,10 @@ impl PageMenu {
         }
     }
 
+    // TODO: the original draws the inner border in the outer part of the next character, while
+    // this currently does it on the inner part of the same character.
+    //
+    // Not sure what i like more.
     fn draw_outer_box(&self, draw_buffer: &mut DrawBuffer) {
         let pixel_rect = PixelRect::from(self.rect);
         let outer_color = draw_buffer.get_raw_color(Self::TOPLEFT_COLOR);
@@ -249,7 +257,7 @@ impl PageMenu {
             &[
                 PageOrPageMenu::Menu(Menu::File),
                 PageOrPageMenu::Menu(Menu::Playback),
-                PageOrPageMenu::NotYetImplemented, // view patterns
+                PageOrPageMenu::Page(PagesEnum::Pattern), // view patterns
                 PageOrPageMenu::Menu(Menu::Sample),
                 PageOrPageMenu::Menu(Menu::Instrument),
                 PageOrPageMenu::NotYetImplemented, // orders / panning
@@ -266,7 +274,7 @@ impl PageMenu {
         Self::new(
             "File Menu",
             CharPosition::new(25, 13),
-            22,
+            26,
             &[
                 "Load...           (F9)",
                 "New...        (Ctrl-N)",
@@ -283,7 +291,7 @@ impl PageMenu {
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
                 PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
+                PageOrPageMenu::CloseApp,
             ],
         )
     }
@@ -292,7 +300,7 @@ impl PageMenu {
         Self::new(
             "Playback Menu",
             CharPosition::new(25, 13),
-            27,
+            31,
             &[
                 "Show Infopage          (F5)",
                 "Play Song         (Ctrl-F5)",
@@ -322,7 +330,7 @@ impl PageMenu {
         Self::new(
             "Sample Menu",
             CharPosition::new(25, 20),
-            25,
+            29,
             &["Sample List          (F3)", "Sample Library  (Ctrl-F3)"],
             &[
                 PageOrPageMenu::NotYetImplemented,
@@ -335,7 +343,7 @@ impl PageMenu {
         Self::new(
             "Instrument Menu",
             CharPosition::new(20, 23),
-            29,
+            33,
             &[
                 "Instrument List          (F4)",
                 "Instrument Library  (Ctrl-F4)",
@@ -351,7 +359,7 @@ impl PageMenu {
         Self::new(
             "Settings Menu",
             CharPosition::new(22, 25),
-            34,
+            38,
             &[
                 "Preferences             (Shift-F5)",
                 "MIDI Configuration      (Shift-F1)",
