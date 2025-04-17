@@ -13,7 +13,11 @@ use winit::{
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
+use crate::{
+    app::GlobalEvent,
+    coordinates::{CharPosition, CharRect, WINDOW_SIZE_CHARS},
+    draw_buffer::{self, DrawBuffer},
+};
 
 pub trait Page {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer);
@@ -115,6 +119,16 @@ pub enum PagesEnum {
     Pattern,
 }
 
+impl PagesEnum {
+    fn get_title(&self) -> &'static str {
+        match self {
+            PagesEnum::Help => "Help",
+            PagesEnum::SongDirectoryConfig => "Song Variables & Directory Configuration (F12)",
+            PagesEnum::Pattern => "Pattern Editor (F2)",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum PageEvent {
     Sdc(SDCChange),
@@ -177,6 +191,24 @@ impl AllPages {
     }
 
     pub fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer) {
+        // draw page title
+        let title = self.current.get_title();
+        let middle = WINDOW_SIZE_CHARS.0 / 2;
+        let str_start = middle - (title.len() / 2);
+        draw_buffer.draw_string(title, CharPosition::new(str_start, 11), 0, 2);
+        const DOTTED: [u8; 8] = [0, 0, 0, 0b01010101, 0, 0, 0, 0];
+        draw_buffer.draw_rect(2, CharRect::new(11, 11, str_start - 1, str_start - 1));
+        draw_buffer.draw_rect(
+            2,
+            CharRect::new(11, 11, str_start + title.len(), str_start + title.len()),
+        );
+        for x in 1..=(str_start - 2) {
+            draw_buffer.draw_char(DOTTED, CharPosition::new(x, 11), 1, 2);
+        }
+        for x in (str_start + title.len() + 1)..=(WINDOW_SIZE_CHARS.0 - 2) {
+            draw_buffer.draw_char(DOTTED, CharPosition::new(x, 11), 1, 2);
+        }
+        // draw page const
         match self.current {
             PagesEnum::Help => self.help.draw_constant(draw_buffer),
             PagesEnum::SongDirectoryConfig => self.song_directory_config.draw_constant(draw_buffer),

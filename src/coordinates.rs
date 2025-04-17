@@ -22,7 +22,8 @@ pub struct CharRect {
 }
 
 impl CharRect {
-    pub const PAGE_AREA: Self = Self::new(11, WINDOW_SIZE_CHARS.1 - 1, 0, WINDOW_SIZE_CHARS.0 - 1);
+    /// row 11 is reserved for the page title. The page shouldn't draw on it
+    pub const PAGE_AREA: Self = Self::new(12, WINDOW_SIZE_CHARS.1 - 1, 0, WINDOW_SIZE_CHARS.0 - 1);
     pub const HEADER_AREA: Self = Self::new(0, 10, 0, WINDOW_SIZE_CHARS.0 - 1);
 
     pub const fn new(top: usize, bot: usize, left: usize, right: usize) -> Self {
