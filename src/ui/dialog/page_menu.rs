@@ -190,20 +190,19 @@ impl PageMenu {
     }
 
     fn draw_button_corners(rect: CharRect, draw_buffer: &mut DrawBuffer) {
-        let corner_color = draw_buffer.get_raw_color(Self::BOTRIGHT_COLOR);
         let framebuffer = &mut draw_buffer.framebuffer;
         let pixel_rect = PixelRect::from(rect);
         // draw top right corner
         for y in 0..FONT_SIZE {
             for x in y..FONT_SIZE {
                 framebuffer[pixel_rect.top() + y][pixel_rect.right() - FONT_SIZE + x + 1] =
-                    corner_color;
+                    Self::BOTRIGHT_COLOR;
             }
         }
         // draw botleft corner
         for y in 0..FONT_SIZE {
             for x in 0..(FONT_SIZE - y) {
-                framebuffer[pixel_rect.bot() - y][pixel_rect.left() + x] = corner_color;
+                framebuffer[pixel_rect.bot() - y][pixel_rect.left() + x] = Self::BOTRIGHT_COLOR;
             }
         }
     }

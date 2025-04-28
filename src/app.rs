@@ -23,9 +23,11 @@ use winit::{
 
 use cpal::traits::{DeviceTrait, HostTrait};
 
+use crate::palettes::Palette;
+
 use super::{
     draw_buffer::DrawBuffer,
-    gpu::GPUState,
+    render::RenderBackend,
     ui::{
         dialog::{
             confirm::ConfirmDialog, page_menu::PageMenu, Dialog, DialogManager, DialogResponse,
@@ -130,7 +132,7 @@ impl WorkerThreads {
 }
 
 pub struct App {
-    window_gpu: Option<(Arc<Window>, GPUState)>,
+    window_gpu: Option<(Arc<Window>, RenderBackend)>,
     draw_buffer: DrawBuffer,
     modifiers: Modifiers,
     ui_pages: AllPages,
@@ -195,14 +197,14 @@ impl ApplicationHandler<GlobalEvent> for App {
         } = self;
 
         // panic is fine because when i get a window_event a window exists
-        let (window, gpu_state) = window_gpu.as_mut().unwrap();
+        let (window, render_backend) = window_gpu.as_mut().unwrap();
         // don't want the window to be mut
         let window = window.as_ref();
 
         match event {
             WindowEvent::CloseRequested => Self::close_requested(event_queue),
             WindowEvent::Resized(physical_size) => {
-                gpu_state.resize(physical_size);
+                render_backend.resize(physical_size);
                 window.request_redraw();
             }
             WindowEvent::ScaleFactorChanged {
@@ -221,12 +223,7 @@ impl ApplicationHandler<GlobalEvent> for App {
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU and render it onto the screen
-                match gpu_state.render(&draw_buffer.framebuffer) {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => gpu_state.reinit_surface(),
-                    Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-                    Err(e) => eprint!("{:?}", e),
-                }
+                render_backend.render(&draw_buffer.framebuffer, event_loop);
             }
             WindowEvent::KeyboardInput {
                 device_id: _,
@@ -360,8 +357,8 @@ impl App {
             attributes.title = String::from("RusTracker");
 
             let window = Arc::new(event_loop.create_window(attributes).unwrap());
-            let gpu_state = smol::block_on(GPUState::new(window.clone()));
-            (window, gpu_state)
+            let render_backend = RenderBackend::new(window.clone(), Palette::CAMOUFLAGE);
+            (window, render_backend)
         });
     }
 

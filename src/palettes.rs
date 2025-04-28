@@ -2,7 +2,22 @@ pub const PALETTE_SIZE: usize = 16;
 
 pub type RGB8 = [u8; 3];
 
-// for RGB10A2 structure see: https://developer.apple.com/documentation/metal/mtlpixelformat/rgb10a2unorm
+/// See https://docs.rs/softbuffer/latest/softbuffer/struct.Buffer.html#data-representation
+pub struct ZRGB(u32);
+
+impl ZRGB {
+    const fn from_rgb8(value: RGB8) -> Self {
+        Self(u32::from_le_bytes([0, value[0], value[1], value[2]]))
+    }
+}
+
+impl From<RGB8> for ZRGB {
+    fn from(value: RGB8) -> Self {
+        Self::from_rgb8(value)
+    }
+}
+
+/// see: https://developer.apple.com/documentation/metal/mtlpixelformat/rgb10a2unorm
 pub struct RGB10A2(u32);
 
 impl RGB10A2 {
@@ -54,12 +69,24 @@ impl Palette<RGB8> {
 
 impl Palette<RGB10A2> {
     pub fn get_raw(&self, index: u8) -> u32 {
-        self.0[index as usize].0
+        self.0[usize::from(index)].0
     }
 }
 
 impl From<Palette<RGB8>> for Palette<RGB10A2> {
     fn from(value: Palette<RGB8>) -> Self {
         Self(value.0.map(RGB10A2::from))
+    }
+}
+
+impl From<Palette<RGB8>> for Palette<ZRGB> {
+    fn from(value: Palette<RGB8>) -> Self {
+        Self(value.0.map(ZRGB::from))
+    }
+}
+
+impl Palette<ZRGB> {
+    pub fn get_raw(&self, index: u8) -> u32 {
+        self.0[usize::from(index)].0
     }
 }

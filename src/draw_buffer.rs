@@ -1,21 +1,18 @@
 use crate::palettes;
 
-use super::{
-    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE},
-    palettes::{Palette, RGB10A2},
-};
+use super::coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE};
 use font8x8::UnicodeFonts;
 
 pub struct DrawBuffer {
-    pub framebuffer: Box<[[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1]>,
-    color_palette: Palette<RGB10A2>,
+    pub framebuffer: Box<[[u8; WINDOW_SIZE.0]; WINDOW_SIZE.1]>,
+    // color_palette: Palette<RGB10A2>,
 }
 
 impl Default for DrawBuffer {
     fn default() -> Self {
         Self {
             framebuffer: Box::new([[0; WINDOW_SIZE.0]; WINDOW_SIZE.1]),
-            color_palette: Palette::CAMOUFLAGE.into(),
+            // color_palette: Palette::CAMOUFLAGE.into(),
         }
     }
 }
@@ -26,13 +23,13 @@ impl DrawBuffer {
     pub fn new() -> Self {
         Self {
             framebuffer: Box::new([[0; WINDOW_SIZE.0]; WINDOW_SIZE.1]),
-            color_palette: Palette::CAMOUFLAGE.into(),
+            // color_palette: Palette::CAMOUFLAGE.into(),
         }
     }
 
-    pub fn get_raw_color(&self, index: u8) -> u32 {
-        self.color_palette.get_raw(index)
-    }
+    // pub fn get_raw_color(&self, index: u8) -> u32 {
+    //     self.color_palette.get_raw(index)
+    // }
 
     pub fn draw_char(
         &mut self,
@@ -43,8 +40,8 @@ impl DrawBuffer {
     ) {
         // this is the top_left pixel
         let position = (position.x() * FONT_SIZE, position.y() * FONT_SIZE);
-        let fg_color = self.color_palette.get_raw(fg_color);
-        let bg_color = self.color_palette.get_raw(bg_color);
+        // let fg_color = self.color_palette.get_raw(fg_color);
+        // let bg_color = self.color_palette.get_raw(bg_color);
         for (y, line) in char_data.iter().enumerate() {
             for x in 0..8 {
                 let color = match (line >> x) & 1 == 1 {
@@ -110,8 +107,8 @@ impl DrawBuffer {
         assert!(thickness <= FONT_SIZE);
         assert!(thickness > 0);
         let pixel_rect = PixelRect::from(char_rect);
-        let top_left_color = self.get_raw_color(top_left_color);
-        let bot_right_color = self.get_raw_color(bot_right_color);
+        // let top_left_color = self.get_raw_color(top_left_color);
+        // let bot_right_color = self.get_raw_color(bot_right_color);
 
         for x in pixel_rect.left()..=pixel_rect.right() {
             for y in 0..thickness {
@@ -139,9 +136,9 @@ impl DrawBuffer {
         const SPACE_FROM_BORDER: usize = FONT_SIZE - BOX_THICKNESS;
 
         let pixel_rect = PixelRect::from(char_rect);
-        let background_color = self.color_palette.get_raw(background_color);
-        let top_left_color = self.color_palette.get_raw(top_left_color);
-        let bot_right_color = self.color_palette.get_raw(bot_right_color);
+        // let background_color = self.color_palette.get_raw(background_color);
+        // let top_left_color = self.color_palette.get_raw(top_left_color);
+        // let bot_right_color = self.color_palette.get_raw(bot_right_color);
 
         // all pixel lines except those in top and bottom char line
         for y in (pixel_rect.top() + FONT_SIZE)..=(pixel_rect.bot() - FONT_SIZE) {
@@ -223,7 +220,7 @@ impl DrawBuffer {
     }
 
     pub fn draw_pixel_rect(&mut self, color: u8, rect: PixelRect) {
-        let color = self.color_palette.get_raw(color);
+        // let color = self.color_palette.get_raw(color);
 
         for line in &mut self.framebuffer[rect.top()..=rect.bot()] {
             line[rect.left()..=rect.right()].fill(color);
@@ -232,8 +229,8 @@ impl DrawBuffer {
 
     /// for debugging. draws a pixel in the middle of the char
     fn mark_char(&mut self, position: CharPosition) {
-        self.framebuffer[(position.y() + 4) * WINDOW_SIZE.0][position.x() + 4] =
-            self.color_palette.get_raw(1);
+        self.framebuffer[(position.y() + 4) * WINDOW_SIZE.0][position.x() + 4] = 1;
+        // self.color_palette.get_raw(1);
     }
 
     pub fn show_colors(&mut self) {
