@@ -18,7 +18,9 @@ impl From<RGB8> for ZRGB {
 }
 
 /// see: https://developer.apple.com/documentation/metal/mtlpixelformat/rgb10a2unorm
-pub struct RGB10A2(u32);
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct RGB10A2(pub u32);
 
 impl RGB10A2 {
     const fn from_rgb8(value: RGB8) -> Self {
@@ -43,7 +45,8 @@ impl From<RGB8> for RGB10A2 {
     }
 }
 
-pub struct Palette<Color>([Color; PALETTE_SIZE]);
+#[repr(transparent)]
+pub struct Palette<Color>(pub [Color; PALETTE_SIZE]);
 
 // only needed, because its easier to set u8 color values than u10 by hand, so i store them in u8 and convert to RGB10A2
 impl Palette<RGB8> {

@@ -16,10 +16,26 @@ fn vs_main(
     return vertex_outputs[in_vertex_index];
 }
 
-@group(0) @binding(0) var t_diffuse: texture_2d<f32>;
-@group(0) @binding(1) var s_diffuse: sampler;
+@group(0) @binding(0) var texture: texture_2d<f32>;
+@group(0) @binding(1) var texture_sampler: sampler;
+@group(0) @binding(2) var colors: texture_1d<f32>;
+@group(0) @binding(3) var color_sampler: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, in.tex_coords);
+    // const colors: array<vec4<f32>, 4> = array(
+    //     vec4(0., 0.2, 0.7, 0.),
+    //     vec4(0.3, 0., 0.5, 0.),
+    //     vec4(0.4, 0.4, 0., 0.),
+    //     vec4(0.2, 0.2, 0.2, 0.),
+    // );
+    let idx = textureSample(texture, texture_sampler, in.tex_coords)[0] * 16;
+    
+    return textureSample(colors, color_sampler, idx);
+    //return textureSample(texture_diffuse, sampler_diffuse, in.tex_coords);
+    // let idx = textureSample(texture_diffuse, sampler_diffuse, in.tex_coords);
+
+    // return vec4(idx[0], idx[0], idx[0], 0);
+    // return colors[u32(idx[0])];
+    // return textureLoad(texture_diffuse, in.tex_coords, 0);
 }

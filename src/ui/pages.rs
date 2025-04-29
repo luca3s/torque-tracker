@@ -16,7 +16,7 @@ use winit::{
 use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect, WINDOW_SIZE_CHARS},
-    draw_buffer::{self, DrawBuffer},
+    draw_buffer::DrawBuffer,
 };
 
 pub trait Page {
