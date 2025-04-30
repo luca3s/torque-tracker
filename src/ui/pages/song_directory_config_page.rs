@@ -96,6 +96,7 @@ impl Page for SongDirectoryConfigPage {
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
             BOTRIGHT_COLOR,
+            1,
         );
 
         draw_buffer.draw_string("Initial Tempo", CharPosition::new(3, 19), 0, 2);
@@ -105,6 +106,7 @@ impl Page for SongDirectoryConfigPage {
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
             BOTRIGHT_COLOR,
+            1,
         );
 
         draw_buffer.draw_string("Global Volume", CharPosition::new(3, 23), 0, 2);
@@ -117,6 +119,7 @@ impl Page for SongDirectoryConfigPage {
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
             BOTRIGHT_COLOR,
+            1,
         );
 
         draw_buffer.draw_string("Control", CharPosition::new(9, 30), 0, 2);
@@ -135,6 +138,7 @@ impl Page for SongDirectoryConfigPage {
             BACKGROUND_COLOR,
             TOPLEFT_COLOR,
             BOTRIGHT_COLOR,
+            1,
         );
     }
 

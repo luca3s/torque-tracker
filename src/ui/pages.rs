@@ -1,10 +1,12 @@
 mod help_page;
+mod order_list;
 mod pattern;
 mod song_directory_config_page;
 
 use std::collections::VecDeque;
 
 use help_page::HelpPage;
+use order_list::OrderListPage;
 use pattern::{PatternPage, PatternPageEvent};
 use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
@@ -16,7 +18,7 @@ use winit::{
 use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect, WINDOW_SIZE_CHARS},
-    draw_buffer::{self, DrawBuffer},
+    draw_buffer::DrawBuffer,
 };
 
 pub trait Page {
@@ -117,16 +119,7 @@ pub enum PagesEnum {
     Help,
     SongDirectoryConfig,
     Pattern,
-}
-
-impl PagesEnum {
-    fn get_title(&self) -> &'static str {
-        match self {
-            PagesEnum::Help => "Help",
-            PagesEnum::SongDirectoryConfig => "Song Variables & Directory Configuration (F12)",
-            PagesEnum::Pattern => "Pattern Editor (F2)",
-        }
-    }
+    OrderList,
 }
 
 #[derive(Debug)]
@@ -148,6 +141,7 @@ pub struct AllPages {
     help: HelpPage,
     song_directory_config: SongDirectoryConfigPage,
     pattern: PatternPage,
+    order_list: OrderListPage,
 
     const_draw_needed: bool,
     current: PagesEnum,
@@ -160,7 +154,38 @@ impl AllPages {
             song_directory_config: SongDirectoryConfigPage::new(),
             pattern: PatternPage::new(proxy),
             current: PagesEnum::SongDirectoryConfig,
+            order_list: OrderListPage::new(),
             const_draw_needed: true,
+        }
+    }
+
+    fn get_title(&self) -> &'static str {
+        match self.current {
+            PagesEnum::Help => "Help",
+            PagesEnum::SongDirectoryConfig => "Song Variables & Directory Configuration (F12)",
+            PagesEnum::Pattern => "Pattern Editor (F2)",
+            PagesEnum::OrderList => match self.order_list.mode() {
+                order_list::Mode::Volume => "Order List and Channel Volume (F11)",
+                order_list::Mode::Panning => "Order List and Panning (F11)",
+            },
+        }
+    }
+
+    fn get_page(&self) -> &dyn Page {
+        match self.current {
+            PagesEnum::Help => &self.help,
+            PagesEnum::SongDirectoryConfig => &self.song_directory_config,
+            PagesEnum::Pattern => &self.pattern,
+            PagesEnum::OrderList => &self.order_list,
+        }
+    }
+
+    fn get_page_mut(&mut self) -> &mut dyn Page {
+        match self.current {
+            PagesEnum::Help => &mut self.help,
+            PagesEnum::SongDirectoryConfig => &mut self.song_directory_config,
+            PagesEnum::Pattern => &mut self.pattern,
+            PagesEnum::OrderList => &mut self.order_list,
         }
     }
 
@@ -183,16 +208,12 @@ impl AllPages {
         if self.const_draw_needed {
             self.draw_constant(draw_buffer);
         }
-        match self.current {
-            PagesEnum::Help => self.help.draw(draw_buffer),
-            PagesEnum::SongDirectoryConfig => self.song_directory_config.draw(draw_buffer),
-            PagesEnum::Pattern => self.pattern.draw(draw_buffer),
-        }
+        self.get_page_mut().draw(draw_buffer);
     }
 
     pub fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer) {
         // draw page title
-        let title = self.current.get_title();
+        let title = self.get_title();
         let middle = WINDOW_SIZE_CHARS.0 / 2;
         let str_start = middle - (title.len() / 2);
         draw_buffer.draw_string(title, CharPosition::new(str_start, 11), 0, 2);
@@ -209,11 +230,7 @@ impl AllPages {
             draw_buffer.draw_char(DOTTED, CharPosition::new(x, 11), 1, 2);
         }
         // draw page const
-        match self.current {
-            PagesEnum::Help => self.help.draw_constant(draw_buffer),
-            PagesEnum::SongDirectoryConfig => self.song_directory_config.draw_constant(draw_buffer),
-            PagesEnum::Pattern => self.pattern.draw_constant(draw_buffer),
-        }
+        self.get_page_mut().draw_constant(draw_buffer);
         self.const_draw_needed = false;
     }
 
@@ -224,36 +241,30 @@ impl AllPages {
         key_event: &KeyEvent,
         events: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
-        if key_event.logical_key == Key::Named(NamedKey::F1) && key_event.state.is_pressed() {
-            self.switch_page(PagesEnum::Help)
-        } else if key_event.logical_key == Key::Named(NamedKey::F2)
-            && modifiers.state().is_empty()
-            && key_event.state.is_pressed()
-        {
-            self.switch_page(PagesEnum::Pattern)
-        } else if key_event.logical_key == Key::Named(NamedKey::F5) && key_event.state.is_pressed()
-        {
-            if modifiers.state() == ModifiersState::SHIFT {
-                println!("open preferences page")
-            } else if modifiers.state().is_empty() {
-                println!("open info page");
-            }
-            PageResponse::None
-        } else if key_event.logical_key == Key::Named(NamedKey::F12)
-            && modifiers.state().is_empty()
-            && key_event.state.is_pressed()
-        {
-            self.switch_page(PagesEnum::SongDirectoryConfig)
-        } else {
-            // make the current page handle the event
-            match self.current {
-                PagesEnum::Help => self.help.process_key_event(modifiers, key_event, events),
-                PagesEnum::SongDirectoryConfig => self
-                    .song_directory_config
-                    .process_key_event(modifiers, key_event, events),
-                PagesEnum::Pattern => self.pattern.process_key_event(modifiers, key_event, events),
+        if key_event.state.is_pressed() && modifiers.state().is_empty() {
+            if key_event.logical_key == Key::Named(NamedKey::F1) {
+                self.switch_page(PagesEnum::Help);
+                return PageResponse::RequestRedraw;
+            } else if key_event.logical_key == Key::Named(NamedKey::F2) {
+                self.switch_page(PagesEnum::Pattern);
+                return PageResponse::RequestRedraw;
+            } else if key_event.logical_key == Key::Named(NamedKey::F11) {
+                if self.current == PagesEnum::OrderList {
+                    self.order_list.switch_mode();
+                    self.request_draw_const();
+                    return PageResponse::RequestRedraw;
+                } else {
+                    self.switch_page(PagesEnum::OrderList);
+                    return PageResponse::RequestRedraw;
+                }
+            } else if key_event.logical_key == Key::Named(NamedKey::F12) {
+                self.switch_page(PagesEnum::SongDirectoryConfig);
+                return PageResponse::RequestRedraw;
             }
         }
+
+        self.get_page_mut()
+            .process_key_event(modifiers, key_event, events)
     }
 
     pub fn process_page_event(

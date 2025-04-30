@@ -112,6 +112,7 @@ impl<R> Button<R> {
             DrawBuffer::BACKGROUND_COLOR,
             box_colors.0,
             box_colors.1,
+            1,
         );
 
         let text_color = match selected {

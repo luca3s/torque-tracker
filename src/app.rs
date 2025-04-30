@@ -213,6 +213,7 @@ impl ApplicationHandler<GlobalEvent> for App {
             } => {
                 // window_state.resize(**new_inner_size);
                 // due to a version bump in winit i dont know anymore how to handle this event so i just ignore it for know and see if it makes problems in the future
+                // i have yet only received this event on linux wayland, not macos
                 println!("Window Scale Factor Changed");
             }
             WindowEvent::RedrawRequested => {
