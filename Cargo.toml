@@ -18,6 +18,7 @@ triple_buffer = "8.1.0"
 softbuffer = "0.4.6"
 
 [features]
+# less artifacts than software scaling. also probably faster
 gpu_scaling = ["dep:wgpu"]
 default = ["gpu_scaling"]
 

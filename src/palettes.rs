@@ -7,7 +7,8 @@ pub struct ZRGB(u32);
 
 impl ZRGB {
     const fn from_rgb8(value: RGB8) -> Self {
-        Self(u32::from_le_bytes([0, value[0], value[1], value[2]]))
+        // needs be_bytes. otherwise everything is green
+        Self(u32::from_be_bytes([0, value[0], value[1], value[2]]))
     }
 }
 

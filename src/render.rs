@@ -89,19 +89,20 @@ impl RenderBackend {
         frame_buffer: &[[u8; WINDOW_SIZE.0]; WINDOW_SIZE.1],
         _: &ActiveEventLoop,
     ) {
-        // dbg!(&self.width, &self.height);
         let mut buffer = self.backend.buffer_mut().unwrap();
         assert!(buffer.len() == usize::try_from(self.width * self.height).unwrap());
-        // buffer.fill(self.palette.get_raw(0));
-        let x_step = (WINDOW_SIZE.0 - 10) as f32 / self.width as f32;
-        let y_step = (WINDOW_SIZE.1 - 10) as f32 / self.height as f32;
-        // dbg!(x_step, y_step);
-        for (y_idx, row) in buffer.chunks_exact_mut(self.width.try_into().unwrap()).enumerate() {
+        let x_step = WINDOW_SIZE.0 as f32 / self.width as f32;
+        let y_step = WINDOW_SIZE.1 as f32 / self.height as f32;
+        for (y_idx, row) in buffer
+            .chunks_exact_mut(self.width.try_into().unwrap())
+            .enumerate()
+        {
             for (x_idx, pixel) in row.iter_mut().enumerate() {
                 let x_idx = x_idx as f32 * x_step;
                 let y_idx = y_idx as f32 * y_step;
-                // dbg!(x_idx, y_idx);
-                *pixel = self.palette.get_raw(frame_buffer[y_idx.floor() as usize][x_idx.floor() as usize]);
+                *pixel = self
+                    .palette
+                    .get_raw(frame_buffer[y_idx.floor() as usize][x_idx.floor() as usize]);
             }
         }
         buffer.present().unwrap();
