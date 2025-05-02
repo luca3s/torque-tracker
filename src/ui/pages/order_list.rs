@@ -1,14 +1,23 @@
-use std::io::Write;
 use std::str::from_utf8;
+use std::{array, io::Write};
 
-use tracker_engine::{
-    channel::Pan, file::impulse_format::header::PatternOrder, project::song::Song,
+use tracker_engine::{file::impulse_format::header::PatternOrder, project::song::Song};
+use winit::keyboard::{Key, ModifiersState, NamedKey};
+
+use crate::app::GlobalEvent;
+use crate::ui::widgets::{NextWidget, StandardResponse, Widget};
+use crate::{
+    coordinates::{CharPosition, CharRect},
+    ui::widgets::slider::Slider,
 };
-use winit::keyboard::{Key, NamedKey};
 
-use crate::coordinates::{CharPosition, CharRect};
+use super::{Page, PageEvent, PageResponse};
 
-use super::{Page, PageResponse};
+#[derive(Debug)]
+pub enum OrderListPageEvent {
+    SetVolumeCurrent(i16),
+    SetPanCurrent(i16),
+}
 
 #[derive(Debug, Copy, Clone)]
 pub enum Mode {
@@ -16,10 +25,10 @@ pub enum Mode {
     Volume,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Cursor {
     Order,
-    VolPan,
+    VolPan(u8),
 }
 
 #[derive(Debug)]
@@ -36,8 +45,8 @@ pub struct OrderListPage {
     order_cursor: OrderCursor,
     order_draw: u8,
     pattern_order: [PatternOrder; Song::<true>::MAX_ORDERS],
-    volume: [u8; Song::<true>::MAX_CHANNELS],
-    pan: [Pan; Song::<true>::MAX_CHANNELS],
+    volume: [Slider<0, 64, ()>; 64],
+    pan: [Slider<0, 64, ()>; 64],
 }
 
 impl OrderListPage {
@@ -48,9 +57,74 @@ impl OrderListPage {
             order_cursor: OrderCursor { order: 0, digit: 0 },
             order_draw: 0,
             pattern_order: [PatternOrder::EndOfSong; Song::<true>::MAX_ORDERS],
-            volume: [64; Song::<true>::MAX_CHANNELS],
-            pan: [Pan::default(); Song::<true>::MAX_CHANNELS],
+            volume: array::from_fn(|idx| {
+                let pos = if idx >= 32 {
+                    CharPosition::new(61, 15 + idx - 32)
+                } else {
+                    CharPosition::new(30, 15 + idx)
+                };
+                Slider::new(
+                    64,
+                    pos,
+                    9,
+                    NextWidget::default(),
+                    |value| {
+                        GlobalEvent::PageEvent(PageEvent::OrderList(
+                            OrderListPageEvent::SetVolumeCurrent(value),
+                        ))
+                    },
+                    |_| (),
+                )
+            }),
+            pan: array::from_fn(|idx| {
+                dbg!(idx);
+                let pos = if idx >= 32 {
+                    CharPosition::new(61, 15 + idx - 32)
+                } else {
+                    CharPosition::new(30, 15 + idx)
+                };
+                Slider::new(
+                    32,
+                    pos,
+                    9,
+                    NextWidget::default(),
+                    |value| {
+                        GlobalEvent::PageEvent(PageEvent::OrderList(
+                            OrderListPageEvent::SetPanCurrent(value),
+                        ))
+                    },
+                    |_| (),
+                )
+            }),
         }
+    }
+
+    pub fn process_event(&mut self, event: OrderListPageEvent) -> PageResponse {
+        match event {
+            OrderListPageEvent::SetVolumeCurrent(vol) => {
+                let cursor = match self.cursor {
+                    Cursor::Order => unreachable!(
+                        "when a set volume event is created a volume slider has to be selected"
+                    ),
+                    Cursor::VolPan(c) => c,
+                };
+                self.volume[usize::from(cursor - 1)]
+                    .try_set(vol)
+                    .expect("the value was created from the slider, so it has to fit.");
+            }
+            OrderListPageEvent::SetPanCurrent(pan) => {
+                let cursor = match self.cursor {
+                    Cursor::Order => unreachable!(
+                        "when a set pan event is created a pan slider has to be selected"
+                    ),
+                    Cursor::VolPan(c) => c,
+                };
+                self.pan[usize::from(cursor - 1)]
+                    .try_set(pan)
+                    .expect("the event was created from the slider, so has to fit.")
+            }
+        };
+        PageResponse::RequestRedraw
     }
 
     pub fn switch_mode(&mut self) {
@@ -123,6 +197,38 @@ impl Page for OrderListPage {
             );
         }
 
+        // draw channel and numbers
+        // TODO: make the channel number strings const
+        const CHANNEL_BASE_LEFT: CharPosition = CharPosition::new(19, 15);
+        const CHANNEL_BASE_RIGHT: CharPosition = CharPosition::new(50, 15);
+        const CHANNEL: &str = "Channel";
+        let mut buf = [0; 2];
+        for row in 0..32 {
+            draw_buffer.draw_string(CHANNEL, CHANNEL_BASE_LEFT + CharPosition::new(0, row), 0, 2);
+            draw_buffer.draw_string(
+                CHANNEL,
+                CHANNEL_BASE_RIGHT + CharPosition::new(0, row),
+                0,
+                2,
+            );
+            let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+            write!(&mut curse, "{:02}", row + 1).unwrap();
+            draw_buffer.draw_string(
+                from_utf8(&buf).unwrap(),
+                CHANNEL_BASE_LEFT + CharPosition::new(8, row),
+                0,
+                2,
+            );
+            let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+            write!(&mut curse, "{:02}", row + 33).unwrap();
+            draw_buffer.draw_string(
+                from_utf8(&buf).unwrap(),
+                CHANNEL_BASE_RIGHT + CharPosition::new(8, row),
+                0,
+                2,
+            );
+        }
+
         // draw cursor
         match self.cursor {
             Cursor::Order => {
@@ -148,7 +254,43 @@ impl Page for OrderListPage {
                     3,
                 );
             }
-            Cursor::VolPan => todo!(),
+            Cursor::VolPan(c) => {
+                let mut buf = [0; 2];
+                let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+                write!(&mut curse, "{:02}", c).unwrap();
+                let pos = if c <= 32 {
+                    CHANNEL_BASE_LEFT + CharPosition::new(0, usize::from(c - 1))
+                } else {
+                    CHANNEL_BASE_RIGHT + CharPosition::new(0, usize::from(c - 33))
+                };
+                draw_buffer.draw_string(CHANNEL, pos, 3, 2);
+                draw_buffer.draw_string(
+                    from_utf8(&buf).unwrap(),
+                    pos + CharPosition::new(8, 0),
+                    3,
+                    2,
+                );
+            }
+        }
+
+        // draw sliders
+        match self.mode {
+            Mode::Panning => {
+                for (idx, pan) in self.pan.iter().enumerate() {
+                    pan.draw(
+                        draw_buffer,
+                        self.cursor == Cursor::VolPan(u8::try_from(idx + 1).unwrap()),
+                    );
+                }
+            }
+            Mode::Volume => {
+                for (idx, vol) in self.volume.iter().enumerate() {
+                    vol.draw(
+                        draw_buffer,
+                        self.cursor == Cursor::VolPan(u8::try_from(idx + 1).unwrap()),
+                    );
+                }
+            }
         }
     }
 
@@ -163,9 +305,19 @@ impl Page for OrderListPage {
         key_event: &winit::event::KeyEvent,
         events: &mut std::collections::VecDeque<crate::app::GlobalEvent>,
     ) -> PageResponse {
-        dbg!(&self.order_cursor);
         match self.cursor {
             Cursor::Order => {
+                if key_event.logical_key == Key::Named(NamedKey::Tab)
+                    && key_event.state.is_pressed()
+                {
+                    if modifiers.state() == ModifiersState::SHIFT {
+                        self.cursor = Cursor::VolPan(33);
+                        return PageResponse::RequestRedraw;
+                    } else if modifiers.state().is_empty() {
+                        self.cursor = Cursor::VolPan(1);
+                        return PageResponse::RequestRedraw;
+                    }
+                }
                 if modifiers.state().is_empty() && key_event.state.is_pressed() {
                     if key_event.logical_key == Key::Named(NamedKey::ArrowUp) {
                         return self.order_cursor_up();
@@ -184,6 +336,9 @@ impl Page for OrderListPage {
                         } else {
                             self.order_cursor.digit + 1
                         };
+                        return PageResponse::RequestRedraw;
+                    } else if key_event.logical_key == Key::Named(NamedKey::Tab) {
+                        self.cursor = Cursor::VolPan(1); // go to channel 1
                         return PageResponse::RequestRedraw;
                     } else if let Key::Character(text) = &key_event.logical_key {
                         let mut chars = text.chars();
@@ -209,7 +364,66 @@ impl Page for OrderListPage {
                     }
                 }
             }
-            Cursor::VolPan => {}
+            Cursor::VolPan(c) => {
+                if key_event.logical_key == Key::Named(NamedKey::Tab)
+                    && key_event.state.is_pressed()
+                {
+                    if modifiers.state() == ModifiersState::SHIFT {
+                        if c <= 32 {
+                            self.cursor = Cursor::Order;
+                            return PageResponse::RequestRedraw;
+                        } else {
+                            self.cursor = Cursor::VolPan(c - 32);
+                            return PageResponse::RequestRedraw;
+                        }
+                    } else if modifiers.state().is_empty() {
+                        if c <= 32 {
+                            self.cursor = Cursor::VolPan(c + 32);
+                            return PageResponse::RequestRedraw;
+                        } else {
+                            self.cursor = Cursor::Order;
+                            return PageResponse::RequestRedraw;
+                        }
+                    }
+                    return PageResponse::None;
+                }
+                if modifiers.state().is_empty() && key_event.state.is_pressed() {
+                    if key_event.logical_key == Key::Named(NamedKey::ArrowUp) {
+                        if c == 1 {
+                            return PageResponse::None;
+                        } else {
+                            self.cursor = Cursor::VolPan(c - 1);
+                            return PageResponse::RequestRedraw;
+                        }
+                    } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown) {
+                        if c == 64 {
+                            return PageResponse::None;
+                        } else {
+                            self.cursor = Cursor::VolPan(c + 1);
+                            return PageResponse::RequestRedraw;
+                        }
+                    }
+                }
+
+                match self.mode {
+                    Mode::Panning => match self.pan[usize::from(c - 1)]
+                        .process_input(modifiers, key_event, events)
+                        .standard
+                    {
+                        StandardResponse::SwitchFocus(_) => return PageResponse::None,
+                        StandardResponse::RequestRedraw => return PageResponse::RequestRedraw,
+                        StandardResponse::None => return PageResponse::None,
+                    },
+                    Mode::Volume => match self.volume[usize::from(c - 1)]
+                        .process_input(modifiers, key_event, events)
+                        .standard
+                    {
+                        StandardResponse::SwitchFocus(_) => return PageResponse::None,
+                        StandardResponse::RequestRedraw => return PageResponse::RequestRedraw,
+                        StandardResponse::None => return PageResponse::None,
+                    },
+                }
+            }
         }
         PageResponse::None
     }

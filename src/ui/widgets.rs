@@ -76,7 +76,7 @@ impl<R> From<StandardResponse> for WidgetResponse<R> {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct NextWidget {
     pub left: Option<usize>,
     pub right: Option<usize>,

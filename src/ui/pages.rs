@@ -6,7 +6,7 @@ mod song_directory_config_page;
 use std::collections::VecDeque;
 
 use help_page::HelpPage;
-use order_list::OrderListPage;
+use order_list::{OrderListPage, OrderListPageEvent};
 use pattern::{PatternPage, PatternPageEvent};
 use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
@@ -126,6 +126,7 @@ pub enum PagesEnum {
 pub enum PageEvent {
     Sdc(SDCChange),
     Pattern(PatternPageEvent),
+    OrderList(OrderListPageEvent),
 }
 
 impl PageEvent {
@@ -133,6 +134,7 @@ impl PageEvent {
         match self {
             PageEvent::Sdc(_) => PagesEnum::SongDirectoryConfig,
             PageEvent::Pattern(_) => PagesEnum::Pattern,
+            PageEvent::OrderList(_) => PagesEnum::OrderList,
         }
     }
 }
@@ -276,6 +278,7 @@ impl AllPages {
         let response = match event {
             PageEvent::Sdc(change) => self.song_directory_config.ui_change(change),
             PageEvent::Pattern(event) => self.pattern.process_event(event, events),
+            PageEvent::OrderList(event) => self.order_list.process_event(event),
         };
 
         if page == self.current {

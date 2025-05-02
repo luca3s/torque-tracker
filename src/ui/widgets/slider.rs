@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    fmt::Debug,
     ops::{AddAssign, Deref, SubAssign},
 };
 
@@ -14,6 +15,7 @@ use crate::{
 
 use super::{NextWidget, StandardResponse, Widget, WidgetResponse};
 
+#[derive(Debug)]
 pub struct BoundNumber<const MIN: i16, const MAX: i16> {
     inner: i16,
 }
@@ -279,5 +281,16 @@ impl<const MIN: i16, const MAX: i16, R> Slider<MIN, MAX, R> {
 
     pub fn try_set(&mut self, value: i16) -> Result<R, ()> {
         self.number.try_set(value).map(|_| (self.callback)(value))
+    }
+}
+
+impl<const MIN: i16, const MAX: i16, R> Debug for Slider<MIN, MAX, R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Slider")
+            .field("number", &self.number)
+            .field("position", &self.position)
+            .field("width", &self.width)
+            .field("next_widget", &self.next_widget)
+            .finish_non_exhaustive()
     }
 }
