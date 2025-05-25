@@ -33,8 +33,7 @@ pub struct PageMenu {
     rect: CharRect,
     selected: usize,
     pressed: bool,
-    button_names: &'static [&'static str],
-    button_actions: &'static [PageOrPageMenu],
+    buttons: &'static [(&'static str, PageOrPageMenu)],
     sub_menu: Option<Box<Self>>,
 }
 
@@ -59,14 +58,14 @@ impl Dialog for PageMenu {
             Self::BOTRIGHT_COLOR,
             1,
         );
-        for (num, button) in self.button_names.iter().enumerate() {
+        for (num, (name, action)) in self.buttons.iter().enumerate() {
             let text_color = match self.selected == num {
                 true => 11,
                 false => 0,
             };
 
             draw_buffer.draw_string(
-                button,
+                name,
                 top_left + CharPosition::new(4, (3 * num) + 5),
                 text_color,
                 Self::BACKGROUND_COLOR,
@@ -112,7 +111,7 @@ impl Dialog for PageMenu {
                 return DialogResponse::RequestRedraw;
             } else if self.pressed {
                 self.pressed = false;
-                match &self.button_actions[self.selected] {
+                match &self.buttons[self.selected].1 {
                     PageOrPageMenu::Menu(menu) => {
                         let menu = match menu {
                             Menu::File => Self::file(),
@@ -146,7 +145,7 @@ impl Dialog for PageMenu {
                 self.pressed = false;
                 return DialogResponse::RequestRedraw;
             } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
-                && self.selected < self.button_actions.len() - 1
+                && self.selected < self.buttons.len() - 1
             {
                 self.selected += 1;
                 self.pressed = false;
@@ -166,14 +165,11 @@ impl PageMenu {
         name: &'static str,
         pos: CharPosition,
         width: usize,
-        button_names: &'static [&'static str],
-        button_actions: &'static [PageOrPageMenu],
+        buttons: &'static [(&'static str, PageOrPageMenu)],
     ) -> Self {
-        assert!(button_names.len() == button_actions.len());
-
         let rect = CharRect::new(
             pos.y(),
-            pos.y() + 5 + (3 * button_names.len()),
+            pos.y() + 5 + (3 * buttons.len()),
             pos.x(),
             pos.x() + width + 3,
         );
@@ -183,8 +179,7 @@ impl PageMenu {
             rect,
             selected: 0,
             pressed: false,
-            button_names,
-            button_actions,
+            buttons,
             sub_menu: None,
         }
     }
@@ -213,30 +208,32 @@ impl PageMenu {
             CharPosition::new(6, 11),
             29,
             &[
-                "File Menu...",
-                "Playback Menu...",
-                "View Patterns        (F2)",
-                "Sample Menu...",
-                "Instrument Menu...",
-                "View Orders/Panning (F11)",
-                "View Variables      (F12)",
-                "Message Editor (Shift-F9)",
-                "Settings Menu...",
-                "Help!                (F1)",
+                ("File Menu...", PageOrPageMenu::Menu(Menu::File)),
+                ("Playback Menu...", PageOrPageMenu::Menu(Menu::Playback)),
+                (
+                    "View Patterns        (F2)",
+                    PageOrPageMenu::Page(PagesEnum::Pattern),
+                ),
+                ("Sample Menu...", PageOrPageMenu::Menu(Menu::Sample)),
+                ("Instrument Menu...", PageOrPageMenu::Menu(Menu::Instrument)),
+                (
+                    "View Orders/Panning (F11)",
+                    PageOrPageMenu::Page(PagesEnum::OrderList),
+                ),
+                (
+                    "View Variables      (F12)",
+                    PageOrPageMenu::Page(PagesEnum::SongDirectoryConfig),
+                ),
+                (
+                    "Message Editor (Shift-F9)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                ("Settings Menu...", PageOrPageMenu::Menu(Menu::Settings)),
+                (
+                    "Help!                (F1)",
+                    PageOrPageMenu::Page(PagesEnum::Help),
+                ),
             ],
-            &[
-                PageOrPageMenu::Menu(Menu::File),
-                PageOrPageMenu::Menu(Menu::Playback),
-                PageOrPageMenu::Page(PagesEnum::Pattern), // view patterns
-                PageOrPageMenu::Menu(Menu::Sample),
-                PageOrPageMenu::Menu(Menu::Instrument),
-                PageOrPageMenu::NotYetImplemented, // orders / panning
-                PageOrPageMenu::Page(PagesEnum::SongDirectoryConfig),
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::Menu(Menu::Settings),
-                PageOrPageMenu::Page(PagesEnum::Help),
-            ],
-            // event_loop_proxy,
         )
     }
 
@@ -246,22 +243,13 @@ impl PageMenu {
             CharPosition::new(25, 13),
             26,
             &[
-                "Load...           (F9)",
-                "New...        (Ctrl-N)",
-                "Save Current  (Ctrl-S)",
-                "Save As...       (F10)",
-                "Export...  (Shift-F10)",
-                "Message Log (Ctrl-F11)",
-                "Quit          (Ctrl-Q)",
-            ],
-            &[
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::CloseApp,
+                ("Load...           (F9)", PageOrPageMenu::NotYetImplemented),
+                ("New...        (Ctrl-N)", PageOrPageMenu::NotYetImplemented),
+                ("Save Current  (Ctrl-S)", PageOrPageMenu::NotYetImplemented),
+                ("Save As...       (F10)", PageOrPageMenu::NotYetImplemented),
+                ("Export...  (Shift-F10)", PageOrPageMenu::NotYetImplemented),
+                ("Message Log (Ctrl-F11)", PageOrPageMenu::NotYetImplemented),
+                ("Quit          (Ctrl-Q)", PageOrPageMenu::CloseApp),
             ],
         )
     }
@@ -272,26 +260,42 @@ impl PageMenu {
             CharPosition::new(25, 13),
             31,
             &[
-                "Show Infopage          (F5)",
-                "Play Song         (Ctrl-F5)",
-                "Play Pattern           (F6)",
-                "Play from Order  (Shift-F6)",
-                "Play from Mark/Cursor  (F7)",
-                "Stop                   (F8)",
-                "Reinit Soundcard   (Ctrl-I)",
-                "Driver Screen    (Shift-F5)",
-                "Calculate Length   (Ctrl-P)",
-            ],
-            &[
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
+                (
+                    "Show Infopage          (F5)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Play Song         (Ctrl-F5)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Play Pattern           (F6)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Play from Order  (Shift-F6)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Play from Mark/Cursor  (F7)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Stop                   (F8)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Reinit Soundcard   (Ctrl-I)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Driver Screen    (Shift-F5)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Calculate Length   (Ctrl-P)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
             ],
         )
     }
@@ -301,10 +305,15 @@ impl PageMenu {
             "Sample Menu",
             CharPosition::new(25, 20),
             29,
-            &["Sample List          (F3)", "Sample Library  (Ctrl-F3)"],
             &[
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
+                (
+                    "Sample List          (F3)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Sample Library  (Ctrl-F3)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
             ],
         )
     }
@@ -315,12 +324,14 @@ impl PageMenu {
             CharPosition::new(20, 23),
             33,
             &[
-                "Instrument List          (F4)",
-                "Instrument Library  (Ctrl-F4)",
-            ],
-            &[
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
+                (
+                    "Instrument List          (F4)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Instrument Library  (Ctrl-F4)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
             ],
         )
     }
@@ -331,20 +342,30 @@ impl PageMenu {
             CharPosition::new(22, 25),
             38,
             &[
-                "Preferences             (Shift-F5)",
-                "MIDI Configuration      (Shift-F1)",
-                "System Configuration     (Ctrl-F1)",
-                "Palette Editor          (Ctrl-F12)",
-                "Font Editor            (Shift-F12)",
-                "Toggle Fullscreen (Ctrl-Alt-Enter)",
-            ],
-            &[
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
-                PageOrPageMenu::NotYetImplemented,
+                (
+                    "Preferences             (Shift-F5)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "MIDI Configuration      (Shift-F1)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "System Configuration     (Ctrl-F1)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Palette Editor          (Ctrl-F12)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Font Editor            (Shift-F12)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
+                (
+                    "Toggle Fullscreen (Ctrl-Alt-Enter)",
+                    PageOrPageMenu::NotYetImplemented,
+                ),
             ],
         )
     }
