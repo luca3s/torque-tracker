@@ -77,7 +77,6 @@ impl OrderListPage {
                 )
             }),
             pan: array::from_fn(|idx| {
-                dbg!(idx);
                 let pos = if idx >= 32 {
                     CharPosition::new(61, 15 + idx - 32)
                 } else {

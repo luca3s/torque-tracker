@@ -10,18 +10,15 @@ use crate::{
 #[cfg(feature = "gpu_scaling")]
 pub struct RenderBackend {
     backend: crate::gpu::GPUState,
-    buffer: Box<[[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1]>,
-    palette: Palette<crate::palettes::RGB10A2>,
 }
 
 #[cfg(feature = "gpu_scaling")]
 impl RenderBackend {
     pub fn new(window: Arc<Window>, palette: Palette<RGB8>) -> Self {
-        Self {
-            backend: smol::block_on(crate::gpu::GPUState::new(window)),
-            buffer: Box::new([[0; WINDOW_SIZE.0]; WINDOW_SIZE.1]),
-            palette: palette.into(),
-        }
+        let mut backend = smol::block_on(crate::gpu::GPUState::new(window));
+        backend.queue_palette_update(palette.into());
+
+        Self { backend }
     }
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) {
@@ -33,17 +30,7 @@ impl RenderBackend {
         frame_buffer: &[[u8; WINDOW_SIZE.0]; WINDOW_SIZE.1],
         event_loop: &ActiveEventLoop,
     ) {
-        // hoooolyyyy shit
-        self.buffer
-            .iter_mut()
-            .zip(frame_buffer)
-            .for_each(|(buf, frame)| {
-                buf.iter_mut()
-                    .zip(frame.iter().cloned())
-                    .for_each(|(color, idx)| *color = self.palette.get_raw(idx))
-            });
-
-        match self.backend.render(&self.buffer) {
+        match self.backend.render(frame_buffer) {
             Ok(_) => {}
             Err(wgpu::SurfaceError::Lost) => self.backend.reinit_surface(),
             Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),

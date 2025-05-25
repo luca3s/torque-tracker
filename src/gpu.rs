@@ -13,7 +13,9 @@ use wgpu::{
 };
 use winit::window::Window;
 
-use super::coordinates::{PIXEL_SIZE, WINDOW_SIZE};
+use crate::palettes::{Palette, PALETTE_SIZE, RGB10A2};
+
+use super::coordinates::WINDOW_SIZE;
 
 pub struct GPUState {
     surface: Surface<'static>,
@@ -26,7 +28,7 @@ pub struct GPUState {
     render_pipeline: RenderPipeline,
 
     streaming_texture: Texture,
-
+    color_map: Texture,
     diffuse_bind_group: BindGroup,
 }
 
@@ -35,6 +37,12 @@ impl GPUState {
     const TEXTURE_SIZE: Extent3d = Extent3d {
         width: WINDOW_SIZE.0 as u32,
         height: WINDOW_SIZE.1 as u32,
+        depth_or_array_layers: 1,
+    };
+
+    const COLOR_MAP_SIZE: Extent3d = Extent3d {
+        width: PALETTE_SIZE as u32,
+        height: 1,
         depth_or_array_layers: 1,
     };
 
@@ -89,22 +97,45 @@ impl GPUState {
 
         surface.configure(&device, &config);
 
-        let texture = device.create_texture(&TextureDescriptor {
+        let window_texture = device.create_texture(&TextureDescriptor {
             size: Self::TEXTURE_SIZE,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: TextureFormat::Rgb10a2Unorm,
+            format: TextureFormat::R8Unorm,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-            label: None,
+            label: Some("window texture"),
             view_formats: &[],
         });
 
-        let texure_view = texture.create_view(&TextureViewDescriptor::default());
+        let texure_view = window_texture.create_view(&TextureViewDescriptor::default());
         let texture_sampler = device.create_sampler(&SamplerDescriptor {
             address_mode_u: AddressMode::ClampToEdge,
             address_mode_v: AddressMode::ClampToEdge,
             address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Nearest,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let color_map = device.create_texture(&TextureDescriptor {
+            size: Self::COLOR_MAP_SIZE,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D1,
+            format: TextureFormat::Rgb10a2Unorm,
+            usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
+            label: Some("color map"),
+            view_formats: &[],
+        });
+        let color_view = color_map.create_view(&TextureViewDescriptor::default());
+
+        let color_map_sampler = device.create_sampler(&wgpu::wgt::SamplerDescriptor {
+            label: Some("color map sampler"),
+            address_mode_u: AddressMode::Repeat,
+            address_mode_v: AddressMode::Repeat,
+            address_mode_w: AddressMode::Repeat,
             mag_filter: FilterMode::Nearest,
             min_filter: FilterMode::Nearest,
             mipmap_filter: FilterMode::Nearest,
@@ -119,7 +150,7 @@ impl GPUState {
                         binding: 0,
                         visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
+                            sample_type: TextureSampleType::Float { filterable: false },
                             view_dimension: TextureViewDimension::D2,
                             multisampled: false,
                         },
@@ -128,7 +159,23 @@ impl GPUState {
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        ty: BindingType::Sampler(SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: false },
+                            view_dimension: TextureViewDimension::D1,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::NonFiltering),
                         count: None,
                     },
                 ],
@@ -146,14 +193,22 @@ impl GPUState {
                     binding: 1,
                     resource: BindingResource::Sampler(&texture_sampler),
                 },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: BindingResource::TextureView(&color_view),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: BindingResource::Sampler(&color_map_sampler),
+                },
             ],
         });
 
         const SHADER_DESCRIPTOR: ShaderModuleDescriptor = include_wgsl!("shader.wgsl");
         let shader = device.create_shader_module(SHADER_DESCRIPTOR);
 
-        #[cfg(debug_assertions)]
         // print shader compilation errors
+        #[cfg(debug_assertions)]
         {
             let compilation_info = shader.get_compilation_info().await;
             println!(
@@ -220,8 +275,31 @@ impl GPUState {
             size,
             render_pipeline,
             diffuse_bind_group,
-            streaming_texture: texture,
+            streaming_texture: window_texture,
+            color_map,
         }
+    }
+
+    /// on next render the new palette will be used
+    pub fn queue_palette_update(&mut self, palette: Palette<RGB10A2>) {
+        let palette = palette.0.map(|c| c.0.to_le_bytes());
+
+        // the queue will remember this and on the next render submission this will be submitted as well
+        self.queue.write_texture(
+            TexelCopyTextureInfo {
+                texture: &self.color_map,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            palette.as_flattened(),
+            TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some((PALETTE_SIZE * size_of::<u32>()) as u32),
+                rows_per_image: Some(1),
+            },
+            Self::COLOR_MAP_SIZE,
+        );
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -239,26 +317,18 @@ impl GPUState {
         }
     }
 
-    pub fn render<'frame>(
+    pub fn render(
         &mut self,
-        framebuffer: &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
+        framebuffer: &[[u8; WINDOW_SIZE.0]; WINDOW_SIZE.1],
     ) -> Result<(), SurfaceError> {
         // SAFETY:
-        // - u32 and [u8; 4] are both valid for every bit pattern => No invalid patterns can be created
-        // - lifetime stays the same
-        // - size of the slice stays the same, is compile time constant
-        // - mutability stays the same
-        // could also be done with bytemuck::cast_slice and slice::as_flattened, which shows
-        // that it is sound.
-        let framebuffer = unsafe {
-            std::mem::transmute::<
-                &'frame [[u32; WINDOW_SIZE.0]; WINDOW_SIZE.1],
-                &'frame [u8; WINDOW_SIZE.0 * WINDOW_SIZE.1 * std::mem::size_of::<u32>()],
-            >(framebuffer)
-        };
 
-        const BYTES_PER_ROW: Option<u32> = Some((PIXEL_SIZE * WINDOW_SIZE.0) as u32);
+        let framebuffer = framebuffer.as_flattened();
+        assert!(framebuffer.len() == WINDOW_SIZE.0 * WINDOW_SIZE.1);
+
+        const BYTES_PER_ROW: Option<u32> = Some(WINDOW_SIZE.0 as u32);
         const ROWS_PER_IMAGE: Option<u32> = Some(WINDOW_SIZE.1 as u32);
+
         // push framebuffer to GPU-Texture
         self.queue.write_texture(
             TexelCopyTextureInfo {
