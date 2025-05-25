@@ -12,7 +12,7 @@ use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
     event::{KeyEvent, Modifiers},
     event_loop::EventLoopProxy,
-    keyboard::{Key, ModifiersState, NamedKey},
+    keyboard::{Key, NamedKey},
 };
 
 use crate::{
@@ -194,6 +194,10 @@ impl AllPages {
     /// requests a redraw if it is needed
     pub fn switch_page(&mut self, next_page: PagesEnum) -> PageResponse {
         if next_page != self.current {
+            // when switching to the OrderListPage, reset to the pan mode
+            if next_page == PagesEnum::OrderList {
+                self.order_list.reset_mode();
+            }
             self.current = next_page;
             self.request_draw_const();
             PageResponse::RequestRedraw
