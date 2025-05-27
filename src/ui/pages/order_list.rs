@@ -59,14 +59,14 @@ impl OrderListPage {
             pattern_order: [PatternOrder::EndOfSong; Song::<true>::MAX_ORDERS],
             volume: array::from_fn(|idx| {
                 let pos = if idx >= 32 {
-                    CharPosition::new(61, 15 + idx - 32)
+                    CharPosition::new(65, 15 + idx - 32)
                 } else {
-                    CharPosition::new(30, 15 + idx)
+                    CharPosition::new(31, 15 + idx)
                 };
                 Slider::new(
                     64,
                     pos,
-                    9,
+                    8,
                     NextWidget::default(),
                     |value| {
                         GlobalEvent::PageEvent(PageEvent::OrderList(
@@ -78,14 +78,14 @@ impl OrderListPage {
             }),
             pan: array::from_fn(|idx| {
                 let pos = if idx >= 32 {
-                    CharPosition::new(61, 15 + idx - 32)
+                    CharPosition::new(65, 15 + idx - 32)
                 } else {
-                    CharPosition::new(30, 15 + idx)
+                    CharPosition::new(31, 15 + idx)
                 };
                 Slider::new(
                     32,
                     pos,
-                    9,
+                    8,
                     NextWidget::default(),
                     |value| {
                         GlobalEvent::PageEvent(PageEvent::OrderList(
@@ -175,6 +175,18 @@ impl Page for OrderListPage {
             from_utf8(buf).unwrap()
         }
 
+        // draw heading for vol pan columns
+        match self.mode {
+            Mode::Panning => {
+                draw_buffer.draw_string("L   M   R", CharPosition::new(31, 14), 0, 3);
+                draw_buffer.draw_string("L   M   R", CharPosition::new(65, 14), 0, 3);
+            }
+            Mode::Volume => {
+                draw_buffer.draw_string(" Volumes ", CharPosition::new(31, 14), 0, 3);
+                draw_buffer.draw_string(" Volumes ", CharPosition::new(65, 14), 0, 3);
+            }
+        }
+
         const ORDER_BASE_POS: CharPosition = CharPosition::new(2, 15);
         let mut buf = [0; 3];
         for (pos, order) in (self.order_draw..self.order_draw + 32).enumerate() {
@@ -190,7 +202,7 @@ impl Page for OrderListPage {
             // row value
             draw_buffer.draw_string(
                 write_pattern_order(self.pattern_order[usize::from(order)], &mut buf),
-                ORDER_BASE_POS + CharPosition::new(5, pos),
+                ORDER_BASE_POS + CharPosition::new(4, pos),
                 2,
                 0,
             );
@@ -198,8 +210,8 @@ impl Page for OrderListPage {
 
         // draw channel and numbers
         // TODO: make the channel number strings const
-        const CHANNEL_BASE_LEFT: CharPosition = CharPosition::new(19, 15);
-        const CHANNEL_BASE_RIGHT: CharPosition = CharPosition::new(50, 15);
+        const CHANNEL_BASE_LEFT: CharPosition = CharPosition::new(20, 15);
+        const CHANNEL_BASE_RIGHT: CharPosition = CharPosition::new(54, 15);
         const CHANNEL: &str = "Channel";
         let mut buf = [0; 2];
         for row in 0..32 {
@@ -246,7 +258,7 @@ impl Page for OrderListPage {
                     .unwrap(),
                     ORDER_BASE_POS
                         + CharPosition::new(
-                            5 + usize::from(self.order_cursor.digit),
+                            4 + usize::from(self.order_cursor.digit),
                             usize::from(self.order_cursor.order - self.order_draw),
                         ),
                     0,
@@ -294,8 +306,13 @@ impl Page for OrderListPage {
     }
 
     fn draw_constant(&mut self, draw_buffer: &mut crate::draw_buffer::DrawBuffer) {
+        // background fill
         draw_buffer.draw_rect(2, CharRect::PAGE_AREA);
-        draw_buffer.draw_in_box(CharRect::new(14, 14 + 33, 6, 10), 2, 1, 3, 2);
+        // box around order list
+        draw_buffer.draw_in_box(CharRect::new(14, 14 + 33, 5, 9), 2, 1, 3, 2);
+        // boxes aroung pan or vol
+        draw_buffer.draw_in_box(CharRect::new(13, 14 + 33, 30, 30 + 10), 2, 3, 3, 2);
+        draw_buffer.draw_in_box(CharRect::new(13, 14 + 33, 64, 64 + 10), 2, 3, 3, 2);
     }
 
     fn process_key_event(
