@@ -11,7 +11,7 @@ use winit::{
 };
 
 use crate::{
-    app::{get_song_edit, GlobalEvent, AUDIO, EXECUTOR},
+    app::{apply_song_op, GlobalEvent, AUDIO, EXECUTOR},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,
 };
@@ -73,7 +73,6 @@ pub struct PatternPage {
     cursor_position: (InPatternPosition, InEventPosition),
     draw_position: InPatternPosition,
     event_proxy: EventLoopProxy<GlobalEvent>,
-    edit_queue: smol::channel::Sender<SongOperation>,
 }
 
 impl PatternPage {
@@ -107,18 +106,6 @@ impl PatternPage {
     }
 
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
-        let (send, recv) = smol::channel::unbounded();
-        EXECUTOR
-            .spawn(async move {
-                while let Ok(msg) = recv.recv().await {
-                    let mut lock = AUDIO.lock().await;
-                    let mut edit = get_song_edit(&mut lock).await;
-                    edit.apply_operation(msg).unwrap();
-                    drop(edit);
-                    drop(lock);
-                }
-            })
-            .detach();
         Self {
             pattern_index: 0,
             pattern: Pattern::default(),
@@ -128,7 +115,6 @@ impl PatternPage {
             ),
             draw_position: InPatternPosition { row: 0, channel: 0 },
             event_proxy: proxy,
-            edit_queue: send,
         }
     }
 
@@ -194,7 +180,7 @@ impl PatternPage {
         let index = self.pattern_index;
         let op =
             SongOperation::PatternOperation(index, PatternOperation::SetEvent { position, event });
-        self.edit_queue.send_blocking(op).unwrap();
+        apply_song_op(op);
     }
 }
 

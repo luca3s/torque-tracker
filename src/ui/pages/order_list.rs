@@ -1,10 +1,12 @@
 use std::str::from_utf8;
 use std::{array, io::Write};
 
-use tracker_engine::{file::impulse_format::header::PatternOrder, project::song::Song};
+use tracker_engine::channel::Pan;
+use tracker_engine::file::impulse_format::header::PatternOrder;
+use tracker_engine::project::song::{Song, SongOperation};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::app::GlobalEvent;
+use crate::app::{apply_song_op, GlobalEvent};
 use crate::ui::widgets::{NextWidget, StandardResponse, Widget};
 use crate::{
     coordinates::{CharPosition, CharRect},
@@ -73,7 +75,11 @@ impl OrderListPage {
                             OrderListPageEvent::SetVolumeCurrent(value),
                         ))
                     },
-                    |_| (),
+                    move |vol| {
+                        // impossible to trigger as long as the slider is correct
+                        let vol = u8::try_from(vol).unwrap();
+                        apply_song_op(SongOperation::SetVolume(idx, vol));
+                    },
                 )
             }),
             pan: array::from_fn(|idx| {
@@ -92,7 +98,12 @@ impl OrderListPage {
                             OrderListPageEvent::SetPanCurrent(value),
                         ))
                     },
-                    |_| (),
+                    move |pan| {
+                        // surround and disabled not supported yet
+                        // This panic can't be triggered as long as the slider is correct.
+                        let pan = Pan::Value(u8::try_from(pan).unwrap());
+                        apply_song_op(SongOperation::SetPan(idx, pan));
+                    },
                 )
             }),
         }
@@ -362,17 +373,67 @@ impl Page for OrderListPage {
                         assert!(chars.next().is_none());
                         match first {
                             Some('+') => {
-                                self.pattern_order[usize::from(self.order_cursor.order)] =
-                                    PatternOrder::SkipOrder;
+                                let order = usize::from(self.order_cursor.order);
+                                self.pattern_order[order] = PatternOrder::SkipOrder;
+                                apply_song_op(SongOperation::SetOrder(
+                                    order,
+                                    PatternOrder::SkipOrder,
+                                ));
                                 self.order_cursor_down();
                                 self.order_cursor.digit = 0;
                                 return PageResponse::RequestRedraw;
                             }
                             Some('-') | Some('.') => {
-                                self.pattern_order[usize::from(self.order_cursor.order)] =
-                                    PatternOrder::EndOfSong;
+                                let order = usize::from(self.order_cursor.order);
+                                self.pattern_order[order] = PatternOrder::EndOfSong;
+                                apply_song_op(SongOperation::SetOrder(
+                                    order,
+                                    PatternOrder::EndOfSong,
+                                ));
                                 self.order_cursor_down();
                                 self.order_cursor.digit = 0;
+                                return PageResponse::RequestRedraw;
+                            }
+                            Some(num) if num.is_ascii_digit() => {
+                                let mut buf = [0; 1];
+                                let string = num.encode_utf8(&mut buf);
+                                let num: u8 = string.parse().unwrap();
+                                assert!(num <= 9);
+                                let cursor = usize::from(self.order_cursor.order);
+                                let new_num =
+                                    match (self.pattern_order[cursor], self.order_cursor.digit) {
+                                        // hooooly shit, i love match
+                                        (PatternOrder::Number(old_num), 0) => u8::try_from(
+                                            (u16::from(num) * 100 + u16::from(old_num % 100))
+                                                .min(199),
+                                        )
+                                        .unwrap(),
+                                        (PatternOrder::Number(old_num), 1) => {
+                                            num * 10 + 100 * (old_num / 100) + old_num % 10
+                                        }
+                                        (PatternOrder::Number(old_num), 2) => {
+                                            num + 10 * (old_num / 10)
+                                        }
+                                        (PatternOrder::Number(_), _) => unreachable!(),
+                                        (_, 0) => num.checked_mul(100).unwrap_or(199),
+                                        (_, 1) => 10 * num,
+                                        (_, 2) => num,
+                                        _ => unreachable!(),
+                                    };
+                                self.pattern_order[cursor] = PatternOrder::Number(new_num);
+                                apply_song_op(SongOperation::SetOrder(
+                                    cursor,
+                                    PatternOrder::Number(new_num),
+                                ));
+                                match self.order_cursor.digit {
+                                    0 => self.order_cursor.digit = 1,
+                                    1 => self.order_cursor.digit = 2,
+                                    2 => {
+                                        self.order_cursor.digit = 0;
+                                        self.order_cursor_down();
+                                    }
+                                    _ => unreachable!(),
+                                }
                                 return PageResponse::RequestRedraw;
                             }
                             _ => return PageResponse::None,

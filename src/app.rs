@@ -10,7 +10,7 @@ use std::{
 use smol::{channel::Sender, lock::Mutex};
 use tracker_engine::{
     manager::{AudioManager, SongEdit},
-    project::song::Song,
+    project::song::{Song, SongOperation},
 };
 use triple_buffer::triple_buffer;
 use winit::{
@@ -54,6 +54,18 @@ pub async fn get_song_edit(manager: &mut AudioManager) -> SongEdit<'_> {
     manager
         .try_edit_song()
         .expect("workaround until polonius. please polnius save me")
+}
+
+/// spawns a task to apply it. if mutiply should be applied write this yourself and hold the lock
+/// panics if the op fails
+pub fn apply_song_op(op: SongOperation) {
+    EXECUTOR
+        .spawn(async move {
+            let mut manager = AUDIO.lock().await;
+            let mut song = get_song_edit(&mut manager).await;
+            song.apply_operation(op).unwrap();
+        })
+        .detach();
 }
 
 pub enum GlobalEvent {
