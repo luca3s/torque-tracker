@@ -1,9 +1,10 @@
 use std::{collections::VecDeque, io::Write, str::from_utf8};
 
 use torque_tracker_engine::project::{
-    note_event::{Note, NoteEvent},
+    event_command::NoteCommand,
+    note_event::{Note, NoteEvent, VolumeEffect},
     pattern::{InPatternPosition, Pattern, PatternOperation},
-    song::SongOperation,
+    song::{Song, SongOperation},
 };
 use winit::{
     event_loop::EventLoopProxy,
@@ -11,7 +12,7 @@ use winit::{
 };
 
 use crate::{
-    app::{get_song_edit, GlobalEvent, AUDIO, EXECUTOR},
+    app::{AUDIO, EXECUTOR, GlobalEvent, get_song_edit},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,
 };
@@ -64,6 +65,7 @@ impl InEventPosition {
 #[derive(Debug)]
 pub enum PatternPageEvent {
     Loaded(Pattern, usize),
+    SetSampleInstr(u8),
 }
 
 #[derive(Debug)]
@@ -74,6 +76,8 @@ pub struct PatternPage {
     draw_position: InPatternPosition,
     event_proxy: EventLoopProxy<GlobalEvent>,
     edit_queue: smol::channel::Sender<SongOperation>,
+    /// Last used or last selected in the sample menu
+    selected_sample_instr: u8,
 }
 
 impl PatternPage {
@@ -82,9 +86,11 @@ impl PatternPage {
     const DRAWN_CHANNELS: u8 = 5;
     const MAX_CHANNELS: u8 = 64;
     /// how many rows the cursor is moved when pressing pageup/down
+    // TODO: make configurable
     const PAGE_AS_ROWS: u16 = 16;
     const CHANNEL_WIDTH: usize = 14;
 
+    // TODO: make configurable
     const ROW_HIGHTLIGHT_MINOR: u16 = 4;
     const ROW_HIGHTLIGHT_MAJOR: u16 = 16;
 
@@ -102,6 +108,10 @@ impl PatternPage {
                     self.pattern.row_count(),
                 )));
                 PageResponse::RequestRedraw
+            }
+            PatternPageEvent::SetSampleInstr(i) => {
+                self.selected_sample_instr = i;
+                PageResponse::None
             }
         }
     }
@@ -129,6 +139,7 @@ impl PatternPage {
             draw_position: InPatternPosition { row: 0, channel: 0 },
             event_proxy: proxy,
             edit_queue: send,
+            selected_sample_instr: 0,
         }
     }
 
@@ -136,7 +147,7 @@ impl PatternPage {
     fn set_cursor(
         &mut self,
         mut pos: InPatternPosition,
-        event: &mut VecDeque<GlobalEvent>,
+        events: &mut VecDeque<GlobalEvent>,
     ) -> bool {
         if pos.row >= self.pattern.row_count() {
             pos.row = self.pattern.row_count() - 1;
@@ -150,7 +161,7 @@ impl PatternPage {
         }
 
         if pos.row != self.cursor_position.0.row {
-            event.push_back(GlobalEvent::Header(HeaderEvent::SetCursorRow(pos.row)));
+            events.push_back(GlobalEvent::Header(HeaderEvent::SetCursorRow(pos.row)));
         }
 
         self.cursor_position.0 = pos;
@@ -173,6 +184,13 @@ impl PatternPage {
         true
     }
 
+    /// returns true if the cursor was changed
+    fn cursor_next_row(&mut self, events: &mut VecDeque<GlobalEvent>) -> bool {
+        let mut pos = self.cursor_position.0;
+        pos.row = pos.row.saturating_add(1);
+        self.set_cursor(pos, events)
+    }
+
     fn load_pattern(&mut self, idx: usize) {
         let proxy = self.event_proxy.clone();
         EXECUTOR
@@ -191,9 +209,19 @@ impl PatternPage {
 
     fn set_event(&mut self, position: InPatternPosition, event: NoteEvent) {
         self.pattern.set_event(position, event);
-        let index = self.pattern_index;
-        let op =
-            SongOperation::PatternOperation(index, PatternOperation::SetEvent { position, event });
+        let op = SongOperation::PatternOperation(
+            self.pattern_index,
+            PatternOperation::SetEvent { position, event },
+        );
+        self.edit_queue.send_blocking(op).unwrap();
+    }
+
+    fn remove_event(&mut self, position: InPatternPosition) {
+        self.pattern.remove_event(position);
+        let op = SongOperation::PatternOperation(
+            self.pattern_index,
+            PatternOperation::RemoveEvent { position },
+        );
         self.edit_queue.send_blocking(op).unwrap();
     }
 }
@@ -210,8 +238,6 @@ impl Page for PatternPage {
             (page.draw_position.row..page.draw_position.row + PatternPage::DRAWN_ROWS).enumerate()
         }
 
-        // println!("cursor: {:?}", self.cursor_position);
-        // println!("draw: {:?}", self.draw_position);
         // draw row numbers
         assert!(self.draw_position.row + Self::DRAWN_ROWS <= 999);
         let mut buf = [0; 3];
@@ -278,29 +304,37 @@ impl Page for PatternPage {
 
         impl From<NoteEvent> for EventView {
             fn from(value: NoteEvent) -> Self {
+                fn get_bitmap_digit(value: u8) -> [u8; 8] {
+                    let char = match value {
+                        0 => '0',
+                        1 => '1',
+                        2 => '2',
+                        3 => '3',
+                        4 => '4',
+                        5 => '5',
+                        6 => '6',
+                        7 => '7',
+                        8 => '8',
+                        9 => '9',
+                        _ => panic!("not a digit. number too large"),
+                    };
+                    font8x8::UnicodeFonts::get(&font8x8::BASIC_FONTS, char).unwrap()
+                }
+
                 let mut view = Self::default();
+                // note
                 let mut note_chars = value.note.get_note_name().chars();
                 let first = note_chars.next().unwrap();
                 let second = note_chars.next().unwrap_or('-');
                 view.note1 = font8x8::UnicodeFonts::get(&font8x8::BASIC_FONTS, first).unwrap();
                 view.note2 = font8x8::UnicodeFonts::get(&font8x8::BASIC_FONTS, second).unwrap();
 
-                let octave = match value.note.get_octave() {
-                    0 => '0',
-                    1 => '1',
-                    2 => '2',
-                    3 => '3',
-                    4 => '4',
-                    5 => '5',
-                    6 => '6',
-                    7 => '7',
-                    8 => '8',
-                    9 => '9',
-                    _ => panic!("invalid ocatave"),
-                };
-                view.octave = font8x8::UnicodeFonts::get(&font8x8::BASIC_FONTS, octave).unwrap();
-                view
+                view.octave = get_bitmap_digit(value.note.get_octave());
+                // sample_instr number
+                view.sample1 = get_bitmap_digit(value.sample_instr / 10);
+                view.sample2 = get_bitmap_digit(value.sample_instr % 10);
                 // TODO: rest noch
+                view
             }
         }
 
@@ -398,9 +432,7 @@ impl Page for PatternPage {
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown) {
-            let mut pos = self.cursor_position.0;
-            pos.row = pos.row.saturating_add(1);
-            if self.set_cursor(pos, event) {
+            if self.cursor_next_row(event) {
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp) {
@@ -474,13 +506,16 @@ impl Page for PatternPage {
             if self.set_cursor(pos, event) {
                 return PageResponse::RequestRedraw;
             }
-        }
-
-        // should be configurable
-        const DEFAULT_OCTAVE: u8 = 5;
-        if let Key::Character(char) = &key_event.logical_key {
+        } else if Key::Character(SmolStr::new_static(".")) == key_event.logical_key {
+            self.remove_event(self.cursor_position.0);
+            self.cursor_next_row(event);
+            return PageResponse::RequestRedraw;
+        } else if let Key::Character(char) = &key_event.logical_key {
+            // should be copied from the header, where this can already be set
+            const DEFAULT_OCTAVE: u8 = 5;
             match self.cursor_position.1 {
                 InEventPosition::Note => {
+                    // TODO: keyboard layouts fuckk me. maybe do winit physical key
                     let note = match char.as_str() {
                         "q" => Some(Note::new(12 * DEFAULT_OCTAVE)),      // C
                         "2" => Some(Note::new(1 + 12 * DEFAULT_OCTAVE)),  // Db / C#
@@ -495,6 +530,24 @@ impl Page for PatternPage {
                         "7" => Some(Note::new(10 + 12 * DEFAULT_OCTAVE)), // Bb / A#
                         _ => None,
                     };
+                    let note = note.and_then(Result::ok);
+                    if let Some(note) = note {
+                        let event = self
+                            .pattern
+                            .get_event(self.cursor_position.0)
+                            .copied()
+                            .unwrap_or(NoteEvent {
+                                note,
+                                sample_instr: self.selected_sample_instr,
+                                vol: VolumeEffect::None,
+                                command: NoteCommand::None,
+                            });
+                        self.set_event(self.cursor_position.0, event);
+                    }
+                    // move to next row even if
+                    self.cursor_next_row(event);
+                    // always redraw is incorrect. I only need to redraw if either the cursor moved, or the event changed
+                    return PageResponse::RequestRedraw;
                 }
                 InEventPosition::Octave => {
                     if let Some(event) = self.pattern.get_event(self.cursor_position.0) {
@@ -507,14 +560,57 @@ impl Page for PatternPage {
                             self.set_event(self.cursor_position.0, new_event);
                         }
                     }
+                    self.cursor_next_row(event);
+                    // always redraw is incorrect.
+                    return PageResponse::RequestRedraw;
                 }
-                InEventPosition::Sample1 => todo!(),
-                InEventPosition::Sample2 => todo!(),
-                InEventPosition::VolPan1 => todo!(),
-                InEventPosition::VolPan2 => todo!(),
-                InEventPosition::Effect1 => todo!(),
-                InEventPosition::Effect2 => todo!(),
-                InEventPosition::Effect3 => todo!(),
+                InEventPosition::Sample1 => {
+                    let num: Result<u8, _> = char.as_str().parse();
+                    if let Ok(num) = num
+                        && let Some(event) = self.pattern.get_event(self.cursor_position.0).copied()
+                    {
+                        let zeros = event.sample_instr % 10;
+                        let sample_instr = zeros + num * 10;
+                        if usize::from(sample_instr) < Song::MAX_SAMPLES_INSTR {
+                            self.set_event(
+                                self.cursor_position.0,
+                                NoteEvent {
+                                    sample_instr,
+                                    ..event
+                                },
+                            );
+                            self.selected_sample_instr = sample_instr;
+                        }
+                    }
+                    // move cursor one step right
+                    self.cursor_position.1 = InEventPosition::Sample2;
+                    return PageResponse::RequestRedraw;
+                }
+                InEventPosition::Sample2 => {
+                    let num: Result<u8, _> = char.as_str().parse();
+                    if let Ok(num) = num
+                        && let Some(event) = self.pattern.get_event(self.cursor_position.0).copied()
+                    {
+                        let tens = event.sample_instr / 10;
+                        let sample_instr = tens * 10 + num;
+                        if usize::from(sample_instr) < Song::MAX_SAMPLES_INSTR {
+                            self.set_event(
+                                self.cursor_position.0,
+                                NoteEvent {
+                                    sample_instr,
+                                    ..event
+                                },
+                            );
+                            self.selected_sample_instr = sample_instr;
+                        }
+                    }
+                    return PageResponse::RequestRedraw;
+                }
+                InEventPosition::VolPan1 => eprintln!("not yet implemented"),
+                InEventPosition::VolPan2 => eprintln!("not yet implemented"),
+                InEventPosition::Effect1 => eprintln!("not yet implemented"),
+                InEventPosition::Effect2 => eprintln!("not yet implemented"),
+                InEventPosition::Effect3 => eprintln!("not yet implemented"),
             }
         }
 

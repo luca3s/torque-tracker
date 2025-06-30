@@ -177,7 +177,7 @@ impl Page for OrderListPage {
 
         const ORDER_BASE_POS: CharPosition = CharPosition::new(2, 15);
         let mut buf = [0; 3];
-        for (pos, order) in (self.order_draw..self.order_draw + 32).enumerate() {
+        for (pos, order) in (self.order_draw..=self.order_draw + 31).enumerate() {
             // row index
             let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
             write!(&mut curse, "{:03}", order).unwrap();
