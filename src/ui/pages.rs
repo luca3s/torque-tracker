@@ -1,6 +1,7 @@
 mod help_page;
 mod order_list;
 mod pattern;
+mod sample_list;
 mod song_directory_config_page;
 
 use std::collections::VecDeque;
@@ -8,6 +9,7 @@ use std::collections::VecDeque;
 use help_page::HelpPage;
 use order_list::{OrderListPage, OrderListPageEvent};
 use pattern::{PatternPage, PatternPageEvent};
+use sample_list::SampleList;
 use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
 use winit::{
     event::{KeyEvent, Modifiers},
@@ -19,6 +21,7 @@ use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
+    ui::pages::sample_list::SampleListEvent,
 };
 
 pub trait Page {
@@ -110,7 +113,6 @@ pub(crate) use create_widget_list;
 
 pub enum PageResponse {
     RequestRedraw,
-    // GlobalEvent(GlobalEvent),
     None,
 }
 
@@ -120,6 +122,7 @@ pub enum PagesEnum {
     SongDirectoryConfig,
     Pattern,
     OrderList,
+    SampleList,
 }
 
 #[derive(Debug)]
@@ -127,6 +130,7 @@ pub enum PageEvent {
     Sdc(SDCChange),
     Pattern(PatternPageEvent),
     OrderList(OrderListPageEvent),
+    SampleList(SampleListEvent),
 }
 
 impl PageEvent {
@@ -135,6 +139,7 @@ impl PageEvent {
             PageEvent::Sdc(_) => PagesEnum::SongDirectoryConfig,
             PageEvent::Pattern(_) => PagesEnum::Pattern,
             PageEvent::OrderList(_) => PagesEnum::OrderList,
+            PageEvent::SampleList(_) => PagesEnum::SampleList,
         }
     }
 }
@@ -144,6 +149,7 @@ pub struct AllPages {
     song_directory_config: SongDirectoryConfigPage,
     pattern: PatternPage,
     order_list: OrderListPage,
+    sample_list: SampleList,
 
     const_draw_needed: bool,
     current: PagesEnum,
@@ -154,10 +160,11 @@ impl AllPages {
         AllPages {
             help: HelpPage::new(),
             song_directory_config: SongDirectoryConfigPage::new(),
-            pattern: PatternPage::new(proxy),
+            pattern: PatternPage::new(proxy.clone()),
             current: PagesEnum::SongDirectoryConfig,
             order_list: OrderListPage::new(),
             const_draw_needed: true,
+            sample_list: SampleList::new(proxy),
         }
     }
 
@@ -170,6 +177,7 @@ impl AllPages {
                 order_list::Mode::Volume => "Order List and Channel Volume (F11)",
                 order_list::Mode::Panning => "Order List and Panning (F11)",
             },
+            PagesEnum::SampleList => "Sample List (F3)",
         }
     }
 
@@ -179,6 +187,7 @@ impl AllPages {
             PagesEnum::SongDirectoryConfig => &self.song_directory_config,
             PagesEnum::Pattern => &self.pattern,
             PagesEnum::OrderList => &self.order_list,
+            PagesEnum::SampleList => &self.sample_list,
         }
     }
 
@@ -188,6 +197,7 @@ impl AllPages {
             PagesEnum::SongDirectoryConfig => &mut self.song_directory_config,
             PagesEnum::Pattern => &mut self.pattern,
             PagesEnum::OrderList => &mut self.order_list,
+            PagesEnum::SampleList => &mut self.sample_list,
         }
     }
 
@@ -266,6 +276,9 @@ impl AllPages {
             } else if key_event.logical_key == Key::Named(NamedKey::F12) {
                 self.switch_page(PagesEnum::SongDirectoryConfig);
                 return PageResponse::RequestRedraw;
+            } else if key_event.logical_key == Key::Named(NamedKey::F3) {
+                self.switch_page(PagesEnum::SampleList);
+                return PageResponse::RequestRedraw;
             }
         }
 
@@ -283,8 +296,10 @@ impl AllPages {
             PageEvent::Sdc(change) => self.song_directory_config.ui_change(change),
             PageEvent::Pattern(event) => self.pattern.process_event(event, events),
             PageEvent::OrderList(event) => self.order_list.process_event(event),
+            PageEvent::SampleList(event) => self.sample_list.process_event(event, events),
         };
 
+        // if the page isn't shown a redraw isn't necessary
         if page == self.current {
             response
         } else {

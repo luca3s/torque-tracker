@@ -15,7 +15,7 @@ pub enum HeaderEvent {
     SetMaxCursorPattern(usize),
     SetOrder(u8),
     SetOrderLen(u8),
-    SetSample(usize),
+    SetSample(u8, Box<str>),
     SetSpeed(usize),
     SetTempo(usize),
 }
@@ -28,6 +28,7 @@ pub struct Header {
     max_pattern: usize,
     order: u8,
     order_len: u8,
+    selected_sample: (u8, Box<str>),
 }
 
 impl Default for Header {
@@ -39,6 +40,7 @@ impl Default for Header {
             max_pattern: 0,
             order: 0,
             order_len: 0,
+            selected_sample: (0, Box::from("")),
         }
     }
 }
@@ -50,12 +52,15 @@ impl Header {
             HeaderEvent::SetCursorRow(r) => self.row = r,
             HeaderEvent::SetPattern(p) => self.pattern = p,
             HeaderEvent::SetOrder(o) => self.order = o,
-            HeaderEvent::SetSample(_) => todo!(),
+            HeaderEvent::SetOrderLen(l) => self.order_len = l,
+            HeaderEvent::SetSample(i, n) => {
+                self.selected_sample.0 = i;
+                self.selected_sample.1 = n
+            }
             HeaderEvent::SetSpeed(_) => todo!(),
             HeaderEvent::SetTempo(_) => todo!(),
             HeaderEvent::SetMaxCursorRow(r) => self.max_row = r,
             HeaderEvent::SetMaxCursorPattern(p) => self.max_pattern = p,
-            HeaderEvent::SetOrderLen(l) => self.order_len = l,
         }
     }
 
@@ -86,6 +91,16 @@ impl Header {
         let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
         write!(&mut curse, "{:03}", self.order_len).unwrap();
         draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(16, 5), 5, 0);
+        // sample
+        draw_buffer.draw_string_length(&self.selected_sample.1, CharPosition::new(53, 3), 24, 5, 0);
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:02}", self.selected_sample.0).unwrap();
+        draw_buffer.draw_string(
+            from_utf8(&buf[..2]).unwrap(),
+            CharPosition::new(50, 3),
+            5,
+            0,
+        );
     }
 
     pub fn draw_constant(&self, buffer: &mut DrawBuffer) {
@@ -115,8 +130,8 @@ impl Header {
         buffer.draw_string("/", CharPosition::new(15, 6), 1, 0);
         buffer.draw_string("/", CharPosition::new(15, 7), 1, 0);
         buffer.draw_string("/", CharPosition::new(53, 4), 1, 0);
-        buffer.draw_string("/", CharPosition::new(52, 3), 1, 0);
-
-        // except for borders, visual candy can be added later
+        buffer.draw_string(":", CharPosition::new(52, 3), 7, 0);
+        // TODO: Not actually constant as it changes between Sample and Instrument mode
+        buffer.draw_string("Sample", CharPosition::new(43, 3), 0, 2);
     }
 }

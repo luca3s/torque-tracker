@@ -224,6 +224,13 @@ impl PatternPage {
         );
         self.edit_queue.send_blocking(op).unwrap();
     }
+
+    pub fn set_sample(&mut self, sample: u8, events: &mut VecDeque<GlobalEvent>) {
+        self.selected_sample_instr = sample;
+        events.push_back(GlobalEvent::PageEvent(super::PageEvent::SampleList(
+            super::sample_list::SampleListEvent::SelectSample(sample),
+        )));
+    }
 }
 
 impl Page for PatternPage {
@@ -415,7 +422,7 @@ impl Page for PatternPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        event: &mut VecDeque<GlobalEvent>,
+        events: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
         if !key_event.state.is_pressed() {
             return PageResponse::None;
@@ -432,13 +439,13 @@ impl Page for PatternPage {
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown) {
-            if self.cursor_next_row(event) {
+            if self.cursor_next_row(events) {
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowUp) {
             let mut pos = self.cursor_position.0;
             pos.row = pos.row.saturating_sub(1);
-            if self.set_cursor(pos, event) {
+            if self.set_cursor(pos, events) {
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowRight) {
@@ -450,7 +457,7 @@ impl Page for PatternPage {
                 None => {
                     let mut pos = self.cursor_position.0;
                     pos.channel = pos.channel.saturating_add(1);
-                    if self.set_cursor(pos, event) {
+                    if self.set_cursor(pos, events) {
                         self.cursor_position.1 = InEventPosition::Note;
                         return PageResponse::RequestRedraw;
                     }
@@ -465,7 +472,7 @@ impl Page for PatternPage {
                 None => {
                     let mut pos = self.cursor_position.0;
                     pos.channel = pos.channel.saturating_sub(1);
-                    if self.set_cursor(pos, event) {
+                    if self.set_cursor(pos, events) {
                         self.cursor_position.1 = InEventPosition::Effect3;
                         return PageResponse::RequestRedraw;
                     }
@@ -478,7 +485,7 @@ impl Page for PatternPage {
                 if self.cursor_position.1 == InEventPosition::Note {
                     let mut pos = self.cursor_position.0;
                     pos.channel = pos.channel.saturating_sub(1);
-                    if self.set_cursor(pos, event) {
+                    if self.set_cursor(pos, events) {
                         return PageResponse::RequestRedraw;
                     }
                 } else {
@@ -488,14 +495,14 @@ impl Page for PatternPage {
             } else {
                 let mut pos = self.cursor_position.0;
                 pos.channel = pos.channel.saturating_add(1);
-                self.set_cursor(pos, event);
+                self.set_cursor(pos, events);
                 self.cursor_position.1 = InEventPosition::Note;
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::PageDown) {
             let mut pos = self.cursor_position.0;
             pos.row = pos.row.saturating_add(Self::PAGE_AS_ROWS);
-            if self.set_cursor(pos, event) {
+            if self.set_cursor(pos, events) {
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::PageUp) {
@@ -503,12 +510,12 @@ impl Page for PatternPage {
             // when on last row it only goes up 15 rows
             let mut pos = self.cursor_position.0;
             pos.row = pos.row.saturating_sub(Self::PAGE_AS_ROWS);
-            if self.set_cursor(pos, event) {
+            if self.set_cursor(pos, events) {
                 return PageResponse::RequestRedraw;
             }
         } else if Key::Character(SmolStr::new_static(".")) == key_event.logical_key {
             self.remove_event(self.cursor_position.0);
-            self.cursor_next_row(event);
+            self.cursor_next_row(events);
             return PageResponse::RequestRedraw;
         } else if let Key::Character(char) = &key_event.logical_key {
             // should be copied from the header, where this can already be set
@@ -545,7 +552,7 @@ impl Page for PatternPage {
                         self.set_event(self.cursor_position.0, event);
                     }
                     // move to next row even if
-                    self.cursor_next_row(event);
+                    self.cursor_next_row(events);
                     // always redraw is incorrect. I only need to redraw if either the cursor moved, or the event changed
                     return PageResponse::RequestRedraw;
                 }
@@ -560,7 +567,7 @@ impl Page for PatternPage {
                             self.set_event(self.cursor_position.0, new_event);
                         }
                     }
-                    self.cursor_next_row(event);
+                    self.cursor_next_row(events);
                     // always redraw is incorrect.
                     return PageResponse::RequestRedraw;
                 }
@@ -579,7 +586,7 @@ impl Page for PatternPage {
                                     ..event
                                 },
                             );
-                            self.selected_sample_instr = sample_instr;
+                            self.set_sample(sample_instr, events);
                         }
                     }
                     // move cursor one step right
@@ -601,9 +608,10 @@ impl Page for PatternPage {
                                     ..event
                                 },
                             );
-                            self.selected_sample_instr = sample_instr;
+                            self.set_sample(sample_instr, events);
                         }
                     }
+                    self.cursor_next_row(events);
                     return PageResponse::RequestRedraw;
                 }
                 InEventPosition::VolPan1 => eprintln!("not yet implemented"),

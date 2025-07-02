@@ -17,6 +17,8 @@ paste = "1.0.15"
 cpal = "0.15.3"
 triple_buffer = "8.1.0"
 softbuffer = { version="0.4.6", optional = true }
+rfd = "0.15.4"
+symphonia = "0.5.4"
 
 [features]
 # needs to be one, but not both
