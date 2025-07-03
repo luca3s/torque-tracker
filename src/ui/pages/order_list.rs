@@ -141,21 +141,24 @@ impl OrderListPage {
         self.mode
     }
 
-    fn order_cursor_up(&mut self) -> PageResponse {
+    fn order_cursor_up(&mut self, count: u8) -> PageResponse {
+        debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 0 {
             return PageResponse::None;
         }
 
-        self.order_cursor.order -= 1;
+        self.order_cursor.order = self.order_cursor.order.saturating_sub(count);
         self.order_draw = self.order_draw.min(self.order_cursor.order);
         PageResponse::RequestRedraw
     }
-    fn order_cursor_down(&mut self) -> PageResponse {
+
+    fn order_cursor_down(&mut self, count: u8) -> PageResponse {
+        debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 255 {
             return PageResponse::None;
         }
 
-        self.order_cursor.order += 1;
+        self.order_cursor.order = self.order_cursor.order.saturating_add(count);
         self.order_draw = self
             .order_draw
             .max(self.order_cursor.order.saturating_sub(31));
@@ -319,9 +322,13 @@ impl Page for OrderListPage {
                 }
                 if modifiers.state().is_empty() && key_event.state.is_pressed() {
                     if key_event.logical_key == Key::Named(NamedKey::ArrowUp) {
-                        return self.order_cursor_up();
+                        return self.order_cursor_up(1);
                     } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown) {
-                        return self.order_cursor_down();
+                        return self.order_cursor_down(1);
+                    } else if key_event.logical_key == Key::Named(NamedKey::PageDown) {
+                        return self.order_cursor_down(16);
+                    } else if key_event.logical_key == Key::Named(NamedKey::PageUp) {
+                        return self.order_cursor_up(16);
                     } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft) {
                         self.order_cursor.digit = if self.order_cursor.digit == 0 {
                             2
@@ -347,14 +354,14 @@ impl Page for OrderListPage {
                             Some('+') => {
                                 self.pattern_order[usize::from(self.order_cursor.order)] =
                                     PatternOrder::SkipOrder;
-                                self.order_cursor_down();
+                                self.order_cursor_down(1);
                                 self.order_cursor.digit = 0;
                                 return PageResponse::RequestRedraw;
                             }
                             Some('-') | Some('.') => {
                                 self.pattern_order[usize::from(self.order_cursor.order)] =
                                     PatternOrder::EndOfSong;
-                                self.order_cursor_down();
+                                self.order_cursor_down(1);
                                 self.order_cursor.digit = 0;
                                 return PageResponse::RequestRedraw;
                             }
