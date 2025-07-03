@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::str::from_utf8;
 use std::{array, io::Write};
 
@@ -7,6 +8,7 @@ use torque_tracker_engine::{file::impulse_format::header::PatternOrder, project:
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
 use crate::app::{GlobalEvent, apply_song_op};
+use crate::ui::header::HeaderEvent;
 use crate::ui::widgets::{NextWidget, StandardResponse, Widget};
 use crate::{
     coordinates::{CharPosition, CharRect},
@@ -152,7 +154,24 @@ impl OrderListPage {
         self.mode
     }
 
-    fn order_cursor_up(&mut self, count: u8) -> PageResponse {
+    fn send_order_position(&self, events: &mut VecDeque<GlobalEvent>) {
+        events.push_back(GlobalEvent::Header(HeaderEvent::SetOrder(
+            self.order_cursor.order,
+        )));
+    }
+
+    fn send_order_len(&self, events: &mut VecDeque<GlobalEvent>) {
+        let order_len = self
+            .pattern_order
+            .iter()
+            .take_while(|o| **o != PatternOrder::EndOfSong)
+            .count();
+        events.push_back(GlobalEvent::Header(HeaderEvent::SetOrderLen(
+            u8::try_from(order_len).unwrap(),
+        )));
+    }
+
+    fn order_cursor_up(&mut self, count: u8, events: &mut VecDeque<GlobalEvent>) -> PageResponse {
         debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 0 {
             return PageResponse::None;
@@ -160,10 +179,11 @@ impl OrderListPage {
 
         self.order_cursor.order = self.order_cursor.order.saturating_sub(count);
         self.order_draw = self.order_draw.min(self.order_cursor.order);
+        self.send_order_position(events);
         PageResponse::RequestRedraw
     }
 
-    fn order_cursor_down(&mut self, count: u8) -> PageResponse {
+    fn order_cursor_down(&mut self, count: u8, events: &mut VecDeque<GlobalEvent>) -> PageResponse {
         debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 255 {
             return PageResponse::None;
@@ -173,6 +193,7 @@ impl OrderListPage {
         self.order_draw = self
             .order_draw
             .max(self.order_cursor.order.saturating_sub(31));
+        self.send_order_position(events);
         PageResponse::RequestRedraw
     }
 }
@@ -350,13 +371,13 @@ impl Page for OrderListPage {
                 }
                 if modifiers.state().is_empty() && key_event.state.is_pressed() {
                     if key_event.logical_key == Key::Named(NamedKey::ArrowUp) {
-                        return self.order_cursor_up(1);
+                        return self.order_cursor_up(1, events);
                     } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown) {
-                        return self.order_cursor_down(1);
+                        return self.order_cursor_down(1, events);
                     } else if key_event.logical_key == Key::Named(NamedKey::PageDown) {
-                        return self.order_cursor_down(16);
+                        return self.order_cursor_down(16, events);
                     } else if key_event.logical_key == Key::Named(NamedKey::PageUp) {
-                        return self.order_cursor_up(16);
+                        return self.order_cursor_up(16, events);
                     } else if key_event.logical_key == Key::Named(NamedKey::ArrowLeft) {
                         self.order_cursor.digit = if self.order_cursor.digit == 0 {
                             2
@@ -386,7 +407,7 @@ impl Page for OrderListPage {
                                     order,
                                     PatternOrder::SkipOrder,
                                 ));
-                                self.order_cursor_down(1);
+                                self.order_cursor_down(1, events);
                                 self.order_cursor.digit = 0;
                                 return PageResponse::RequestRedraw;
                             }
@@ -397,7 +418,7 @@ impl Page for OrderListPage {
                                     order,
                                     PatternOrder::EndOfSong,
                                 ));
-                                self.order_cursor_down(1);
+                                self.order_cursor_down(1, events);
                                 self.order_cursor.digit = 0;
                                 return PageResponse::RequestRedraw;
                             }
@@ -437,10 +458,11 @@ impl Page for OrderListPage {
                                     1 => self.order_cursor.digit = 2,
                                     2 => {
                                         self.order_cursor.digit = 0;
-                                        self.order_cursor_down(1);
+                                        self.order_cursor_down(1, events);
                                     }
                                     _ => unreachable!(),
                                 }
+                                self.send_order_len(events);
                                 return PageResponse::RequestRedraw;
                             }
                             _ => return PageResponse::None,

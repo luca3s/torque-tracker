@@ -13,7 +13,8 @@ pub enum HeaderEvent {
     SetMaxCursorRow(u16),
     SetPattern(usize),
     SetMaxCursorPattern(usize),
-    SetOrder(usize),
+    SetOrder(u8),
+    SetOrderLen(u8),
     SetSample(usize),
     SetSpeed(usize),
     SetTempo(usize),
@@ -25,6 +26,8 @@ pub struct Header {
     max_row: u16,
     pattern: usize,
     max_pattern: usize,
+    order: u8,
+    order_len: u8,
 }
 
 impl Default for Header {
@@ -34,6 +37,8 @@ impl Default for Header {
             max_row: Pattern::DEFAULT_ROWS,
             pattern: 0,
             max_pattern: 0,
+            order: 0,
+            order_len: 0,
         }
     }
 }
@@ -44,12 +49,13 @@ impl Header {
         match event {
             HeaderEvent::SetCursorRow(r) => self.row = r,
             HeaderEvent::SetPattern(p) => self.pattern = p,
-            HeaderEvent::SetOrder(_) => todo!(),
+            HeaderEvent::SetOrder(o) => self.order = o,
             HeaderEvent::SetSample(_) => todo!(),
             HeaderEvent::SetSpeed(_) => todo!(),
             HeaderEvent::SetTempo(_) => todo!(),
             HeaderEvent::SetMaxCursorRow(r) => self.max_row = r,
             HeaderEvent::SetMaxCursorPattern(p) => self.max_pattern = p,
+            HeaderEvent::SetOrderLen(l) => self.order_len = l,
         }
     }
 
@@ -71,6 +77,15 @@ impl Header {
         let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
         write!(&mut curse, "{:03}", self.max_pattern).unwrap();
         draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(16, 6), 5, 0);
+
+        // order
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:03}", self.order).unwrap();
+        draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(12, 5), 5, 0);
+        // order len
+        let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+        write!(&mut curse, "{:03}", self.order_len).unwrap();
+        draw_buffer.draw_string(from_utf8(&buf).unwrap(), CharPosition::new(16, 5), 5, 0);
     }
 
     pub fn draw_constant(&self, buffer: &mut DrawBuffer) {
