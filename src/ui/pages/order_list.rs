@@ -1,12 +1,12 @@
 use std::str::from_utf8;
 use std::{array, io::Write};
 
-use tracker_engine::channel::Pan;
-use tracker_engine::file::impulse_format::header::PatternOrder;
-use tracker_engine::project::song::{Song, SongOperation};
+use torque_tracker_engine::channel::Pan;
+use torque_tracker_engine::project::song::SongOperation;
+use torque_tracker_engine::{file::impulse_format::header::PatternOrder, project::song::Song};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::app::{apply_song_op, GlobalEvent};
+use crate::app::{GlobalEvent, apply_song_op};
 use crate::ui::widgets::{NextWidget, StandardResponse, Widget};
 use crate::{
     coordinates::{CharPosition, CharRect},
@@ -46,7 +46,7 @@ pub struct OrderListPage {
     cursor: Cursor,
     order_cursor: OrderCursor,
     order_draw: u8,
-    pattern_order: [PatternOrder; Song::<true>::MAX_ORDERS],
+    pattern_order: [PatternOrder; Song::MAX_ORDERS],
     volume: [Slider<0, 64, ()>; 64],
     pan: [Slider<0, 64, ()>; 64],
 }
@@ -58,7 +58,7 @@ impl OrderListPage {
             mode: Mode::Panning,
             order_cursor: OrderCursor { order: 0, digit: 0 },
             order_draw: 0,
-            pattern_order: [PatternOrder::EndOfSong; Song::<true>::MAX_ORDERS],
+            pattern_order: [PatternOrder::EndOfSong; Song::MAX_ORDERS],
             volume: array::from_fn(|idx| {
                 let pos = if idx >= 32 {
                     CharPosition::new(65, 15 + idx - 32)
@@ -200,7 +200,7 @@ impl Page for OrderListPage {
 
         const ORDER_BASE_POS: CharPosition = CharPosition::new(2, 15);
         let mut buf = [0; 3];
-        for (pos, order) in (self.order_draw..self.order_draw + 32).enumerate() {
+        for (pos, order) in (self.order_draw..=self.order_draw + 31).enumerate() {
             // row index
             let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
             write!(&mut curse, "{:03}", order).unwrap();

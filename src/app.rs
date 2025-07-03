@@ -8,8 +8,8 @@ use std::{
 };
 
 use smol::{channel::Sender, lock::Mutex};
-use tracker_engine::{
-    manager::{AudioManager, SongEdit},
+use torque_tracker_engine::{
+    manager::{AudioManager, OutputConfig, SongEdit},
     project::song::{Song, SongOperation},
 };
 use triple_buffer::triple_buffer;
@@ -30,7 +30,7 @@ use super::{
     render::RenderBackend,
     ui::{
         dialog::{
-            confirm::ConfirmDialog, page_menu::PageMenu, Dialog, DialogManager, DialogResponse,
+            Dialog, DialogManager, DialogResponse, confirm::ConfirmDialog, page_menu::PageMenu,
         },
         header::{Header, HeaderEvent},
         pages::{AllPages, PageEvent, PageResponse, PagesEnum},
@@ -382,7 +382,7 @@ impl App {
         let device = host.default_output_device().unwrap();
         let default_config = device.default_output_config().unwrap();
         let mut guard = AUDIO.lock_blocking();
-        let mut worker = guard.get_callback::<f32>(tracker_engine::manager::OutputConfig {
+        let mut worker = guard.get_callback::<f32>(OutputConfig {
             buffer_size: 1024,
             channel_count: NonZeroU16::new(2).unwrap(),
             sample_rate: 44_100,

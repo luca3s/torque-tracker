@@ -1,6 +1,6 @@
 use std::{io::Write, str::from_utf8};
 
-use tracker_engine::project::pattern::Pattern;
+use torque_tracker_engine::project::pattern::Pattern;
 
 use crate::{
     coordinates::{CharPosition, CharRect},
