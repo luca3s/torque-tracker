@@ -8,7 +8,7 @@ use winit::keyboard::{Key, NamedKey};
 
 use crate::{
     app::GlobalEvent,
-    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE, WINDOW_SIZE_CHARS},
+    coordinates::{CharPosition, CharRect, FONT_SIZE, PixelRect, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
     ui::dialog::slider_dialog::SliderDialog,
 };
@@ -89,7 +89,7 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
     }
 
     pub fn try_set(&mut self, value: i16) -> Result<(), ()> {
-        if MIN < value && value < MAX {
+        if MIN <= value && value <= MAX {
             self.inner = value;
             Ok(())
         } else {
@@ -99,7 +99,7 @@ impl<const MIN: i16, const MAX: i16> BoundNumber<MIN, MAX> {
 
     // dont need any arguments as MIN and MAX are compile time known
     pub const fn get_middle() -> i16 {
-        MIN + (MAX / 2)
+        MIN.midpoint(MAX)
     }
 }
 
@@ -234,7 +234,7 @@ impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
             let mut chars = text.chars();
             if let Some(first_char) = chars.next() {
                 if first_char.is_ascii_digit() {
-                    let dialog = SliderDialog::new(first_char, self.dialog_return);
+                    let dialog = SliderDialog::new(first_char, MIN..=MAX, self.dialog_return);
                     event.push_back(GlobalEvent::OpenDialog(Box::new(|| Box::new(dialog))));
                     return WidgetResponse::default();
                 }

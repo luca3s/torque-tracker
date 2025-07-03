@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, ops::RangeInclusive};
 
 use winit::{
     event::{KeyEvent, Modifiers},
@@ -9,13 +9,14 @@ use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{text_in::TextIn, NextWidget, StandardResponse, Widget},
+    ui::widgets::{NextWidget, StandardResponse, Widget, text_in::TextIn},
 };
 
 use super::{Dialog, DialogResponse};
 
 pub struct SliderDialog {
     text: TextIn<()>,
+    range: RangeInclusive<i16>,
     return_event: fn(i16) -> GlobalEvent,
 }
 
@@ -38,9 +39,10 @@ impl Dialog for SliderDialog {
             if key_event.logical_key == Key::Named(NamedKey::Escape) {
                 return DialogResponse::Close;
             } else if key_event.logical_key == Key::Named(NamedKey::Enter) {
-                if let Ok(num) = self.text.get_str().parse::<i16>() {
+                if let Ok(num) = self.text.get_str().parse::<i16>()
+                    && self.range.contains(&num)
+                {
                     events.push_back((self.return_event)(num));
-                    return DialogResponse::Close;
                 }
                 return DialogResponse::Close;
             }
@@ -60,12 +62,17 @@ impl Dialog for SliderDialog {
 }
 
 impl SliderDialog {
-    pub fn new(inital_char: char, return_event: fn(i16) -> GlobalEvent) -> Self {
+    pub fn new(
+        inital_char: char,
+        range: RangeInclusive<i16>,
+        return_event: fn(i16) -> GlobalEvent,
+    ) -> Self {
         let mut text_in = TextIn::new(CharPosition::new(45, 26), 3, NextWidget::default(), |_| {});
         text_in.set_string(inital_char.to_string()).unwrap();
         Self {
             text: text_in,
             return_event,
+            range,
         }
     }
 }
