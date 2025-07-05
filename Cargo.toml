@@ -23,6 +23,9 @@ softbuffer = "0.4.6"
 gpu_scaling = ["dep:wgpu"]
 default = ["gpu_scaling"]
 
+[lints.clippy]
+uninlined_format_args = "allow"
+
 # [profile.dev]
 # debug = 0
 # panic = "unwind"
