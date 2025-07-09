@@ -8,7 +8,7 @@ license = "GPL 3.0"
 
 [dependencies]
 font8x8 = "0.3.1"
-wgpu = {version = "25.0.0", optional = true }
+wgpu = { version = "25.0.0", optional = true }
 ascii = "1.1.0"
 winit = "0.30.9"
 torque-tracker-engine = { path = "../torque-tracker-engine" }
@@ -16,11 +16,14 @@ smol = "2.0.2"
 paste = "1.0.15"
 cpal = "0.15.3"
 triple_buffer = "8.1.0"
-softbuffer = "0.4.6"
+softbuffer = { version="0.4.6", optional = true }
 
 [features]
+# needs to be one, but not both
 # less artifacts than software scaling. also probably faster
 gpu_scaling = ["dep:wgpu"]
+soft_scaling = ["dep:softbuffer"]
+
 default = ["gpu_scaling"]
 
 [lints.clippy]

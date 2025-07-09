@@ -7,6 +7,12 @@ use crate::{
     palettes::{Palette, RGB8},
 };
 
+#[cfg(all(feature = "gpu_scaling", feature = "soft_scaling"))]
+compile_error!("it's impossible to have both gpu and software scaling enabled");
+
+#[cfg(not(any(feature = "gpu_scaling", feature = "soft_scaling")))]
+compile_error!("at least one of gpu_scaling or soft_scaling needs to be active");
+
 #[cfg(feature = "gpu_scaling")]
 pub struct RenderBackend {
     backend: crate::gpu::GPUState,
@@ -39,7 +45,7 @@ impl RenderBackend {
     }
 }
 
-#[cfg(not(feature = "gpu_scaling"))]
+#[cfg(feature = "soft_scaling")]
 pub struct RenderBackend {
     backend: softbuffer::Surface<Arc<Window>, Arc<Window>>,
     width: u32,
@@ -47,7 +53,7 @@ pub struct RenderBackend {
     palette: Palette<crate::palettes::ZRGB>,
 }
 
-#[cfg(not(feature = "gpu_scaling"))]
+#[cfg(feature = "soft_scaling")]
 impl RenderBackend {
     pub fn new(window: Arc<Window>, palette: Palette<RGB8>) -> Self {
         let size = window.inner_size();
