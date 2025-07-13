@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     fmt::Debug,
-    num::NonZeroU16,
+    num::NonZero,
     sync::{Arc, LazyLock, OnceLock},
     thread::JoinHandle,
     time::Duration,
@@ -177,6 +177,7 @@ impl ApplicationHandler<GlobalEvent> for App {
                     }
                 })
                 .detach();
+            self.start_audio_stream();
         }
     }
 
@@ -385,8 +386,8 @@ impl App {
         let mut guard = AUDIO.lock_blocking();
         let mut worker = guard.get_callback::<f32>(OutputConfig {
             buffer_size: 1024,
-            channel_count: NonZeroU16::new(2).unwrap(),
-            sample_rate: 44_100,
+            channel_count: NonZero::new(2).unwrap(),
+            sample_rate: NonZero::new(44_100).unwrap(),
         });
         let buffer_time = guard.buffer_time().unwrap();
         // keep the guard as short as possible to not block the async threads
@@ -408,17 +409,15 @@ impl App {
             let mut buffer_time = buffer_time;
             loop {
                 let mut lock = AUDIO.lock().await;
-                if let Some(status) = lock.playback_status() {
-                    println!("{status:?}");
-                } else {
-                    eprintln!("background task running while no stream active");
-                }
-                if let Some(time) = lock.buffer_time() {
+                let status = lock.playback_status().cloned();
+                let time = lock.buffer_time();
+                drop(lock);
+                let status = status.expect("background task running while no stream active");
+                println!("playback status: {status:?}");
+                if let Some(time) = time {
                     assert!(time == buffer_time);
                     buffer_time = time;
-                    dbg!(buffer_time);
                 }
-                drop(lock);
                 smol::Timer::after(buffer_time).await;
             }
         });

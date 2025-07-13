@@ -2,11 +2,15 @@ use std::{
     collections::VecDeque,
     io::{Cursor, ErrorKind, Write},
     iter::zip,
+    num::NonZero,
     str::from_utf8,
 };
 
 use torque_tracker_engine::{
-    project::song::{Song, SongOperation},
+    project::{
+        note_event::Note,
+        song::{Song, SongOperation},
+    },
     sample::{Sample, SampleMetaData},
 };
 use winit::keyboard::{Key, NamedKey};
@@ -192,6 +196,14 @@ impl Page for SampleList {
                         return;
                     };
                     let track_id = track.id;
+                    let Some(sample_rate) = track.codec_params.sample_rate else {
+                        eprintln!("no sample rate");
+                        return;
+                    };
+                    let Some(sample_rate) = NonZero::new(sample_rate) else {
+                        eprintln!("sample rate = 0");
+                        return;
+                    };
                     let mut buf = Vec::new();
                     // i don't know yet. after the first iteration of the loop this is set
                     let mut stereo: Option<bool> = None;
@@ -302,8 +314,18 @@ impl Page for SampleList {
                     } else {
                         Sample::new_mono(buf)
                     };
-                    // TODO: get the real metadata
-                    let meta = SampleMetaData::default();
+                    // TODO: get the real metadata / sane defaults / configurable
+                    let meta = SampleMetaData {
+                        default_volume: 32,
+                        global_volume: 32,
+                        default_pan: None,
+                        vibrato_speed: 0,
+                        vibrato_depth: 0,
+                        vibrato_rate: 0,
+                        vibrato_waveform: Default::default(),
+                        sample_rate,
+                        base_note: Note::new(64).unwrap(),
+                    };
                     // send to UI
                     proxy
                         .send_event(GlobalEvent::PageEvent(PageEvent::SampleList(
