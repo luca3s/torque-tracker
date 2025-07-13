@@ -2,14 +2,14 @@ use std::{
     collections::VecDeque,
     fmt::Debug,
     num::NonZeroU16,
-    sync::{Arc, LazyLock},
+    sync::{Arc, LazyLock, OnceLock},
     thread::JoinHandle,
     time::Duration,
 };
 
 use smol::{channel::Sender, lock::Mutex};
 use torque_tracker_engine::{
-    manager::{AudioManager, OutputConfig, SongEdit},
+    manager::{AudioManager, OutputConfig},
     project::song::{Song, SongOperation},
 };
 use triple_buffer::triple_buffer;
@@ -40,32 +40,11 @@ use super::{
 pub static EXECUTOR: smol::Executor = smol::Executor::new();
 pub static AUDIO: LazyLock<Mutex<AudioManager>> =
     LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
+pub static SONG_OP_SEND: OnceLock<smol::channel::Sender<SongOperation>> = OnceLock::new();
 
-pub async fn get_song_edit(manager: &mut AudioManager) -> SongEdit<'_> {
-    loop {
-        if manager.try_edit_song().is_some() {
-            break;
-        }
-        smol::Timer::after(manager.buffer_time().expect(
-            "locking failed once, so audio must be active, so there must be a buffer_time",
-        ))
-        .await;
-    }
-    manager
-        .try_edit_song()
-        .expect("workaround until polonius. please polnius save me")
-}
-
-/// spawns a task to apply it. if mutiply should be applied write this yourself and hold the lock
-/// panics if the op fails
-pub fn apply_song_op(op: SongOperation) {
-    EXECUTOR
-        .spawn(async move {
-            let mut manager = AUDIO.lock().await;
-            let mut song = get_song_edit(&mut manager).await;
-            song.apply_operation(op).unwrap();
-        })
-        .detach();
+/// shortform function
+pub fn send_song_op(op: SongOperation) {
+    SONG_OP_SEND.get().unwrap().send_blocking(op).unwrap();
 }
 
 pub enum GlobalEvent {
@@ -165,6 +144,28 @@ impl ApplicationHandler<GlobalEvent> for App {
         if start_cause == winit::event::StartCause::Init {
             LazyLock::force(&AUDIO);
             self.worker_threads = Some(WorkerThreads::new());
+            let (send, recv) = smol::channel::unbounded();
+            SONG_OP_SEND.get_or_init(|| send);
+            EXECUTOR
+                .spawn(async move {
+                    while let Ok(op) = recv.recv().await {
+                        let mut manager = AUDIO.lock().await;
+
+                        loop {
+                            if let Some(mut song) = manager.try_edit_song() {
+                                song.apply_operation(op).unwrap();
+                                // don't need to relock if there are more operations in queue
+                                while let Ok(op) = recv.try_recv() {
+                                    song.apply_operation(op).unwrap();
+                                }
+                                break;
+                            }
+                            let buffer_time = manager.buffer_time().expect("locking failed once, so audio must be active, so there must be a buffer_time");
+                            smol::Timer::after(buffer_time).await;
+                        }
+                    }
+                })
+                .detach();
             // spawn a task to collect sample garbage every 10 seconds
             EXECUTOR
                 .spawn(async {

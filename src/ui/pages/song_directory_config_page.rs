@@ -5,8 +5,8 @@ use crate::{
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::widgets::{
-        button::Button, slider::Slider, text_in::TextIn, text_in_scroll::TextInScroll,
-        toggle::Toggle, toggle_button::ToggleButton, NextWidget, StandardResponse, WidgetResponse,
+        NextWidget, StandardResponse, WidgetResponse, button::Button, slider::Slider,
+        text_in::TextIn, text_in_scroll::TextInScroll, toggle::Toggle, toggle_button::ToggleButton,
     },
 };
 

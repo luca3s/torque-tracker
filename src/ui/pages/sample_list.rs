@@ -12,7 +12,7 @@ use torque_tracker_engine::{
 use winit::keyboard::{Key, NamedKey};
 
 use crate::{
-    app::{AUDIO, EXECUTOR, GlobalEvent, get_song_edit},
+    app::{AUDIO, EXECUTOR, GlobalEvent, SONG_OP_SEND},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::{
@@ -310,11 +310,10 @@ impl Page for SampleList {
                             SampleListEvent::SetSample(idx, file_name, meta),
                         )))
                         .unwrap();
+                    drop(proxy);
                     // send to playback
-                    let mut manager = AUDIO.lock().await;
-                    let mut song = get_song_edit(&mut manager).await;
                     let operation = SongOperation::SetSample(usize::from(idx), meta, sample);
-                    song.apply_operation(operation).unwrap();
+                    SONG_OP_SEND.get().unwrap().send(operation).await.unwrap();
                 })
                 .detach();
         }

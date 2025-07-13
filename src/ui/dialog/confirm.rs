@@ -6,7 +6,7 @@ use crate::{
     draw_buffer::DrawBuffer,
     ui::{
         pages::create_widget_list,
-        widgets::{button::Button, NextWidget, StandardResponse, WidgetResponse},
+        widgets::{NextWidget, StandardResponse, WidgetResponse, button::Button},
     },
 };
 

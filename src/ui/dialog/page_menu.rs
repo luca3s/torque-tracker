@@ -4,7 +4,7 @@ use winit::keyboard::{Key, NamedKey};
 
 use crate::{
     app::GlobalEvent,
-    coordinates::{CharPosition, CharRect, PixelRect, FONT_SIZE},
+    coordinates::{CharPosition, CharRect, FONT_SIZE, PixelRect},
     draw_buffer::DrawBuffer,
     ui::pages::PagesEnum,
 };

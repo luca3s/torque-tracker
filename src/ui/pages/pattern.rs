@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::{
-    app::{AUDIO, EXECUTOR, GlobalEvent, get_song_edit},
+    app::{AUDIO, EXECUTOR, GlobalEvent, send_song_op},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,
 };
@@ -75,7 +75,6 @@ pub struct PatternPage {
     cursor_position: (InPatternPosition, InEventPosition),
     draw_position: InPatternPosition,
     event_proxy: EventLoopProxy<GlobalEvent>,
-    edit_queue: smol::channel::Sender<SongOperation>,
     /// Last used or last selected in the sample menu
     selected_sample_instr: u8,
 }
@@ -117,18 +116,6 @@ impl PatternPage {
     }
 
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
-        let (send, recv) = smol::channel::unbounded();
-        EXECUTOR
-            .spawn(async move {
-                while let Ok(msg) = recv.recv().await {
-                    let mut lock = AUDIO.lock().await;
-                    let mut edit = get_song_edit(&mut lock).await;
-                    edit.apply_operation(msg).unwrap();
-                    drop(edit);
-                    drop(lock);
-                }
-            })
-            .detach();
         Self {
             pattern_index: 0,
             pattern: Pattern::default(),
@@ -138,7 +125,6 @@ impl PatternPage {
             ),
             draw_position: InPatternPosition { row: 0, channel: 0 },
             event_proxy: proxy,
-            edit_queue: send,
             selected_sample_instr: 0,
         }
     }
@@ -213,7 +199,7 @@ impl PatternPage {
             self.pattern_index,
             PatternOperation::SetEvent { position, event },
         );
-        self.edit_queue.send_blocking(op).unwrap();
+        send_song_op(op);
     }
 
     fn remove_event(&mut self, position: InPatternPosition) {
@@ -222,7 +208,7 @@ impl PatternPage {
             self.pattern_index,
             PatternOperation::RemoveEvent { position },
         );
-        self.edit_queue.send_blocking(op).unwrap();
+        send_song_op(op);
     }
 
     pub fn set_sample(&mut self, sample: u8, events: &mut VecDeque<GlobalEvent>) {

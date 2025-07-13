@@ -7,7 +7,7 @@ use torque_tracker_engine::project::song::SongOperation;
 use torque_tracker_engine::{file::impulse_format::header::PatternOrder, project::song::Song};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::app::{GlobalEvent, apply_song_op};
+use crate::app::{GlobalEvent, send_song_op};
 use crate::ui::header::HeaderEvent;
 use crate::ui::widgets::{NextWidget, StandardResponse, Widget};
 use crate::{
@@ -80,7 +80,7 @@ impl OrderListPage {
                     move |vol| {
                         // impossible to trigger as long as the slider is correct
                         let vol = u8::try_from(vol).unwrap();
-                        apply_song_op(SongOperation::SetVolume(idx, vol));
+                        send_song_op(SongOperation::SetVolume(idx, vol));
                     },
                 )
             }),
@@ -104,7 +104,7 @@ impl OrderListPage {
                         // surround and disabled not supported yet
                         // This panic can't be triggered as long as the slider is correct.
                         let pan = Pan::Value(u8::try_from(pan).unwrap());
-                        apply_song_op(SongOperation::SetPan(idx, pan));
+                        send_song_op(SongOperation::SetPan(idx, pan));
                     },
                 )
             }),
@@ -403,7 +403,7 @@ impl Page for OrderListPage {
                             Some('+') => {
                                 let order = usize::from(self.order_cursor.order);
                                 self.pattern_order[order] = PatternOrder::SkipOrder;
-                                apply_song_op(SongOperation::SetOrder(
+                                send_song_op(SongOperation::SetOrder(
                                     order,
                                     PatternOrder::SkipOrder,
                                 ));
@@ -414,7 +414,7 @@ impl Page for OrderListPage {
                             Some('-') | Some('.') => {
                                 let order = usize::from(self.order_cursor.order);
                                 self.pattern_order[order] = PatternOrder::EndOfSong;
-                                apply_song_op(SongOperation::SetOrder(
+                                send_song_op(SongOperation::SetOrder(
                                     order,
                                     PatternOrder::EndOfSong,
                                 ));
@@ -449,7 +449,7 @@ impl Page for OrderListPage {
                                         _ => unreachable!(),
                                     };
                                 self.pattern_order[cursor] = PatternOrder::Number(new_num);
-                                apply_song_op(SongOperation::SetOrder(
+                                send_song_op(SongOperation::SetOrder(
                                     cursor,
                                     PatternOrder::Number(new_num),
                                 ));
