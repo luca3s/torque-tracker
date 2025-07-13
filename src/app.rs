@@ -384,7 +384,7 @@ impl App {
     fn close_requested(events: &mut VecDeque<GlobalEvent>) {
         events.push_back(GlobalEvent::OpenDialog(Box::new(|| {
             Box::new(ConfirmDialog::new(
-                "Close Tracker?",
+                "Close Torque Tracker?",
                 || Some(GlobalEvent::CloseApp),
                 || None,
             ))
@@ -407,7 +407,7 @@ impl App {
             attributes.active = true;
             attributes.resizable = true;
             attributes.resize_increments = None;
-            attributes.title = String::from("RusTracker");
+            attributes.title = String::from("Torque Tracker");
 
             let window = Arc::new(event_loop.create_window(attributes).unwrap());
             let render_backend = RenderBackend::new(window.clone(), Palette::CAMOUFLAGE);

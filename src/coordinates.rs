@@ -9,8 +9,6 @@ pub const WINDOW_SIZE: (usize, usize) = (
     FONT_SIZE * WINDOW_SIZE_CHARS.0,
     FONT_SIZE * WINDOW_SIZE_CHARS.1,
 );
-/// bytes per pixel, mainly used to setup GPU as otherwise i use a u32 for one pixel
-pub const PIXEL_SIZE: usize = 4;
 
 /// CharRect as well as PixelRect uses all values inclusive, meaning the borders are included
 #[derive(Debug, Clone, Copy)]

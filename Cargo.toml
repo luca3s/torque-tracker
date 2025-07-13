@@ -30,13 +30,3 @@ default = ["gpu_scaling"]
 
 [lints.clippy]
 uninlined_format_args = "allow"
-
-# [profile.dev]
-# debug = 0
-# panic = "unwind"
-
-# [profile.release]
-# strip = true
-# lto = true
-# codegen-units = 1
-# panic = "abort"

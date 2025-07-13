@@ -157,7 +157,7 @@ impl Header {
 
     pub fn draw_constant(&self, buffer: &mut DrawBuffer) {
         buffer.draw_rect(2, CharRect::new(0, 11, 0, 79));
-        buffer.draw_string("Rust Tracker", CharPosition::new(34, 1), 0, 2);
+        buffer.draw_string("Torque Tracker", CharPosition::new(34, 1), 0, 2);
         buffer.draw_string("Song Name", CharPosition::new(2, 3), 0, 2);
         buffer.draw_string("File Name", CharPosition::new(2, 4), 0, 2);
         buffer.draw_string("Order", CharPosition::new(6, 5), 0, 2);
