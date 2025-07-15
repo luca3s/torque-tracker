@@ -47,6 +47,16 @@ impl From<RGB8> for RGB10A2 {
 }
 
 #[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct RGBA8(pub u32);
+
+impl From<RGB8> for RGBA8 {
+    fn from(value: RGB8) -> Self {
+        Self(u32::from_le_bytes([value[0], value[1], value[2], 0]))
+    }
+}
+
+#[repr(transparent)]
 pub struct Palette<Color>(pub [Color; PALETTE_SIZE]);
 
 // only needed, because its easier to set u8 color values than u10 by hand, so i store them in u8 and convert to RGB10A2
@@ -71,12 +81,7 @@ impl Palette<RGB8> {
     ]);
 }
 
-impl Palette<RGB10A2> {
-    pub fn get_raw(&self, index: u8) -> u32 {
-        self.0[usize::from(index)].0
-    }
-}
-
+// i can't do blanket impl because the two colors could be the same :(
 impl From<Palette<RGB8>> for Palette<RGB10A2> {
     fn from(value: Palette<RGB8>) -> Self {
         Self(value.0.map(RGB10A2::from))
@@ -92,5 +97,11 @@ impl From<Palette<RGB8>> for Palette<ZRGB> {
 impl Palette<ZRGB> {
     pub fn get_raw(&self, index: u8) -> u32 {
         self.0[usize::from(index)].0
+    }
+}
+
+impl From<Palette<RGB8>> for Palette<RGBA8> {
+    fn from(value: Palette<RGB8>) -> Self {
+        Self(value.0.map(RGBA8::from))
     }
 }
