@@ -1,6 +1,10 @@
 use std::{io::Write, str::from_utf8};
 
-use torque_tracker_engine::{manager::PlaybackSettings, project::pattern::Pattern};
+use font8x8::UnicodeFonts;
+use torque_tracker_engine::{
+    audio_processing::playback::PlaybackPosition, manager::PlaybackSettings,
+    project::pattern::Pattern,
+};
 
 use crate::{
     coordinates::{CharPosition, CharRect},
@@ -18,6 +22,7 @@ pub enum HeaderEvent {
     SetSample(u8, Box<str>),
     SetSpeed(usize),
     SetTempo(usize),
+    SetPlayback(Option<PlaybackPosition>),
 }
 
 #[derive(Debug)]
@@ -29,6 +34,7 @@ pub struct Header {
     order: u16,
     order_len: u16,
     selected_sample: (u8, Box<str>),
+    playback: Option<PlaybackPosition>,
 }
 
 impl Default for Header {
@@ -41,6 +47,7 @@ impl Default for Header {
             order: 0,
             order_len: 0,
             selected_sample: (0, Box::from("")),
+            playback: None,
         }
     }
 }
@@ -75,6 +82,7 @@ impl Header {
             HeaderEvent::SetTempo(_) => todo!(),
             HeaderEvent::SetMaxCursorRow(r) => self.max_row = r,
             HeaderEvent::SetMaxCursorPattern(p) => self.max_pattern = p,
+            HeaderEvent::SetPlayback(p) => self.playback = p,
         }
     }
 
@@ -115,6 +123,36 @@ impl Header {
             5,
             0,
         );
+        // playback position
+        if let Some(position) = self.playback {
+            // Window width - 20
+            let mut buf = [b' '; 60];
+            let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
+            write!(&mut curse, "Playing, ").unwrap();
+            if let Some(order) = position.order {
+                write!(&mut curse, "Order: {}/{}, ", order, self.order_len).unwrap();
+            }
+            // TODO: figure out how to get the row count of the currently playing pattern in here
+            write!(
+                &mut curse,
+                "Pattern: {}, Row: {}",
+                position.pattern, position.row
+            )
+            .unwrap();
+            // TODO: add voice count
+            let string = from_utf8(&buf).unwrap();
+            for (index, char) in string.char_indices() {
+                let char_color = if char.is_ascii_digit() { 3 } else { 0 };
+                draw_buffer.draw_char(
+                    font8x8::BASIC_FONTS.get(char).unwrap(),
+                    CharPosition::new(2 + index, 9),
+                    char_color,
+                    2,
+                );
+            }
+        } else {
+            draw_buffer.draw_rect(2, CharRect::new(9, 9, 2, 62));
+        }
     }
 
     pub fn draw_constant(&self, buffer: &mut DrawBuffer) {

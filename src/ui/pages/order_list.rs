@@ -21,6 +21,7 @@ use super::{Page, PageEvent, PageResponse};
 pub enum OrderListPageEvent {
     SetVolumeCurrent(i16),
     SetPanCurrent(i16),
+    SetPlayback(Option<u16>),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -48,6 +49,7 @@ pub struct OrderListPage {
     cursor: Cursor,
     order_cursor: OrderCursor,
     order_draw: u16,
+    order_playback: Option<u16>,
     pattern_order: [PatternOrder; Song::MAX_ORDERS],
     volume: [Slider<0, 64, ()>; 64],
     pan: [Slider<0, 64, ()>; 64],
@@ -61,6 +63,7 @@ impl OrderListPage {
             order_cursor: OrderCursor { order: 0, digit: 0 },
             order_draw: 0,
             pattern_order: [PatternOrder::EndOfSong; Song::MAX_ORDERS],
+            order_playback: None,
             volume: array::from_fn(|idx| {
                 let pos = if idx >= 32 {
                     CharPosition::new(65, 15 + idx - 32)
@@ -137,6 +140,7 @@ impl OrderListPage {
                     .try_set(pan)
                     .expect("the event was created from the slider, so has to fit.")
             }
+            OrderListPageEvent::SetPlayback(o) => self.order_playback = o,
         };
         PageResponse::RequestRedraw
     }
@@ -234,10 +238,15 @@ impl Page for OrderListPage {
             // row index
             let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
             write!(&mut curse, "{:03}", order).unwrap();
+            let text_color = if Some(order) == self.order_playback {
+                3
+            } else {
+                0
+            };
             draw_buffer.draw_string(
                 from_utf8(&buf).unwrap(),
                 ORDER_BASE_POS + CharPosition::new(0, pos),
-                0,
+                text_color,
                 2,
             );
             // row value

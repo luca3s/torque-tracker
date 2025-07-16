@@ -9,6 +9,7 @@ use std::{
 
 use smol::{channel::Sender, lock::Mutex};
 use torque_tracker_engine::{
+    audio_processing::playback::PlaybackStatus,
     manager::{AudioManager, OutputConfig, PlaybackSettings, SendResult, ToWorkerMsg},
     project::song::{Song, SongOperation},
 };
@@ -23,7 +24,10 @@ use winit::{
 
 use cpal::traits::{DeviceTrait, HostTrait};
 
-use crate::palettes::Palette;
+use crate::{
+    palettes::Palette,
+    ui::pages::{order_list::OrderListPageEvent, pattern::PatternPageEvent},
+};
 
 use super::{
     draw_buffer::DrawBuffer,
@@ -42,7 +46,7 @@ pub static AUDIO: LazyLock<Mutex<AudioManager>> =
     LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
 pub static SONG_OP_SEND: OnceLock<smol::channel::Sender<SongOperation>> = OnceLock::new();
 
-/// shortform function
+/// shorter function name
 pub fn send_song_op(op: SongOperation) {
     SONG_OP_SEND.get().unwrap().send_blocking(op).unwrap();
 }
@@ -228,12 +232,13 @@ impl ApplicationHandler<GlobalEvent> for App {
             }
             WindowEvent::RedrawRequested => {
                 // draw the new frame buffer
+                // TODO: split redraw header and redraw page. As soon as header gets a spectrometer this becomes important
                 header.draw(draw_buffer);
                 ui_pages.draw(draw_buffer);
                 dialog_manager.draw(draw_buffer);
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
-                // push the framebuffer into GPU and render it onto the screen
+                // push the framebuffer into GPU/softbuffer and render it onto the screen
                 render_backend.render(&draw_buffer.framebuffer, event_loop);
             }
             WindowEvent::KeyboardInput {
@@ -435,15 +440,39 @@ impl App {
             )
             .unwrap();
         // spawn a task to process the audio playback status updates
+        let proxy = self.event_loop_proxy.clone();
         let task = EXECUTOR.spawn(async move {
             let mut buffer_time = buffer_time;
+            let mut old_status: Option<PlaybackStatus> = None;
             loop {
                 let mut lock = AUDIO.lock().await;
                 let status = lock.playback_status().cloned();
                 let time = lock.buffer_time();
                 drop(lock);
                 let status = status.expect("background task running while no stream active");
-                // println!("playback status: {status:?}");
+                // only react on status changes. could at some point be made more granular
+                if status != old_status {
+                    old_status = status;
+                    // println!("playback status: {status:?}");
+                    let pos = status.map(|s| s.position);
+                    proxy
+                        .send_event(GlobalEvent::Header(HeaderEvent::SetPlayback(pos)))
+                        .unwrap();
+                    let pos = status.map(|s| (s.position.pattern, s.position.row));
+                    proxy
+                        .send_event(GlobalEvent::Page(PageEvent::Pattern(
+                            PatternPageEvent::PlaybackPosition(pos),
+                        )))
+                        .unwrap();
+                    // does a map flatten. idk why it's called and_then
+                    let pos = status.and_then(|s| s.position.order);
+                    proxy
+                        .send_event(GlobalEvent::Page(PageEvent::OrderList(
+                            OrderListPageEvent::SetPlayback(pos),
+                        )))
+                        .unwrap();
+                }
+
                 if let Some(time) = time {
                     assert!(time == buffer_time);
                     buffer_time = time;

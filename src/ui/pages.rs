@@ -1,6 +1,6 @@
 mod help_page;
-mod order_list;
-mod pattern;
+pub mod order_list;
+pub mod pattern;
 mod sample_list;
 mod song_directory_config_page;
 

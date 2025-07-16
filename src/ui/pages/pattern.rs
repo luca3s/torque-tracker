@@ -66,6 +66,8 @@ impl InEventPosition {
 pub enum PatternPageEvent {
     Loaded(Pattern, u8),
     SetSampleInstr(u8),
+    /// pattern, row
+    PlaybackPosition(Option<(u8, u16)>),
 }
 
 #[derive(Debug)]
@@ -77,6 +79,10 @@ pub struct PatternPage {
     event_proxy: EventLoopProxy<GlobalEvent>,
     /// Last used or last selected in the sample menu
     selected_sample_instr: u8,
+    /// pattern, row
+    // storest the pattern index, because if i switch page i want to show the current position before i
+    // get the next event
+    playback: Option<(u8, u16)>,
 }
 
 impl PatternPage {
@@ -112,6 +118,11 @@ impl PatternPage {
                 self.selected_sample_instr = i;
                 PageResponse::None
             }
+            PatternPageEvent::PlaybackPosition(p) => {
+                self.playback = p;
+                // TODO: only return this if the change is actually visible
+                PageResponse::RequestRedraw
+            }
         }
     }
 
@@ -126,6 +137,7 @@ impl PatternPage {
             draw_position: InPatternPosition { row: 0, channel: 0 },
             event_proxy: proxy,
             selected_sample_instr: 0,
+            playback: None,
         }
     }
 
@@ -238,10 +250,15 @@ impl Page for PatternPage {
             const BASE_POS: CharPosition = CharPosition::new(1, 15);
             let mut curse: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut buf);
             write!(&mut curse, "{:03}", value).unwrap();
+            let text_color = if self.playback == Some((self.pattern_index, value)) {
+                3
+            } else {
+                0
+            };
             draw_buffer.draw_string(
                 from_utf8(&buf).unwrap(),
                 BASE_POS + CharPosition::new(0, index),
-                0,
+                text_color,
                 2,
             );
         }
