@@ -413,7 +413,7 @@ impl App {
                 let time = lock.buffer_time();
                 drop(lock);
                 let status = status.expect("background task running while no stream active");
-                println!("playback status: {status:?}");
+                // println!("playback status: {status:?}");
                 if let Some(time) = time {
                     assert!(time == buffer_time);
                     buffer_time = time;

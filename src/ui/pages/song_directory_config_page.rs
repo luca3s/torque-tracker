@@ -1,7 +1,9 @@
-use std::{cell::Cell, collections::VecDeque, rc::Rc};
+use std::{cell::Cell, collections::VecDeque, num::NonZero, rc::Rc};
+
+use torque_tracker_engine::project::song::SongOperation;
 
 use crate::{
-    app::GlobalEvent,
+    app::{GlobalEvent, send_song_op},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::widgets::{
@@ -204,7 +206,6 @@ impl SongDirectoryConfigPage {
             },
             |s| println!("new song name: {}", s),
         );
-
         let initial_tempo = Slider::new(
             125,
             CharPosition::new(17, 19),
@@ -217,7 +218,11 @@ impl SongDirectoryConfigPage {
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
-            |value| println!("initial tempo set to: {}", value),
+            |value| {
+                send_song_op(SongOperation::SetInitialTempo(
+                    NonZero::new(u8::try_from(value).unwrap()).unwrap(),
+                ));
+            },
         );
         let initial_speed = Slider::new(
             6,
@@ -231,7 +236,11 @@ impl SongDirectoryConfigPage {
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
-            |value| println!("initial speed set to: {}", value),
+            |value| {
+                send_song_op(SongOperation::SetInitialSpeed(
+                    NonZero::new(u8::try_from(value).unwrap()).unwrap(),
+                ));
+            },
         );
         let global_volume = Slider::new(
             128,
