@@ -254,7 +254,7 @@ impl SongDirectoryConfigPage {
                 ..Default::default()
             },
             |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
-            |value| println!("gloabl volume set to: {}", value),
+            |value| send_song_op(SongOperation::SetGlobalVol(u8::try_from(value).unwrap())),
         );
         let mixing_volume = Slider::new(
             48,

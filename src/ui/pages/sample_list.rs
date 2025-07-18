@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    io::{Cursor, ErrorKind, Write},
+    io::{Cursor, Write},
     iter::zip,
     num::NonZero,
     str::from_utf8,
@@ -16,12 +16,12 @@ use torque_tracker_engine::{
 use winit::keyboard::{Key, NamedKey};
 
 use crate::{
-    app::{AUDIO, EXECUTOR, GlobalEvent, SONG_OP_SEND},
+    app::{EXECUTOR, GlobalEvent, SONG_OP_SEND},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::{
         header::HeaderEvent,
-        pages::{Page, PageEvent, PageResponse},
+        pages::{Page, PageEvent, PageResponse, pattern::PatternPageEvent},
     },
 };
 
@@ -55,25 +55,23 @@ impl SampleList {
         events: &mut VecDeque<GlobalEvent>,
     ) -> PageResponse {
         match event {
+            // this event is from the pattern page, so i don't have to send it there
             SampleListEvent::SelectSample(s) => {
-                self.select_sample(events, s);
+                self.select_sample(s);
+                self.send_to_header(events);
                 PageResponse::RequestRedraw
             }
             SampleListEvent::SetSample(idx, name, meta) => {
-                if self.selected == idx {
-                    let name: Box<str> = Box::from(name.as_str());
-                    events.push_back(GlobalEvent::Header(HeaderEvent::SetSample(
-                        self.selected,
-                        name,
-                    )));
-                }
                 self.samples[usize::from(idx)] = Some((name, meta));
+                if self.selected == idx {
+                    self.send_to_header(events);
+                }
                 PageResponse::RequestRedraw
             }
         }
     }
 
-    fn select_sample(&mut self, events: &mut VecDeque<GlobalEvent>, selected: u8) {
+    fn select_sample(&mut self, selected: u8) {
         self.selected = selected;
         self.sample_view = if self.selected < self.sample_view {
             self.selected
@@ -82,11 +80,23 @@ impl SampleList {
         } else {
             self.sample_view
         };
-        let name: Box<str> = self.samples[usize::from(selected)]
+    }
+
+    fn send_to_header(&self, events: &mut VecDeque<GlobalEvent>) {
+        let name: Box<str> = self.samples[usize::from(self.selected)]
             .as_ref()
             .map(|(n, _)| Box::from(n.as_str()))
             .unwrap_or(Box::from(""));
-        events.push_back(GlobalEvent::Header(HeaderEvent::SetSample(selected, name)));
+        events.push_back(GlobalEvent::Header(HeaderEvent::SetSample(
+            self.selected,
+            name,
+        )));
+    }
+
+    fn send_to_pattern(&self, events: &mut VecDeque<GlobalEvent>) {
+        events.push_back(GlobalEvent::PageEvent(PageEvent::Pattern(
+            PatternPageEvent::SetSampleInstr(self.selected),
+        )));
     }
 }
 
@@ -131,14 +141,18 @@ impl Page for SampleList {
 
         if key_event.logical_key == Key::Named(NamedKey::ArrowUp) && modifiers.state().is_empty() {
             if let Some(s) = self.selected.checked_sub(1) {
-                self.select_sample(events, s);
+                self.select_sample(s);
+                self.send_to_header(events);
+                self.send_to_pattern(events);
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
             && modifiers.state().is_empty()
         {
             if self.selected + 1 < 100 {
-                self.select_sample(events, self.selected + 1);
+                self.select_sample(self.selected + 1);
+                self.send_to_header(events);
+                self.send_to_pattern(events);
                 return PageResponse::RequestRedraw;
             }
         } else if key_event.logical_key == Key::Named(NamedKey::Enter)
