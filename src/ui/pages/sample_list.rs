@@ -94,7 +94,7 @@ impl SampleList {
     }
 
     fn send_to_pattern(&self, events: &mut VecDeque<GlobalEvent>) {
-        events.push_back(GlobalEvent::PageEvent(PageEvent::Pattern(
+        events.push_back(GlobalEvent::Page(PageEvent::Pattern(
             PatternPageEvent::SetSampleInstr(self.selected),
         )));
     }
@@ -349,7 +349,7 @@ impl Page for SampleList {
                     };
                     // send to UI
                     proxy
-                        .send_event(GlobalEvent::PageEvent(PageEvent::SampleList(
+                        .send_event(GlobalEvent::Page(PageEvent::SampleList(
                             SampleListEvent::SetSample(idx, file_name, meta),
                         )))
                         .unwrap();

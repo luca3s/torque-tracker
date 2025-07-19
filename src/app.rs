@@ -49,7 +49,7 @@ pub fn send_song_op(op: SongOperation) {
 
 pub enum GlobalEvent {
     OpenDialog(Box<dyn FnOnce() -> Box<dyn Dialog> + Send>),
-    PageEvent(PageEvent),
+    Page(PageEvent),
     Header(HeaderEvent),
     /// also closes all dialogs
     GoToPage(PagesEnum),
@@ -60,21 +60,17 @@ pub enum GlobalEvent {
 
 impl Debug for GlobalEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug = f.debug_struct("GlobalEvent");
         match self {
-            GlobalEvent::OpenDialog(_) => write!(f, "GlobalEvent {{ OpenDialog }}"),
-            GlobalEvent::PageEvent(page_event) => {
-                write!(f, "GlobalEvent {{ PageEvent: {page_event:?} }}")
-            }
-            GlobalEvent::Header(header_event) => {
-                write!(f, "GlobalEvent {{ Header: {header_event:?} }}")
-            }
-            GlobalEvent::GoToPage(pages_enum) => {
-                write!(f, "GlobalEvent {{ GoToPage: {pages_enum:?} }}")
-            }
-            GlobalEvent::CloseApp => write!(f, "GlobalEvent {{ CloseApp }}"),
-            GlobalEvent::CloseRequested => write!(f, "GlobalEvent {{ CloseRequested }}"),
-            GlobalEvent::ConstRedraw => write!(f, "GlobalEvent {{ ConstRedraw }}"),
-        }
+            GlobalEvent::OpenDialog(_) => debug.field("OpenDialog", &"closure"),
+            GlobalEvent::Page(page_event) => debug.field("Page", page_event),
+            GlobalEvent::Header(header_event) => debug.field("Header", header_event),
+            GlobalEvent::GoToPage(pages_enum) => debug.field("GoToPage", pages_enum),
+            GlobalEvent::CloseRequested => debug.field("CloseRequested", &""),
+            GlobalEvent::CloseApp => debug.field("CloseApp", &""),
+            GlobalEvent::ConstRedraw => debug.field("ConstRedraw", &""),
+        };
+        debug.finish()
     }
 }
 
@@ -292,7 +288,7 @@ impl ApplicationHandler<GlobalEvent> for App {
                 self.dialog_manager.open_dialog(dialog());
                 _ = self.try_request_redraw();
             }
-            GlobalEvent::PageEvent(c) => {
+            GlobalEvent::Page(c) => {
                 match self.ui_pages.process_page_event(c, &mut self.event_queue) {
                     PageResponse::RequestRedraw => _ = self.try_request_redraw(),
                     PageResponse::None => (),

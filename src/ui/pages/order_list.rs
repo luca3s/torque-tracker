@@ -73,7 +73,7 @@ impl OrderListPage {
                     8,
                     NextWidget::default(),
                     |value| {
-                        GlobalEvent::PageEvent(PageEvent::OrderList(
+                        GlobalEvent::Page(PageEvent::OrderList(
                             OrderListPageEvent::SetVolumeCurrent(value),
                         ))
                     },
@@ -96,9 +96,9 @@ impl OrderListPage {
                     8,
                     NextWidget::default(),
                     |value| {
-                        GlobalEvent::PageEvent(PageEvent::OrderList(
-                            OrderListPageEvent::SetPanCurrent(value),
-                        ))
+                        GlobalEvent::Page(PageEvent::OrderList(OrderListPageEvent::SetPanCurrent(
+                            value,
+                        )))
                     },
                     move |pan| {
                         // surround and disabled not supported yet

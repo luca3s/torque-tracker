@@ -217,7 +217,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(WidgetList::INITIAL_SPEED),
                 ..Default::default()
             },
-            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
+            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
             |value| {
                 send_song_op(SongOperation::SetInitialTempo(
                     NonZero::new(u8::try_from(value).unwrap()).unwrap(),
@@ -235,7 +235,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(WidgetList::GLOBAL_VOLUME),
                 ..Default::default()
             },
-            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
+            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
             |value| {
                 send_song_op(SongOperation::SetInitialSpeed(
                     NonZero::new(u8::try_from(value).unwrap()).unwrap(),
@@ -253,7 +253,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(WidgetList::MIXING_VOLUME),
                 ..Default::default()
             },
-            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
+            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
             |value| send_song_op(SongOperation::SetGlobalVol(u8::try_from(value).unwrap())),
         );
         let mixing_volume = Slider::new(
@@ -267,7 +267,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(WidgetList::SEPERATION),
                 ..Default::default()
             },
-            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
+            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
             |value| println!("mixing volume set to: {}", value),
         );
         let seperation = Slider::new(
@@ -281,7 +281,7 @@ impl SongDirectoryConfigPage {
                 tab: Some(WidgetList::OLD_EFFECTS),
                 ..Default::default()
             },
-            |n| GlobalEvent::PageEvent(super::PageEvent::Sdc(SDCChange::Seperation(n))),
+            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::Seperation(n))),
             |value| println!("seperation set to: {}", value),
         );
 

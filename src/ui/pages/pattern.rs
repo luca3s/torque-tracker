@@ -185,7 +185,7 @@ impl PatternPage {
                 let pattern = lock.get_song().patterns[idx].clone();
                 drop(lock);
                 proxy
-                    .send_event(GlobalEvent::PageEvent(super::PageEvent::Pattern(
+                    .send_event(GlobalEvent::Page(super::PageEvent::Pattern(
                         PatternPageEvent::Loaded(pattern, idx),
                     )))
                     .unwrap();
@@ -213,7 +213,7 @@ impl PatternPage {
 
     pub fn set_sample(&mut self, sample: u8, events: &mut VecDeque<GlobalEvent>) {
         self.selected_sample_instr = sample;
-        events.push_back(GlobalEvent::PageEvent(super::PageEvent::SampleList(
+        events.push_back(GlobalEvent::Page(super::PageEvent::SampleList(
             super::sample_list::SampleListEvent::SelectSample(sample),
         )));
     }
