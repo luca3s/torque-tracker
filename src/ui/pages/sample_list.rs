@@ -120,7 +120,14 @@ impl Page for SampleList {
                     .as_ref()
                     .map(|(n, _)| n.as_str())
                     .unwrap_or("");
-                draw_buffer.draw_string_length(name, BASE_POS + CharPosition::new(3, i), 24, 6, 0);
+                let background_color = if self.selected == n { 14 } else { 0 };
+                draw_buffer.draw_string_length(
+                    name,
+                    BASE_POS + CharPosition::new(3, i),
+                    24,
+                    6,
+                    background_color,
+                );
             }
         }
     }
