@@ -64,13 +64,13 @@ impl InEventPosition {
 
 #[derive(Debug)]
 pub enum PatternPageEvent {
-    Loaded(Pattern, usize),
+    Loaded(Pattern, u8),
     SetSampleInstr(u8),
 }
 
 #[derive(Debug)]
 pub struct PatternPage {
-    pattern_index: usize,
+    pattern_index: u8,
     pattern: Pattern,
     cursor_position: (InPatternPosition, InEventPosition),
     draw_position: InPatternPosition,
@@ -177,12 +177,12 @@ impl PatternPage {
         self.set_cursor(pos, events)
     }
 
-    fn load_pattern(&mut self, idx: usize) {
+    fn load_pattern(&mut self, idx: u8) {
         let proxy = self.event_proxy.clone();
         EXECUTOR
             .spawn(async move {
                 let lock = AUDIO.lock().await;
-                let pattern = lock.get_song().patterns[idx].clone();
+                let pattern = lock.get_song().patterns[usize::from(idx)].clone();
                 drop(lock);
                 proxy
                     .send_event(GlobalEvent::Page(super::PageEvent::Pattern(
@@ -415,7 +415,7 @@ impl Page for PatternPage {
         }
 
         if key_event.logical_key == Key::Character(SmolStr::new_static("+")) {
-            if self.pattern_index != Self::MAX_PATTERN {
+            if usize::from(self.pattern_index) != Self::MAX_PATTERN {
                 self.load_pattern(self.pattern_index + 1);
                 return PageResponse::RequestRedraw;
             }

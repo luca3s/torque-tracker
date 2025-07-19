@@ -37,7 +37,7 @@ enum Cursor {
 
 #[derive(Debug)]
 struct OrderCursor {
-    order: u8,
+    order: u16,
     // 0 - 2 valid
     digit: u8,
 }
@@ -47,7 +47,7 @@ pub struct OrderListPage {
     mode: Mode,
     cursor: Cursor,
     order_cursor: OrderCursor,
-    order_draw: u8,
+    order_draw: u16,
     pattern_order: [PatternOrder; Song::MAX_ORDERS],
     volume: [Slider<0, 64, ()>; 64],
     pan: [Slider<0, 64, ()>; 64],
@@ -67,6 +67,7 @@ impl OrderListPage {
                 } else {
                     CharPosition::new(31, 15 + idx)
                 };
+                let idx = u8::try_from(idx).unwrap();
                 Slider::new(
                     64,
                     pos,
@@ -90,6 +91,7 @@ impl OrderListPage {
                 } else {
                     CharPosition::new(31, 15 + idx)
                 };
+                let idx = u8::try_from(idx).unwrap();
                 Slider::new(
                     32,
                     pos,
@@ -167,11 +169,11 @@ impl OrderListPage {
             .take_while(|o| **o != PatternOrder::EndOfSong)
             .count();
         events.push_back(GlobalEvent::Header(HeaderEvent::SetOrderLen(
-            u8::try_from(order_len).unwrap(),
+            u16::try_from(order_len).unwrap(),
         )));
     }
 
-    fn order_cursor_up(&mut self, count: u8, events: &mut VecDeque<GlobalEvent>) -> PageResponse {
+    fn order_cursor_up(&mut self, count: u16, events: &mut VecDeque<GlobalEvent>) -> PageResponse {
         debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 0 {
             return PageResponse::None;
@@ -183,7 +185,11 @@ impl OrderListPage {
         PageResponse::RequestRedraw
     }
 
-    fn order_cursor_down(&mut self, count: u8, events: &mut VecDeque<GlobalEvent>) -> PageResponse {
+    fn order_cursor_down(
+        &mut self,
+        count: u16,
+        events: &mut VecDeque<GlobalEvent>,
+    ) -> PageResponse {
         debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 255 {
             return PageResponse::None;
@@ -401,10 +407,10 @@ impl Page for OrderListPage {
                         assert!(chars.next().is_none());
                         match first {
                             Some('+') => {
-                                let order = usize::from(self.order_cursor.order);
-                                self.pattern_order[order] = PatternOrder::SkipOrder;
+                                self.pattern_order[usize::from(self.order_cursor.order)] =
+                                    PatternOrder::SkipOrder;
                                 send_song_op(SongOperation::SetOrder(
-                                    order,
+                                    self.order_cursor.order,
                                     PatternOrder::SkipOrder,
                                 ));
                                 self.order_cursor_down(1, events);
@@ -412,10 +418,10 @@ impl Page for OrderListPage {
                                 return PageResponse::RequestRedraw;
                             }
                             Some('-') | Some('.') => {
-                                let order = usize::from(self.order_cursor.order);
-                                self.pattern_order[order] = PatternOrder::EndOfSong;
+                                self.pattern_order[usize::from(self.order_cursor.order)] =
+                                    PatternOrder::EndOfSong;
                                 send_song_op(SongOperation::SetOrder(
-                                    order,
+                                    self.order_cursor.order,
                                     PatternOrder::EndOfSong,
                                 ));
                                 self.order_cursor_down(1, events);
@@ -450,7 +456,7 @@ impl Page for OrderListPage {
                                     };
                                 self.pattern_order[cursor] = PatternOrder::Number(new_num);
                                 send_song_op(SongOperation::SetOrder(
-                                    cursor,
+                                    self.order_cursor.order,
                                     PatternOrder::Number(new_num),
                                 ));
                                 match self.order_cursor.digit {

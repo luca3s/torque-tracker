@@ -1,6 +1,6 @@
 use std::{io::Write, str::from_utf8};
 
-use torque_tracker_engine::project::pattern::Pattern;
+use torque_tracker_engine::{manager::PlaybackSettings, project::pattern::Pattern};
 
 use crate::{
     coordinates::{CharPosition, CharRect},
@@ -11,10 +11,10 @@ use crate::{
 pub enum HeaderEvent {
     SetCursorRow(u16),
     SetMaxCursorRow(u16),
-    SetPattern(usize),
-    SetMaxCursorPattern(usize),
-    SetOrder(u8),
-    SetOrderLen(u8),
+    SetPattern(u8),
+    SetMaxCursorPattern(u8),
+    SetOrder(u16),
+    SetOrderLen(u16),
     SetSample(u8, Box<str>),
     SetSpeed(usize),
     SetTempo(usize),
@@ -24,10 +24,10 @@ pub enum HeaderEvent {
 pub struct Header {
     row: u16,
     max_row: u16,
-    pattern: usize,
-    max_pattern: usize,
-    order: u8,
-    order_len: u8,
+    pattern: u8,
+    max_pattern: u8,
+    order: u16,
+    order_len: u16,
     selected_sample: (u8, Box<str>),
 }
 
@@ -46,6 +46,20 @@ impl Default for Header {
 }
 
 impl Header {
+    pub fn play_current_pattern(&self) -> PlaybackSettings {
+        PlaybackSettings::Pattern {
+            idx: self.pattern,
+            should_loop: true,
+        }
+    }
+
+    pub fn play_current_order(&self) -> PlaybackSettings {
+        PlaybackSettings::Order {
+            idx: self.order,
+            should_loop: true,
+        }
+    }
+
     /// Header always needs a redraw after processing an event
     pub fn process_event(&mut self, event: HeaderEvent) {
         match event {

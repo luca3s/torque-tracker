@@ -9,7 +9,7 @@ use std::{
 
 use smol::{channel::Sender, lock::Mutex};
 use torque_tracker_engine::{
-    manager::{AudioManager, OutputConfig},
+    manager::{AudioManager, OutputConfig, PlaybackSettings, SendResult, ToWorkerMsg},
     project::song::{Song, SongOperation},
 };
 use triple_buffer::triple_buffer;
@@ -245,28 +245,62 @@ impl ApplicationHandler<GlobalEvent> for App {
                     return;
                 }
 
-                if let Some(dialog) = dialog_manager.active_dialog_mut() {
-                    match dialog.process_input(&event, modifiers, event_queue) {
-                        DialogResponse::Close => {
-                            dialog_manager.close_dialog();
-                            // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
-                            ui_pages.request_draw_const();
-                            window.request_redraw();
+                let message = if event.logical_key == Key::Named(NamedKey::F5) {
+                    // play song from start
+                    Some(ToWorkerMsg::Playback(PlaybackSettings::Order {
+                        idx: 0,
+                        should_loop: true,
+                    }))
+                } else if event.logical_key == Key::Named(NamedKey::F6) {
+                    Some(ToWorkerMsg::Playback(if modifiers.state().shift_key() {
+                        // play the current order
+                        self.header.play_current_order()
+                    } else {
+                        // play the current pattern
+                        self.header.play_current_pattern()
+                    }))
+                // TODO: add F7 handling
+                } else if event.logical_key == Key::Named(NamedKey::F8) {
+                    Some(ToWorkerMsg::StopPlayback)
+                } else {
+                    None
+                };
+                if let Some(msg) = message {
+                    let result = AUDIO.lock_blocking().try_msg_worker(msg);
+
+                    match result {
+                        SendResult::Success => (),
+                        SendResult::BufferFull => {
+                            panic!("to worker buffer full, probably have to retry somehow")
                         }
-                        DialogResponse::RequestRedraw => window.request_redraw(),
-                        DialogResponse::None => (),
+                        SendResult::AudioInactive => panic!("audio should always be active"),
                     }
                 } else {
-                    if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
-                    {
-                        event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
-                            Box::new(PageMenu::main())
-                        })));
-                    }
+                    // key_event didn't start or stop the song, so process normally
+                    if let Some(dialog) = dialog_manager.active_dialog_mut() {
+                        match dialog.process_input(&event, modifiers, event_queue) {
+                            DialogResponse::Close => {
+                                dialog_manager.close_dialog();
+                                // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
+                                ui_pages.request_draw_const();
+                                window.request_redraw();
+                            }
+                            DialogResponse::RequestRedraw => window.request_redraw(),
+                            DialogResponse::None => (),
+                        }
+                    } else {
+                        if event.state.is_pressed()
+                            && event.logical_key == Key::Named(NamedKey::Escape)
+                        {
+                            event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+                                Box::new(PageMenu::main())
+                            })));
+                        }
 
-                    match ui_pages.process_key_event(&self.modifiers, &event, event_queue) {
-                        PageResponse::RequestRedraw => window.request_redraw(),
-                        PageResponse::None => (),
+                        match ui_pages.process_key_event(&self.modifiers, &event, event_queue) {
+                            PageResponse::RequestRedraw => window.request_redraw(),
+                            PageResponse::None => (),
+                        }
                     }
                 }
             }

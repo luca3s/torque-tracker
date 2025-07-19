@@ -355,7 +355,7 @@ impl Page for SampleList {
                         .unwrap();
                     drop(proxy);
                     // send to playback
-                    let operation = SongOperation::SetSample(usize::from(idx), meta, sample);
+                    let operation = SongOperation::SetSample(idx, meta, sample);
                     SONG_OP_SEND.get().unwrap().send(operation).await.unwrap();
                 })
                 .detach();
