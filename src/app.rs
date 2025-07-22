@@ -22,7 +22,10 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
-use cpal::traits::{DeviceTrait, HostTrait};
+use cpal::{
+    BufferSize, SupportedBufferSize,
+    traits::{DeviceTrait, HostTrait},
+};
 
 use crate::{
     palettes::Palette,
@@ -418,11 +421,23 @@ impl App {
         let host = cpal::default_host();
         let device = host.default_output_device().unwrap();
         let default_config = device.default_output_config().unwrap();
+        let (config, buffer_size) = {
+            let mut config = default_config.config();
+            let buffer_size = {
+                let default = default_config.buffer_size();
+                match default {
+                    SupportedBufferSize::Unknown => 1024,
+                    SupportedBufferSize::Range { min, max } => u32::min(u32::max(1024, *min), *max),
+                }
+            };
+            config.buffer_size = BufferSize::Fixed(buffer_size);
+            (config, buffer_size)
+        };
         let mut guard = AUDIO.lock_blocking();
         let mut worker = guard.get_callback::<f32>(OutputConfig {
-            buffer_size: 1024,
-            channel_count: NonZero::new(2).unwrap(),
-            sample_rate: NonZero::new(44_100).unwrap(),
+            buffer_size,
+            channel_count: NonZero::new(config.channels).unwrap(),
+            sample_rate: NonZero::new(config.sample_rate.0).unwrap(),
         });
         let buffer_time = guard.buffer_time().unwrap();
         // keep the guard as short as possible to not block the async threads
@@ -430,7 +445,7 @@ impl App {
         let (mut send, recv) = triple_buffer(&None);
         let stream = device
             .build_output_stream(
-                &default_config.config(),
+                &config,
                 move |data, info| {
                     worker(data);
                     send.write(Some(info.timestamp()));
