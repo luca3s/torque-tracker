@@ -3,7 +3,10 @@ name = "torque-tracker"
 version = "0.1.0"
 edition = "2024"
 license = "GPL 3.0"
-
+rustc-version = "1.88"
+description = "Old school music tracker, reimplementation of schism tracker"
+keywords = ["audio", "GUI"]
+categories = ["audio"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

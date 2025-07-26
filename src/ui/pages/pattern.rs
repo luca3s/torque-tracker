@@ -62,6 +62,47 @@ impl InEventPosition {
     }
 }
 
+fn get_note_from_key(key: &winit::keyboard::SmolStr, octave: u8) -> Option<Note> {
+    // TODO: keyboard layouts fuckk me.
+    #[allow(clippy::identity_op, clippy::zero_prefixed_literal)]
+    let note = match key.as_str() {
+        // lower octave
+        "z" => Some(Note::new(00 + 12 * (octave - 1))), // C-1
+        "s" => Some(Note::new(01 + 12 * (octave - 1))),
+        "x" => Some(Note::new(02 + 12 * (octave - 1))),
+        "d" => Some(Note::new(03 + 12 * (octave - 1))),
+        "c" => Some(Note::new(04 + 12 * (octave - 1))),
+        "v" => Some(Note::new(05 + 12 * (octave - 1))),
+        "g" => Some(Note::new(06 + 12 * (octave - 1))),
+        "b" => Some(Note::new(07 + 12 * (octave - 1))),
+        "h" => Some(Note::new(08 + 12 * (octave - 1))),
+        "n" => Some(Note::new(09 + 12 * (octave - 1))),
+        "j" => Some(Note::new(10 + 12 * (octave - 1))),
+        "m" => Some(Note::new(11 + 12 * (octave - 1))),
+        // base octave
+        "q" => Some(Note::new(00 + 12 * octave)), // C
+        "2" => Some(Note::new(01 + 12 * octave)), // Db / C#
+        "w" => Some(Note::new(02 + 12 * octave)), // D
+        "3" => Some(Note::new(03 + 12 * octave)), // Eb / D#
+        "e" => Some(Note::new(04 + 12 * octave)), // E
+        "r" => Some(Note::new(05 + 12 * octave)), // F
+        "5" => Some(Note::new(06 + 12 * octave)), // Gb / F#
+        "t" => Some(Note::new(07 + 12 * octave)), // G
+        "6" => Some(Note::new(08 + 12 * octave)), // Ab / G#
+        "y" => Some(Note::new(09 + 12 * octave)), // A
+        "7" => Some(Note::new(10 + 12 * octave)), // Bb / A#
+        "u" => Some(Note::new(11 + 12 * octave)), // B
+        // higher octave
+        "i" => Some(Note::new(0 + 12 * (octave + 1))), // C+1
+        "9" => Some(Note::new(1 + 12 * (octave + 1))),
+        "o" => Some(Note::new(2 + 12 * (octave + 1))),
+        "0" => Some(Note::new(3 + 12 * (octave + 1))),
+        "p" => Some(Note::new(4 + 12 * (octave + 1))),
+        _ => None,
+    };
+    note.and_then(Result::ok)
+}
+
 #[derive(Debug)]
 pub enum PatternPageEvent {
     Loaded(Pattern, u8),
@@ -525,33 +566,18 @@ impl Page for PatternPage {
             const DEFAULT_OCTAVE: u8 = 5;
             match self.cursor_position.1 {
                 InEventPosition::Note => {
-                    // TODO: keyboard layouts fuckk me. maybe do winit physical key
-                    let note = match char.as_str() {
-                        "q" => Some(Note::new(12 * DEFAULT_OCTAVE)),      // C
-                        "2" => Some(Note::new(1 + 12 * DEFAULT_OCTAVE)),  // Db / C#
-                        "w" => Some(Note::new(2 + 12 * DEFAULT_OCTAVE)),  // D
-                        "3" => Some(Note::new(3 + 12 * DEFAULT_OCTAVE)),  // Eb / D#
-                        "e" => Some(Note::new(4 + 12 * DEFAULT_OCTAVE)),  // E
-                        "r" => Some(Note::new(5 + 12 * DEFAULT_OCTAVE)),  // F
-                        "5" => Some(Note::new(6 + 12 * DEFAULT_OCTAVE)),  // Gb / F#
-                        "t" => Some(Note::new(7 + 12 * DEFAULT_OCTAVE)),  // G
-                        "6" => Some(Note::new(8 + 12 * DEFAULT_OCTAVE)),  // Ab / G#
-                        "z" => Some(Note::new(9 + 12 * DEFAULT_OCTAVE)),  // A
-                        "7" => Some(Note::new(10 + 12 * DEFAULT_OCTAVE)), // Bb / A#
-                        _ => None,
-                    };
-                    let note = note.and_then(Result::ok);
-                    if let Some(note) = note {
-                        let event = self
-                            .pattern
-                            .get_event(self.cursor_position.0)
-                            .copied()
-                            .unwrap_or(NoteEvent {
+                    // TODO: make octave configurable
+                    if let Some(note) = get_note_from_key(char, DEFAULT_OCTAVE) {
+                        let old_event = self.pattern.get_event(self.cursor_position.0);
+                        let event = match old_event {
+                            None => NoteEvent {
                                 note,
                                 sample_instr: self.selected_sample_instr,
                                 vol: VolumeEffect::None,
                                 command: NoteCommand::None,
-                            });
+                            },
+                            Some(&event) => NoteEvent { note, ..event },
+                        };
                         self.set_event(self.cursor_position.0, event);
                     }
                     // move to next row even if
