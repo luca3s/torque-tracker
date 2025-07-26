@@ -1,4 +1,4 @@
-use std::{cell::Cell, collections::VecDeque, num::NonZero, rc::Rc};
+use std::{collections::VecDeque, num::NonZero};
 
 use torque_tracker_engine::project::song::SongOperation;
 
@@ -6,31 +6,28 @@ use crate::{
     app::{GlobalEvent, send_song_op},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{
-        NextWidget, StandardResponse, WidgetResponse, button::Button, slider::Slider,
-        text_in::TextIn, text_in_scroll::TextInScroll, toggle::Toggle, toggle_button::ToggleButton,
-    },
+    ui::widgets::{NextWidget, StandardResponse, WidgetResponse, slider::Slider, text_in::TextIn},
 };
 
 use super::{Page, PageResponse};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Control {
-    Instruments,
-    Samples,
-}
+// #[derive(Debug, Clone, Copy, PartialEq)]
+// enum Control {
+//     Instruments,
+//     Samples,
+// }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Playback {
-    Stereo,
-    Mono,
-}
+// #[derive(Debug, Clone, Copy, PartialEq)]
+// enum Playback {
+//     Stereo,
+//     Mono,
+// }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum PitchSlides {
-    Linear,
-    Amiga,
-}
+// #[derive(Debug, Clone, Copy, PartialEq)]
+// enum PitchSlides {
+//     Linear,
+//     Amiga,
+// }
 
 #[derive(Debug)]
 pub enum SDCChange {
@@ -38,8 +35,8 @@ pub enum SDCChange {
     InitialTempo(i16),
     InitialSpeed(i16),
     GlobalVolume(i16),
-    MixingVolume(i16),
-    Seperation(i16),
+    // MixingVolume(i16),
+    // Seperation(i16),
 }
 
 super::create_widget_list!(
@@ -49,26 +46,26 @@ super::create_widget_list!(
         song_name: TextIn<()>,
         initial_tempo: Slider<31, 255, ()>,
         initial_speed: Slider<1, 255, ()>,
-        global_volume: Slider<0, 128, ()>,
-        mixing_volume: Slider<0, 128, ()>,
-        seperation: Slider<0, 128, ()>,
+        global_volume: Slider<0, 128, ()>
+        // mixing_volume: Slider<0, 128, ()>,
+        // seperation: Slider<0, 128, ()>,
 
-        old_effects: Toggle<bool, ()>,
-        compatible_gxx: Toggle<bool, ()>,
+        // old_effects: Toggle<bool, ()>,
+        // compatible_gxx: Toggle<bool, ()>,
 
-        instruments: ToggleButton<Control, ()>,
-        samples: ToggleButton<Control, ()>,
+        // instruments: ToggleButton<Control, ()>,
+        // samples: ToggleButton<Control, ()>,
 
-        stereo: ToggleButton<Playback, ()>,
-        mono: ToggleButton<Playback, ()>,
+        // stereo: ToggleButton<Playback, ()>,
+        // mono: ToggleButton<Playback, ()>,
 
-        linear_slides: ToggleButton<PitchSlides, ()>,
-        amiga_slides: ToggleButton<PitchSlides, ()>,
+        // linear_slides: ToggleButton<PitchSlides, ()>,
+        // amiga_slides: ToggleButton<PitchSlides, ()>,
 
-        module_path: TextInScroll<()>,
-        sample_path: TextInScroll<()>,
-        instrument_path: TextInScroll<()>,
-        save: Button<()>
+        // module_path: TextInScroll<()>,
+        // sample_path: TextInScroll<()>,
+        // instrument_path: TextInScroll<()>,
+        // save: Button<()>
     }
 );
 
@@ -112,36 +109,36 @@ impl Page for SongDirectoryConfigPage {
         );
 
         draw_buffer.draw_string("Global Volume", CharPosition::new(3, 23), 0, 2);
-        draw_buffer.draw_string("Mixing Volume", CharPosition::new(3, 24), 0, 2);
-        draw_buffer.draw_string("Seperation", CharPosition::new(6, 25), 0, 2);
-        draw_buffer.draw_string("Old Effects", CharPosition::new(5, 26), 0, 2);
-        draw_buffer.draw_string("Compatible Gxx", CharPosition::new(2, 27), 0, 2);
-        draw_buffer.draw_in_box(
-            CharRect::new(22, 28, 16, 34),
-            BACKGROUND_COLOR,
-            TOPLEFT_COLOR,
-            BOTRIGHT_COLOR,
-            1,
-        );
+        // draw_buffer.draw_string("Mixing Volume", CharPosition::new(3, 24), 0, 2);
+        // draw_buffer.draw_string("Seperation", CharPosition::new(6, 25), 0, 2);
+        // draw_buffer.draw_string("Old Effects", CharPosition::new(5, 26), 0, 2);
+        // draw_buffer.draw_string("Compatible Gxx", CharPosition::new(2, 27), 0, 2);
+        // draw_buffer.draw_in_box(
+        //     CharRect::new(22, 28, 16, 34),
+        //     BACKGROUND_COLOR,
+        //     TOPLEFT_COLOR,
+        //     BOTRIGHT_COLOR,
+        //     1,
+        // );
 
-        draw_buffer.draw_string("Control", CharPosition::new(9, 30), 0, 2);
+        // draw_buffer.draw_string("Control", CharPosition::new(9, 30), 0, 2);
 
-        draw_buffer.draw_string("Playback", CharPosition::new(8, 33), 0, 2);
+        // draw_buffer.draw_string("Playback", CharPosition::new(8, 33), 0, 2);
 
-        draw_buffer.draw_string("Pitch Slides", CharPosition::new(4, 36), 0, 2);
+        // draw_buffer.draw_string("Pitch Slides", CharPosition::new(4, 36), 0, 2);
 
-        draw_buffer.draw_string("Directories", CharPosition::new(34, 40), 3, 2);
+        // draw_buffer.draw_string("Directories", CharPosition::new(34, 40), 3, 2);
 
-        draw_buffer.draw_string("Module", CharPosition::new(6, 42), 0, 2);
-        draw_buffer.draw_string("Sample", CharPosition::new(6, 43), 0, 2);
-        draw_buffer.draw_string("Instrument", CharPosition::new(2, 44), 0, 2);
-        draw_buffer.draw_in_box(
-            CharRect::new(41, 45, 12, 78),
-            BACKGROUND_COLOR,
-            TOPLEFT_COLOR,
-            BOTRIGHT_COLOR,
-            1,
-        );
+        // draw_buffer.draw_string("Module", CharPosition::new(6, 42), 0, 2);
+        // draw_buffer.draw_string("Sample", CharPosition::new(6, 43), 0, 2);
+        // draw_buffer.draw_string("Instrument", CharPosition::new(2, 44), 0, 2);
+        // draw_buffer.draw_in_box(
+        //     CharRect::new(41, 45, 12, 78),
+        //     BACKGROUND_COLOR,
+        //     TOPLEFT_COLOR,
+        //     BOTRIGHT_COLOR,
+        //     1,
+        // );
     }
 
     fn process_key_event(
@@ -184,14 +181,14 @@ impl SongDirectoryConfigPage {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::MixingVolume(n) => match self.widgets.mixing_volume.try_set(n) {
-                Ok(_) => PageResponse::RequestRedraw,
-                Err(_) => PageResponse::None,
-            },
-            SDCChange::Seperation(n) => match self.widgets.seperation.try_set(n) {
-                Ok(_) => PageResponse::RequestRedraw,
-                Err(_) => PageResponse::None,
-            },
+            // SDCChange::MixingVolume(n) => match self.widgets.mixing_volume.try_set(n) {
+            //     Ok(_) => PageResponse::RequestRedraw,
+            //     Err(_) => PageResponse::None,
+            // },
+            // SDCChange::Seperation(n) => match self.widgets.seperation.try_set(n) {
+            //     Ok(_) => PageResponse::RequestRedraw,
+            //     Err(_) => PageResponse::None,
+            // },
         }
     }
 
@@ -249,237 +246,237 @@ impl SongDirectoryConfigPage {
             NextWidget {
                 up: Some(WidgetList::INITIAL_SPEED),
                 shift_tab: Some(WidgetList::INITIAL_SPEED),
-                down: Some(WidgetList::MIXING_VOLUME),
-                tab: Some(WidgetList::MIXING_VOLUME),
+                // down: Some(WidgetList::MIXING_VOLUME),
+                // tab: Some(WidgetList::MIXING_VOLUME),
                 ..Default::default()
             },
             |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
             |value| send_song_op(SongOperation::SetGlobalVol(u8::try_from(value).unwrap())),
         );
-        let mixing_volume = Slider::new(
-            48,
-            CharPosition::new(17, 24),
-            16,
-            NextWidget {
-                up: Some(WidgetList::GLOBAL_VOLUME),
-                shift_tab: Some(WidgetList::GLOBAL_VOLUME),
-                down: Some(WidgetList::SEPERATION),
-                tab: Some(WidgetList::SEPERATION),
-                ..Default::default()
-            },
-            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
-            |value| println!("mixing volume set to: {}", value),
-        );
-        let seperation = Slider::new(
-            48,
-            CharPosition::new(17, 25),
-            16,
-            NextWidget {
-                up: Some(WidgetList::MIXING_VOLUME),
-                shift_tab: Some(WidgetList::MIXING_VOLUME),
-                down: Some(WidgetList::OLD_EFFECTS),
-                tab: Some(WidgetList::OLD_EFFECTS),
-                ..Default::default()
-            },
-            |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::Seperation(n))),
-            |value| println!("seperation set to: {}", value),
-        );
+        // let mixing_volume = Slider::new(
+        //     48,
+        //     CharPosition::new(17, 24),
+        //     16,
+        //     NextWidget {
+        //         up: Some(WidgetList::GLOBAL_VOLUME),
+        //         shift_tab: Some(WidgetList::GLOBAL_VOLUME),
+        //         down: Some(WidgetList::SEPERATION),
+        //         tab: Some(WidgetList::SEPERATION),
+        //         ..Default::default()
+        //     },
+        //     |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::MixingVolume(n))),
+        //     |value| println!("mixing volume set to: {}", value),
+        // );
+        // let seperation = Slider::new(
+        //     48,
+        //     CharPosition::new(17, 25),
+        //     16,
+        //     NextWidget {
+        //         up: Some(WidgetList::MIXING_VOLUME),
+        //         shift_tab: Some(WidgetList::MIXING_VOLUME),
+        //         down: Some(WidgetList::OLD_EFFECTS),
+        //         tab: Some(WidgetList::OLD_EFFECTS),
+        //         ..Default::default()
+        //     },
+        //     |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::Seperation(n))),
+        //     |value| println!("seperation set to: {}", value),
+        // );
 
-        let old_effects = Toggle::new(
-            CharPosition::new(17, 26),
-            16,
-            NextWidget {
-                left: Some(WidgetList::SEPERATION),
-                right: Some(WidgetList::COMPATIBLE_GXX),
-                up: Some(WidgetList::SEPERATION),
-                down: Some(WidgetList::COMPATIBLE_GXX),
-                tab: Some(WidgetList::COMPATIBLE_GXX),
-                shift_tab: Some(WidgetList::SEPERATION),
-            },
-            &[(false, "Off"), (true, "On")],
-            |onoff| println!("Old Effects: {}", onoff),
-        );
+        // let old_effects = Toggle::new(
+        //     CharPosition::new(17, 26),
+        //     16,
+        //     NextWidget {
+        //         left: Some(WidgetList::SEPERATION),
+        //         right: Some(WidgetList::COMPATIBLE_GXX),
+        //         up: Some(WidgetList::SEPERATION),
+        //         down: Some(WidgetList::COMPATIBLE_GXX),
+        //         tab: Some(WidgetList::COMPATIBLE_GXX),
+        //         shift_tab: Some(WidgetList::SEPERATION),
+        //     },
+        //     &[(false, "Off"), (true, "On")],
+        //     |onoff| println!("Old Effects: {}", onoff),
+        // );
 
-        let compatible_gxx = Toggle::new(
-            CharPosition::new(17, 27),
-            16,
-            NextWidget {
-                left: Some(WidgetList::OLD_EFFECTS),
-                right: Some(WidgetList::INSTRUMENTS),
-                up: Some(WidgetList::OLD_EFFECTS),
-                down: Some(WidgetList::INSTRUMENTS),
-                tab: Some(WidgetList::INSTRUMENTS),
-                shift_tab: Some(WidgetList::OLD_EFFECTS),
-            },
-            &[(false, "Off"), (true, "On")],
-            |onoff| println!("Compatible Gxx: {}", onoff),
-        );
+        // let compatible_gxx = Toggle::new(
+        //     CharPosition::new(17, 27),
+        //     16,
+        //     NextWidget {
+        //         left: Some(WidgetList::OLD_EFFECTS),
+        //         right: Some(WidgetList::INSTRUMENTS),
+        //         up: Some(WidgetList::OLD_EFFECTS),
+        //         down: Some(WidgetList::INSTRUMENTS),
+        //         tab: Some(WidgetList::INSTRUMENTS),
+        //         shift_tab: Some(WidgetList::OLD_EFFECTS),
+        //     },
+        //     &[(false, "Off"), (true, "On")],
+        //     |onoff| println!("Compatible Gxx: {}", onoff),
+        // );
 
-        let control_rc = Rc::new(Cell::new(Control::Samples));
-        let instruments = ToggleButton::new(
-            "Instruments",
-            CharRect::new(29, 31, 16, 30),
-            NextWidget {
-                left: Some(WidgetList::SAMPLES),
-                right: Some(WidgetList::SAMPLES),
-                up: Some(WidgetList::COMPATIBLE_GXX),
-                down: Some(WidgetList::STEREO),
-                tab: Some(WidgetList::SAMPLES),
-                shift_tab: Some(WidgetList::SAMPLES),
-            },
-            Control::Instruments,
-            control_rc.clone(),
-            |_| println!("Instruments activated"),
-        );
-        let samples = ToggleButton::new(
-            "Samples",
-            CharRect::new(29, 31, 31, 45),
-            NextWidget {
-                left: Some(WidgetList::INSTRUMENTS),
-                right: Some(WidgetList::INSTRUMENTS),
-                up: Some(WidgetList::COMPATIBLE_GXX),
-                down: Some(WidgetList::MONO),
-                tab: Some(WidgetList::INSTRUMENTS),
-                shift_tab: Some(WidgetList::INSTRUMENTS),
-            },
-            Control::Samples,
-            control_rc,
-            |_| println!("Samples activated"),
-        );
+        // let control_rc = Rc::new(Cell::new(Control::Samples));
+        // let instruments = ToggleButton::new(
+        //     "Instruments",
+        //     CharRect::new(29, 31, 16, 30),
+        //     NextWidget {
+        //         left: Some(WidgetList::SAMPLES),
+        //         right: Some(WidgetList::SAMPLES),
+        //         up: Some(WidgetList::COMPATIBLE_GXX),
+        //         down: Some(WidgetList::STEREO),
+        //         tab: Some(WidgetList::SAMPLES),
+        //         shift_tab: Some(WidgetList::SAMPLES),
+        //     },
+        //     Control::Instruments,
+        //     control_rc.clone(),
+        //     |_| println!("Instruments activated"),
+        // );
+        // let samples = ToggleButton::new(
+        //     "Samples",
+        //     CharRect::new(29, 31, 31, 45),
+        //     NextWidget {
+        //         left: Some(WidgetList::INSTRUMENTS),
+        //         right: Some(WidgetList::INSTRUMENTS),
+        //         up: Some(WidgetList::COMPATIBLE_GXX),
+        //         down: Some(WidgetList::MONO),
+        //         tab: Some(WidgetList::INSTRUMENTS),
+        //         shift_tab: Some(WidgetList::INSTRUMENTS),
+        //     },
+        //     Control::Samples,
+        //     control_rc,
+        //     |_| println!("Samples activated"),
+        // );
 
-        let stereo_mono_rs = Rc::new(Cell::new(Playback::Stereo));
-        let stereo = ToggleButton::new(
-            "Stereo",
-            CharRect::new(32, 34, 16, 30),
-            NextWidget {
-                left: Some(WidgetList::MONO),
-                right: Some(WidgetList::MONO),
-                up: Some(WidgetList::INSTRUMENTS),
-                down: Some(WidgetList::LINEAR_SLIDES),
-                tab: Some(WidgetList::MONO),
-                shift_tab: Some(WidgetList::MONO),
-            },
-            Playback::Stereo,
-            stereo_mono_rs.clone(),
-            |_| println!("stereo activated"),
-        );
+        // let stereo_mono_rs = Rc::new(Cell::new(Playback::Stereo));
+        // let stereo = ToggleButton::new(
+        //     "Stereo",
+        //     CharRect::new(32, 34, 16, 30),
+        //     NextWidget {
+        //         left: Some(WidgetList::MONO),
+        //         right: Some(WidgetList::MONO),
+        //         up: Some(WidgetList::INSTRUMENTS),
+        //         down: Some(WidgetList::LINEAR_SLIDES),
+        //         tab: Some(WidgetList::MONO),
+        //         shift_tab: Some(WidgetList::MONO),
+        //     },
+        //     Playback::Stereo,
+        //     stereo_mono_rs.clone(),
+        //     |_| println!("stereo activated"),
+        // );
 
-        let mono = ToggleButton::new(
-            "Mono",
-            CharRect::new(32, 34, 31, 45),
-            NextWidget {
-                left: Some(WidgetList::STEREO),
-                right: Some(WidgetList::STEREO),
-                up: Some(WidgetList::SAMPLES),
-                down: Some(WidgetList::AMIGA_SLIDES),
-                tab: Some(WidgetList::STEREO),
-                shift_tab: Some(WidgetList::STEREO),
-            },
-            Playback::Mono,
-            stereo_mono_rs,
-            |_| println!("stereo activated"),
-        );
+        // let mono = ToggleButton::new(
+        //     "Mono",
+        //     CharRect::new(32, 34, 31, 45),
+        //     NextWidget {
+        //         left: Some(WidgetList::STEREO),
+        //         right: Some(WidgetList::STEREO),
+        //         up: Some(WidgetList::SAMPLES),
+        //         down: Some(WidgetList::AMIGA_SLIDES),
+        //         tab: Some(WidgetList::STEREO),
+        //         shift_tab: Some(WidgetList::STEREO),
+        //     },
+        //     Playback::Mono,
+        //     stereo_mono_rs,
+        //     |_| println!("stereo activated"),
+        // );
 
-        let pitch_slides_rc = Rc::new(Cell::new(PitchSlides::Linear));
-        let linear_slides = ToggleButton::new(
-            "Linear",
-            CharRect::new(35, 37, 16, 30),
-            NextWidget {
-                left: Some(WidgetList::AMIGA_SLIDES),
-                right: Some(WidgetList::AMIGA_SLIDES),
-                up: Some(WidgetList::STEREO),
-                down: Some(WidgetList::MODULE_PATH),
-                tab: Some(WidgetList::AMIGA_SLIDES),
-                shift_tab: Some(WidgetList::AMIGA_SLIDES),
-            },
-            PitchSlides::Linear,
-            pitch_slides_rc.clone(),
-            |_| println!("pitch slides set to linear"),
-        );
-        let amiga_slides = ToggleButton::new(
-            "Amiga",
-            CharRect::new(35, 37, 31, 45),
-            NextWidget {
-                left: Some(WidgetList::LINEAR_SLIDES),
-                right: Some(WidgetList::LINEAR_SLIDES),
-                up: Some(WidgetList::MONO),
-                down: Some(WidgetList::MODULE_PATH),
-                tab: Some(WidgetList::LINEAR_SLIDES),
-                shift_tab: Some(WidgetList::LINEAR_SLIDES),
-            },
-            PitchSlides::Amiga,
-            pitch_slides_rc,
-            |_| println!("set to amiga pitch slide"),
-        );
+        // let pitch_slides_rc = Rc::new(Cell::new(PitchSlides::Linear));
+        // let linear_slides = ToggleButton::new(
+        //     "Linear",
+        //     CharRect::new(35, 37, 16, 30),
+        //     NextWidget {
+        //         left: Some(WidgetList::AMIGA_SLIDES),
+        //         right: Some(WidgetList::AMIGA_SLIDES),
+        //         up: Some(WidgetList::STEREO),
+        //         down: Some(WidgetList::MODULE_PATH),
+        //         tab: Some(WidgetList::AMIGA_SLIDES),
+        //         shift_tab: Some(WidgetList::AMIGA_SLIDES),
+        //     },
+        //     PitchSlides::Linear,
+        //     pitch_slides_rc.clone(),
+        //     |_| println!("pitch slides set to linear"),
+        // );
+        // let amiga_slides = ToggleButton::new(
+        //     "Amiga",
+        //     CharRect::new(35, 37, 31, 45),
+        //     NextWidget {
+        //         left: Some(WidgetList::LINEAR_SLIDES),
+        //         right: Some(WidgetList::LINEAR_SLIDES),
+        //         up: Some(WidgetList::MONO),
+        //         down: Some(WidgetList::MODULE_PATH),
+        //         tab: Some(WidgetList::LINEAR_SLIDES),
+        //         shift_tab: Some(WidgetList::LINEAR_SLIDES),
+        //     },
+        //     PitchSlides::Amiga,
+        //     pitch_slides_rc,
+        //     |_| println!("set to amiga pitch slide"),
+        // );
 
-        let module_path = TextInScroll::new(
-            CharPosition::new(13, 42),
-            64,
-            NextWidget {
-                up: Some(WidgetList::LINEAR_SLIDES),
-                down: Some(WidgetList::SAMPLE_PATH),
-                tab: Some(WidgetList::SAMPLE_PATH),
-                shift_tab: Some(WidgetList::AMIGA_SLIDES), // whyy???
-                ..Default::default()
-            },
-            |text| println!("Module path set to {text}"),
-        );
-        let sample_path = TextInScroll::new(
-            CharPosition::new(13, 43),
-            64,
-            NextWidget {
-                up: Some(WidgetList::MODULE_PATH),
-                shift_tab: Some(WidgetList::MODULE_PATH),
-                down: Some(WidgetList::INSTRUMENT_PATH),
-                tab: Some(WidgetList::INSTRUMENT_PATH),
-                ..Default::default()
-            },
-            |text| println!("Sample path set to {text}"),
-        );
-        let instrument_path = TextInScroll::new(
-            CharPosition::new(13, 44),
-            64,
-            NextWidget {
-                up: Some(WidgetList::MODULE_PATH),
-                shift_tab: Some(WidgetList::MODULE_PATH),
-                down: Some(WidgetList::SAVE),
-                tab: Some(WidgetList::SAVE),
-                ..Default::default()
-            },
-            |text| println!("Instrument path set to {text}"),
-        );
+        // let module_path = TextInScroll::new(
+        //     CharPosition::new(13, 42),
+        //     64,
+        //     NextWidget {
+        //         up: Some(WidgetList::LINEAR_SLIDES),
+        //         down: Some(WidgetList::SAMPLE_PATH),
+        //         tab: Some(WidgetList::SAMPLE_PATH),
+        //         shift_tab: Some(WidgetList::AMIGA_SLIDES), // whyy???
+        //         ..Default::default()
+        //     },
+        //     |text| println!("Module path set to {text}"),
+        // );
+        // let sample_path = TextInScroll::new(
+        //     CharPosition::new(13, 43),
+        //     64,
+        //     NextWidget {
+        //         up: Some(WidgetList::MODULE_PATH),
+        //         shift_tab: Some(WidgetList::MODULE_PATH),
+        //         down: Some(WidgetList::INSTRUMENT_PATH),
+        //         tab: Some(WidgetList::INSTRUMENT_PATH),
+        //         ..Default::default()
+        //     },
+        //     |text| println!("Sample path set to {text}"),
+        // );
+        // let instrument_path = TextInScroll::new(
+        //     CharPosition::new(13, 44),
+        //     64,
+        //     NextWidget {
+        //         up: Some(WidgetList::MODULE_PATH),
+        //         shift_tab: Some(WidgetList::MODULE_PATH),
+        //         down: Some(WidgetList::SAVE),
+        //         tab: Some(WidgetList::SAVE),
+        //         ..Default::default()
+        //     },
+        //     |text| println!("Instrument path set to {text}"),
+        // );
 
-        let save = Button::new(
-            "Save all Preferences",
-            CharRect::new(46, 48, 28, 51),
-            NextWidget {
-                up: Some(WidgetList::INSTRUMENT_PATH),
-                ..Default::default()
-            },
-            || {
-                println!("save preferences");
-            },
-        );
+        // let save = Button::new(
+        //     "Save all Preferences",
+        //     CharRect::new(46, 48, 28, 51),
+        //     NextWidget {
+        //         up: Some(WidgetList::INSTRUMENT_PATH),
+        //         ..Default::default()
+        //     },
+        //     || {
+        //         println!("save preferences");
+        //     },
+        // );
         Self {
             widgets: WidgetList {
                 song_name,
                 initial_tempo,
                 initial_speed,
                 global_volume,
-                mixing_volume,
-                seperation,
-                old_effects,
-                compatible_gxx,
-                instruments,
-                samples,
-                stereo,
-                mono,
-                linear_slides,
-                amiga_slides,
-                module_path,
-                sample_path,
-                instrument_path,
-                save,
+                // mixing_volume,
+                // seperation,
+                // old_effects,
+                // compatible_gxx,
+                // instruments,
+                // samples,
+                // stereo,
+                // mono,
+                // linear_slides,
+                // amiga_slides,
+                // module_path,
+                // sample_path,
+                // instrument_path,
+                // save,
                 selected: WidgetList::SONG_NAME,
             },
         }

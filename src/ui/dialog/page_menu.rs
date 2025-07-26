@@ -308,7 +308,7 @@ impl PageMenu {
             &[
                 (
                     "Sample List          (F3)",
-                    PageOrPageMenu::NotYetImplemented,
+                    PageOrPageMenu::Page(PagesEnum::SampleList),
                 ),
                 (
                     "Sample Library  (Ctrl-F3)",
