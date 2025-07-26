@@ -2849,6 +2849,8 @@ dependencies = [
 [[package]]
 name = "torque-tracker-engine"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "809ceef6db8d2bd9bf2a14b327efe8fd04d16827e3675a035f70d00503c2ae4f"
 dependencies = [
  "dasp",
  "rtrb",
