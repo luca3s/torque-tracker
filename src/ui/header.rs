@@ -11,7 +11,7 @@ use crate::{
     draw_buffer::DrawBuffer,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HeaderEvent {
     SetCursorRow(u16),
     SetMaxCursorRow(u16),

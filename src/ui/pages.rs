@@ -126,7 +126,7 @@ pub enum PagesEnum {
     SampleList,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PageEvent {
     Sdc(SDCChange),
     Pattern(PatternPageEvent),

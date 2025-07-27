@@ -103,7 +103,7 @@ fn get_note_from_key(key: &winit::keyboard::SmolStr, octave: u8) -> Option<Note>
     note.and_then(Result::ok)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PatternPageEvent {
     Loaded(Pattern, u8),
     SetSampleInstr(u8),

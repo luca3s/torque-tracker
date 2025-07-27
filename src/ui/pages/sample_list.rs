@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SampleListEvent {
     SetSample(u8, String, SampleMetaData),
     SelectSample(u8),

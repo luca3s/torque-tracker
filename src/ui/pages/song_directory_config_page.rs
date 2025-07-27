@@ -29,7 +29,7 @@ use super::{Page, PageResponse};
 //     Amiga,
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SDCChange {
     SetSongName(String),
     InitialTempo(i16),

@@ -17,7 +17,7 @@ use crate::{
 
 use super::{Page, PageEvent, PageResponse};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum OrderListPageEvent {
     SetVolumeCurrent(i16),
     SetPanCurrent(i16),

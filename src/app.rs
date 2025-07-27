@@ -60,9 +60,26 @@ pub enum GlobalEvent {
     Header(HeaderEvent),
     /// also closes all dialogs
     GoToPage(PagesEnum),
+    Playback(PlaybackType),
     CloseRequested,
     CloseApp,
     ConstRedraw,
+}
+
+impl Clone for GlobalEvent {
+    fn clone(&self) -> Self {
+        // TODO: make this really clone, once the Dialogs are an enum instead of Box dyn
+        match self {
+            GlobalEvent::OpenDialog(_) => panic!("TODO: don't clone this"),
+            GlobalEvent::Page(page_event) => GlobalEvent::Page(page_event.clone()),
+            GlobalEvent::Header(header_event) => GlobalEvent::Header(header_event.clone()),
+            GlobalEvent::GoToPage(pages_enum) => GlobalEvent::GoToPage(*pages_enum),
+            GlobalEvent::CloseRequested => GlobalEvent::CloseRequested,
+            GlobalEvent::CloseApp => GlobalEvent::CloseApp,
+            GlobalEvent::ConstRedraw => GlobalEvent::ConstRedraw,
+            GlobalEvent::Playback(playback_type) => GlobalEvent::Playback(*playback_type),
+        }
+    }
 }
 
 impl Debug for GlobalEvent {
@@ -76,9 +93,19 @@ impl Debug for GlobalEvent {
             GlobalEvent::CloseRequested => debug.field("CloseRequested", &""),
             GlobalEvent::CloseApp => debug.field("CloseApp", &""),
             GlobalEvent::ConstRedraw => debug.field("ConstRedraw", &""),
+            GlobalEvent::Playback(playback_type) => debug.field("Playback", &playback_type),
         };
         debug.finish()
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PlaybackType {
+    Stop,
+    Song,
+    Pattern,
+    FromOrder,
+    FromCursor,
 }
 
 struct WorkerThreads {
@@ -253,36 +280,22 @@ impl ApplicationHandler<GlobalEvent> for App {
                     return;
                 }
 
-                let message = if event.logical_key == Key::Named(NamedKey::F5) {
-                    // play song from start
-                    Some(ToWorkerMsg::Playback(PlaybackSettings::Order {
-                        idx: 0,
-                        should_loop: true,
-                    }))
+                if event.logical_key == Key::Named(NamedKey::F5) {
+                    self.event_queue
+                        .push_back(GlobalEvent::Playback(PlaybackType::Song));
                 } else if event.logical_key == Key::Named(NamedKey::F6) {
-                    Some(ToWorkerMsg::Playback(if modifiers.state().shift_key() {
-                        // play the current order
-                        self.header.play_current_order()
+                    if modifiers.state().shift_key() {
+                        self.event_queue
+                            .push_back(GlobalEvent::Playback(PlaybackType::FromOrder));
                     } else {
-                        // play the current pattern
-                        self.header.play_current_pattern()
-                    }))
+                        self.event_queue
+                            .push_back(GlobalEvent::Playback(PlaybackType::Pattern));
+                    }
                 // TODO: add F7 handling
                 } else if event.logical_key == Key::Named(NamedKey::F8) {
-                    Some(ToWorkerMsg::StopPlayback)
-                } else {
-                    None
-                };
-                if let Some(msg) = message {
-                    let result = AUDIO.lock_blocking().try_msg_worker(msg);
-
-                    match result {
-                        SendResult::Success => (),
-                        SendResult::BufferFull => {
-                            panic!("to worker buffer full, probably have to retry somehow")
-                        }
-                        SendResult::AudioInactive => panic!("audio should always be active"),
-                    }
+                    self.event_queue
+                        .push_back(GlobalEvent::Playback(PlaybackType::Stop));
+                // TODO: allow F5 to also switch to the playback page, once it exists
                 } else {
                     // key_event didn't start or stop the song, so process normally
                     if let Some(dialog) = dialog_manager.active_dialog_mut() {
@@ -350,6 +363,34 @@ impl ApplicationHandler<GlobalEvent> for App {
             GlobalEvent::ConstRedraw => {
                 self.ui_pages.request_draw_const();
                 _ = self.try_request_redraw();
+            }
+            GlobalEvent::Playback(playback_type) => {
+                let msg = match playback_type {
+                    PlaybackType::Song => Some(ToWorkerMsg::Playback(PlaybackSettings::Order {
+                        idx: 0,
+                        should_loop: true,
+                    })),
+                    PlaybackType::Stop => Some(ToWorkerMsg::StopPlayback),
+                    PlaybackType::Pattern => {
+                        Some(ToWorkerMsg::Playback(self.header.play_current_pattern()))
+                    }
+                    PlaybackType::FromOrder => {
+                        Some(ToWorkerMsg::Playback(self.header.play_current_order()))
+                    }
+                    PlaybackType::FromCursor => None,
+                };
+
+                if let Some(msg) = msg {
+                    let result = AUDIO.lock_blocking().try_msg_worker(msg);
+
+                    match result {
+                        SendResult::Success => (),
+                        SendResult::BufferFull => {
+                            panic!("to worker buffer full, probably have to retry somehow")
+                        }
+                        SendResult::AudioInactive => panic!("audio should always be active"),
+                    }
+                }
             }
         }
     }
