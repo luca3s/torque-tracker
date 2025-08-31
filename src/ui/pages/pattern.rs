@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::{
-    app::{AUDIO, EXECUTOR, GlobalEvent, send_song_op},
+    app::{EXECUTOR, GlobalEvent, SONG_MANAGER, send_song_op},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,
 };
@@ -234,7 +234,7 @@ impl PatternPage {
         let proxy = self.event_proxy.clone();
         EXECUTOR
             .spawn(async move {
-                let lock = AUDIO.lock().await;
+                let lock = SONG_MANAGER.lock().await;
                 let pattern = lock.get_song().patterns[usize::from(idx)].clone();
                 drop(lock);
                 proxy

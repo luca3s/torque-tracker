@@ -11,7 +11,6 @@ use order_list::{OrderListPage, OrderListPageEvent};
 use pattern::{PatternPage, PatternPageEvent};
 use sample_list::SampleList;
 use song_directory_config_page::{SDCChange, SongDirectoryConfigPage};
-use torque_tracker_engine::manager::{PlaybackSettings, SendResult, ToWorkerMsg};
 use winit::{
     event::{KeyEvent, Modifiers},
     event_loop::EventLoopProxy,
@@ -19,7 +18,7 @@ use winit::{
 };
 
 use crate::{
-    app::{AUDIO, GlobalEvent},
+    app::GlobalEvent,
     coordinates::{CharPosition, CharRect, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
     ui::pages::sample_list::SampleListEvent,
@@ -280,34 +279,8 @@ impl AllPages {
             } else if key_event.logical_key == Key::Named(NamedKey::F3) {
                 self.switch_page(PagesEnum::SampleList);
                 return PageResponse::RequestRedraw;
-            } else if key_event.logical_key == Key::Named(NamedKey::F6) {
-                let result = AUDIO.lock_blocking().try_msg_worker(ToWorkerMsg::Playback(
-                    PlaybackSettings::Order {
-                        idx: 0,
-                        should_loop: false,
-                    },
-                ));
-                match result {
-                    SendResult::Success => (),
-                    SendResult::BufferFull => {
-                        panic!("to worker buffer full, probably have to retry somehow")
-                    }
-                    SendResult::AudioInactive => panic!("audio should always be active"),
-                }
-            } else if key_event.logical_key == Key::Named(NamedKey::F8) {
-                let result = AUDIO
-                    .lock_blocking()
-                    .try_msg_worker(ToWorkerMsg::StopPlayback);
-                match result {
-                    SendResult::Success => (),
-                    SendResult::BufferFull => {
-                        panic!("to worker buffer full, probably have to retry somehow")
-                    }
-                    SendResult::AudioInactive => panic!("audio should always be active"),
-                }
             }
         }
-        // TODO: F6 play from start, F7 play from current pos, F8 stop
 
         self.get_page_mut()
             .process_key_event(modifiers, key_event, events)

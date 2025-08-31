@@ -10,7 +10,7 @@ use std::{
 use smol::{channel::Sender, lock::Mutex};
 use torque_tracker_engine::{
     audio_processing::playback::PlaybackStatus,
-    manager::{AudioManager, OutputConfig, PlaybackSettings, SendResult, ToWorkerMsg},
+    manager::{AudioManager, OutputConfig, PlaybackSettings, ToWorkerMsg},
     project::song::{Song, SongOperation},
 };
 use triple_buffer::triple_buffer;
@@ -23,7 +23,7 @@ use winit::{
 };
 
 use cpal::{
-    BufferSize, SupportedBufferSize,
+    BufferSize, OutputStreamTimestamp, SupportedBufferSize,
     traits::{DeviceTrait, HostTrait},
 };
 
@@ -45,8 +45,12 @@ use super::{
 };
 
 pub static EXECUTOR: smol::Executor = smol::Executor::new();
-pub static AUDIO: LazyLock<Mutex<AudioManager>> =
+/// Song data
+///
+/// Be careful about locking order with AUDIO_OUTPUT_COMMS to not deadlock
+pub static SONG_MANAGER: LazyLock<smol::lock::Mutex<AudioManager>> =
     LazyLock::new(|| Mutex::new(AudioManager::new(Song::default())));
+/// Sender for Song changes
 pub static SONG_OP_SEND: OnceLock<smol::channel::Sender<SongOperation>> = OnceLock::new();
 
 /// shorter function name
@@ -60,6 +64,7 @@ pub enum GlobalEvent {
     Header(HeaderEvent),
     /// also closes all dialogs
     GoToPage(PagesEnum),
+    // Needed because only in the main app i know which pattern is selected, so i know what to play
     Playback(PlaybackType),
     CloseRequested,
     CloseApp,
@@ -162,37 +167,43 @@ pub struct App {
     header: Header,
     event_loop_proxy: EventLoopProxy<GlobalEvent>,
     worker_threads: Option<WorkerThreads>,
+    // needed here because it isn't send. This Option should be synchronized with AUDIO_OUTPUT_COMMS
     audio_stream: Option<(
         cpal::Stream,
-        triple_buffer::Output<Option<cpal::OutputStreamTimestamp>>,
         smol::Task<()>,
+        torque_tracker_engine::manager::StreamSend,
     )>,
 }
 
 impl ApplicationHandler<GlobalEvent> for App {
     fn new_events(&mut self, _: &ActiveEventLoop, start_cause: winit::event::StartCause) {
         if start_cause == winit::event::StartCause::Init {
-            LazyLock::force(&AUDIO);
+            LazyLock::force(&SONG_MANAGER);
             self.worker_threads = Some(WorkerThreads::new());
             let (send, recv) = smol::channel::unbounded();
             SONG_OP_SEND.get_or_init(|| send);
             EXECUTOR
                 .spawn(async move {
                     while let Ok(op) = recv.recv().await {
-                        let mut manager = AUDIO.lock().await;
-
-                        loop {
-                            if let Some(mut song) = manager.try_edit_song() {
-                                song.apply_operation(op).unwrap();
-                                // don't need to relock if there are more operations in queue
-                                while let Ok(op) = recv.try_recv() {
-                                    song.apply_operation(op).unwrap();
-                                }
-                                break;
+                        let mut manager = SONG_MANAGER.lock().await;
+                        // if there is no active channel the buffer isn't used, so it doesn't matter that it's wrong
+                        let buffer_time = manager.last_buffer_time();
+                        // spin loop to lock the song
+                        let mut song = loop {
+                            if let Some(song) = manager.try_edit_song() {
+                                break song;
                             }
-                            let buffer_time = manager.buffer_time().expect("locking failed once, so audio must be active, so there must be a buffer_time");
+                            // smol mutex lock is held across await point
                             smol::Timer::after(buffer_time).await;
+                        };
+                        // apply the received op
+                        song.apply_operation(op).unwrap();
+                        // try to get more ops. This avoids repeated locking of the song when a lot of operations are
+                        // in queue
+                        while let Ok(op) = recv.try_recv() {
+                            song.apply_operation(op).unwrap();
                         }
+                        drop(song);
                     }
                 })
                 .detach();
@@ -200,7 +211,7 @@ impl ApplicationHandler<GlobalEvent> for App {
             EXECUTOR
                 .spawn(async {
                     loop {
-                        let mut lock = AUDIO.lock().await;
+                        let mut lock = SONG_MANAGER.lock().await;
                         lock.collect_garbage();
                         drop(lock);
                         smol::Timer::after(Duration::from_secs(10)).await;
@@ -280,48 +291,49 @@ impl ApplicationHandler<GlobalEvent> for App {
                     return;
                 }
 
-                if event.logical_key == Key::Named(NamedKey::F5) {
-                    self.event_queue
-                        .push_back(GlobalEvent::Playback(PlaybackType::Song));
-                } else if event.logical_key == Key::Named(NamedKey::F6) {
-                    if modifiers.state().shift_key() {
+                if event.state.is_pressed() {
+                    if event.logical_key == Key::Named(NamedKey::F5) {
                         self.event_queue
-                            .push_back(GlobalEvent::Playback(PlaybackType::FromOrder));
-                    } else {
+                            .push_back(GlobalEvent::Playback(PlaybackType::Song));
+                        return;
+                    } else if event.logical_key == Key::Named(NamedKey::F6) {
+                        if modifiers.state().shift_key() {
+                            self.event_queue
+                                .push_back(GlobalEvent::Playback(PlaybackType::FromOrder));
+                        } else {
+                            self.event_queue
+                                .push_back(GlobalEvent::Playback(PlaybackType::Pattern));
+                        }
+                        return;
+                    } else if event.logical_key == Key::Named(NamedKey::F8) {
                         self.event_queue
-                            .push_back(GlobalEvent::Playback(PlaybackType::Pattern));
+                            .push_back(GlobalEvent::Playback(PlaybackType::Stop));
+                        return;
                     }
-                // TODO: add F7 handling
-                } else if event.logical_key == Key::Named(NamedKey::F8) {
-                    self.event_queue
-                        .push_back(GlobalEvent::Playback(PlaybackType::Stop));
-                // TODO: allow F5 to also switch to the playback page, once it exists
+                }
+                // key_event didn't start or stop the song, so process normally
+                if let Some(dialog) = dialog_manager.active_dialog_mut() {
+                    match dialog.process_input(&event, modifiers, event_queue) {
+                        DialogResponse::Close => {
+                            dialog_manager.close_dialog();
+                            // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
+                            ui_pages.request_draw_const();
+                            window.request_redraw();
+                        }
+                        DialogResponse::RequestRedraw => window.request_redraw(),
+                        DialogResponse::None => (),
+                    }
                 } else {
-                    // key_event didn't start or stop the song, so process normally
-                    if let Some(dialog) = dialog_manager.active_dialog_mut() {
-                        match dialog.process_input(&event, modifiers, event_queue) {
-                            DialogResponse::Close => {
-                                dialog_manager.close_dialog();
-                                // if i close a pop_up i need to redraw the const part of the page as the pop-up overlapped it probably
-                                ui_pages.request_draw_const();
-                                window.request_redraw();
-                            }
-                            DialogResponse::RequestRedraw => window.request_redraw(),
-                            DialogResponse::None => (),
-                        }
-                    } else {
-                        if event.state.is_pressed()
-                            && event.logical_key == Key::Named(NamedKey::Escape)
-                        {
-                            event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
-                                Box::new(PageMenu::main())
-                            })));
-                        }
+                    if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
+                    {
+                        event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+                            Box::new(PageMenu::main())
+                        })));
+                    }
 
-                        match ui_pages.process_key_event(&self.modifiers, &event, event_queue) {
-                            PageResponse::RequestRedraw => window.request_redraw(),
-                            PageResponse::None => (),
-                        }
+                    match ui_pages.process_key_event(&self.modifiers, &event, event_queue) {
+                        PageResponse::RequestRedraw => window.request_redraw(),
+                        PageResponse::None => (),
                     }
                 }
             }
@@ -381,15 +393,14 @@ impl ApplicationHandler<GlobalEvent> for App {
                 };
 
                 if let Some(msg) = msg {
-                    let result = AUDIO.lock_blocking().try_msg_worker(msg);
-
-                    match result {
-                        SendResult::Success => (),
-                        SendResult::BufferFull => {
-                            panic!("to worker buffer full, probably have to retry somehow")
-                        }
-                        SendResult::AudioInactive => panic!("audio should always be active"),
-                    }
+                    self.audio_stream
+                        .as_mut()
+                        .expect(
+                            "audio stream should always be active, should still handle this error",
+                        )
+                        .2
+                        .try_msg_worker(msg)
+                        .expect("buffer full. either increase size or retry somehow")
                 }
             }
         }
@@ -474,22 +485,22 @@ impl App {
             config.buffer_size = BufferSize::Fixed(buffer_size);
             (config, buffer_size)
         };
-        let mut guard = AUDIO.lock_blocking();
-        let mut worker = guard.get_callback::<f32>(OutputConfig {
-            buffer_size,
-            channel_count: NonZero::new(config.channels).unwrap(),
-            sample_rate: NonZero::new(config.sample_rate.0).unwrap(),
-        });
-        let buffer_time = guard.buffer_time().unwrap();
+        let mut guard = SONG_MANAGER.lock_blocking();
+        let (mut worker, buffer_time, status, stream_send) =
+            guard.get_callback::<f32>(OutputConfig {
+                buffer_size,
+                channel_count: NonZero::new(config.channels).unwrap(),
+                sample_rate: NonZero::new(config.sample_rate.0).unwrap(),
+            });
         // keep the guard as short as possible to not block the async threads
         drop(guard);
-        let (mut send, recv) = triple_buffer(&None);
+        let (mut timestamp_send, recv) = triple_buffer(&None);
         let stream = device
             .build_output_stream(
                 &config,
                 move |data, info| {
                     worker(data);
-                    send.write(Some(info.timestamp()));
+                    timestamp_send.write(Some(info.timestamp()));
                 },
                 |err| eprintln!("audio stream err: {err:?}"),
                 None,
@@ -498,14 +509,14 @@ impl App {
         // spawn a task to process the audio playback status updates
         let proxy = self.event_loop_proxy.clone();
         let task = EXECUTOR.spawn(async move {
-            let mut buffer_time = buffer_time;
+            let buffer_time = buffer_time;
+            let mut status_recv = status;
+            // maybe also send the timestamp every second or so
+            let mut timestamp_recv = recv;
             let mut old_status: Option<PlaybackStatus> = None;
+            let mut old_timestamp: Option<OutputStreamTimestamp> = None;
             loop {
-                let mut lock = AUDIO.lock().await;
-                let status = lock.playback_status().cloned();
-                let time = lock.buffer_time();
-                drop(lock);
-                let status = status.expect("background task running while no stream active");
+                let status = *status_recv.get();
                 // only react on status changes. could at some point be made more granular
                 if status != old_status {
                     old_status = status;
@@ -528,20 +539,26 @@ impl App {
                         )))
                         .unwrap();
                 }
-
-                if let Some(time) = time {
-                    assert!(time == buffer_time);
-                    buffer_time = time;
+                let timestamp = *timestamp_recv.read();
+                if timestamp != old_timestamp {
+                    // TODO: maybe send it somewhere
+                    old_timestamp = timestamp;
                 }
                 smol::Timer::after(buffer_time).await;
             }
         });
-        self.audio_stream = Some((stream, recv, task));
+        self.audio_stream = Some((stream, task, stream_send));
     }
 
     fn close_audio_stream(&mut self) {
-        _ = self.audio_stream.take().unwrap();
-        AUDIO.lock_blocking().stream_closed();
+        let (stream, task, mut stream_send) = self.audio_stream.take().unwrap();
+        // stop playback
+        _ = stream_send.try_msg_worker(ToWorkerMsg::StopPlayback);
+        _ = stream_send.try_msg_worker(ToWorkerMsg::StopLiveNote);
+        // kill the task. using `cancel` doesn't make sense because it doesn't finishe anyways
+        drop(task);
+        // lastly kill the audio stream
+        drop(stream);
     }
 }
 
