@@ -157,6 +157,14 @@ impl WorkerThreads {
     }
 }
 
+pub struct EventQueue<'a>(&'a mut VecDeque<GlobalEvent>);
+
+impl EventQueue<'_> {
+    pub fn push(&mut self, event: GlobalEvent) {
+        self.0.push_back(event);
+    }
+}
+
 pub struct App {
     window_gpu: Option<(Arc<Window>, RenderBackend)>,
     draw_buffer: DrawBuffer,
@@ -255,6 +263,8 @@ impl ApplicationHandler<GlobalEvent> for App {
         let (window, render_backend) = window_gpu.as_mut().unwrap();
         // don't want the window to be mut
         let window = window.as_ref();
+        // limit the pages and widgets to only push events and not read or pop
+        let event_queue = &mut EventQueue(event_queue);
 
         match event {
             WindowEvent::CloseRequested => Self::close_requested(event_queue),
@@ -326,7 +336,7 @@ impl ApplicationHandler<GlobalEvent> for App {
                 } else {
                     if event.state.is_pressed() && event.logical_key == Key::Named(NamedKey::Escape)
                     {
-                        event_queue.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+                        event_queue.push(GlobalEvent::OpenDialog(Box::new(|| {
                             Box::new(PageMenu::main())
                         })));
                     }
@@ -350,17 +360,16 @@ impl ApplicationHandler<GlobalEvent> for App {
 
     /// i may need to add the ability for events to add events to the event queue, but that should be possible
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: GlobalEvent) {
+        let event_queue = &mut EventQueue(&mut self.event_queue);
         match event {
             GlobalEvent::OpenDialog(dialog) => {
                 self.dialog_manager.open_dialog(dialog());
                 _ = self.try_request_redraw();
             }
-            GlobalEvent::Page(c) => {
-                match self.ui_pages.process_page_event(c, &mut self.event_queue) {
-                    PageResponse::RequestRedraw => _ = self.try_request_redraw(),
-                    PageResponse::None => (),
-                }
-            }
+            GlobalEvent::Page(c) => match self.ui_pages.process_page_event(c, event_queue) {
+                PageResponse::RequestRedraw => _ = self.try_request_redraw(),
+                PageResponse::None => (),
+            },
             GlobalEvent::Header(header_event) => {
                 self.header.process_event(header_event);
                 _ = self.try_request_redraw();
@@ -371,7 +380,7 @@ impl ApplicationHandler<GlobalEvent> for App {
                 _ = self.try_request_redraw();
             }
             GlobalEvent::CloseApp => event_loop.exit(),
-            GlobalEvent::CloseRequested => Self::close_requested(&mut self.event_queue),
+            GlobalEvent::CloseRequested => Self::close_requested(event_queue),
             GlobalEvent::ConstRedraw => {
                 self.ui_pages.request_draw_const();
                 _ = self.try_request_redraw();
@@ -433,8 +442,9 @@ impl App {
         }
     }
 
-    fn close_requested(events: &mut VecDeque<GlobalEvent>) {
-        events.push_back(GlobalEvent::OpenDialog(Box::new(|| {
+    // TODO: should this be its own function?? or is there something better
+    fn close_requested(events: &mut EventQueue<'_>) {
+        events.push(GlobalEvent::OpenDialog(Box::new(|| {
             Box::new(ConfirmDialog::new(
                 "Close Torque Tracker?",
                 || Some(GlobalEvent::CloseApp),

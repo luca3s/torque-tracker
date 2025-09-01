@@ -1,9 +1,9 @@
-use std::{collections::VecDeque, num::NonZero};
+use std::num::NonZero;
 
 use torque_tracker_engine::project::song::SongOperation;
 
 use crate::{
-    app::{GlobalEvent, send_song_op},
+    app::{EventQueue, GlobalEvent, send_song_op},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::widgets::{NextWidget, StandardResponse, WidgetResponse, slider::Slider, text_in::TextIn},
@@ -145,7 +145,7 @@ impl Page for SongDirectoryConfigPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         match self
             .widgets

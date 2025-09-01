@@ -86,7 +86,7 @@ impl Dialog for ConfirmDialog {
         &mut self,
         key_event: &winit::event::KeyEvent,
         modifiers: &winit::event::Modifiers,
-        events: &mut std::collections::VecDeque<GlobalEvent>,
+        events: &mut crate::app::EventQueue<'_>,
     ) -> DialogResponse {
         if key_event.logical_key == Key::Named(NamedKey::Escape) && modifiers.state().is_empty() {
             return DialogResponse::Close;
@@ -96,7 +96,7 @@ impl Dialog for ConfirmDialog {
             self.widgets.process_input(key_event, modifiers, events);
         if let Some(global_option) = extra {
             if let Some(global) = global_option {
-                events.push_back(global);
+                events.push(global);
             }
             // if there is a response i also want to close myself
             return DialogResponse::Close;

@@ -4,8 +4,6 @@ pub mod pattern;
 mod sample_list;
 mod song_directory_config_page;
 
-use std::collections::VecDeque;
-
 use help_page::HelpPage;
 use order_list::{OrderListPage, OrderListPageEvent};
 use pattern::{PatternPage, PatternPageEvent};
@@ -18,7 +16,7 @@ use winit::{
 };
 
 use crate::{
-    app::GlobalEvent,
+    app::{EventQueue, GlobalEvent},
     coordinates::{CharPosition, CharRect, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
     ui::pages::sample_list::SampleListEvent,
@@ -32,7 +30,8 @@ pub trait Page {
         &mut self,
         modifiers: &Modifiers,
         key_event: &KeyEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        // please give me reborrowing for custom structs rustc :3
+        events: &mut EventQueue<'_>,
     ) -> PageResponse;
 }
 
@@ -82,7 +81,7 @@ macro_rules! create_widget_list {
                 &mut self,
                 key_event: &winit::event::KeyEvent,
                 modifiers: &winit::event::Modifiers,
-                events: &mut std::collections::VecDeque<crate::app::GlobalEvent>,
+                events: &mut crate::app::EventQueue<'_>,
             ) -> WidgetResponse<$response> {
                 self.get_widget_mut(self.selected).process_input(modifiers, key_event, events)
             }
@@ -255,7 +254,7 @@ impl AllPages {
         &mut self,
         modifiers: &Modifiers,
         key_event: &KeyEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         if key_event.state.is_pressed() && modifiers.state().is_empty() {
             if key_event.logical_key == Key::Named(NamedKey::F1) {
@@ -289,7 +288,7 @@ impl AllPages {
     pub fn process_page_event(
         &mut self,
         event: PageEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         let page = event.get_page();
         let response = match event {

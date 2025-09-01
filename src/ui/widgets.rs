@@ -5,14 +5,12 @@ pub mod text_in_scroll;
 pub mod toggle;
 pub mod toggle_button;
 
-use std::collections::VecDeque;
-
 use winit::{
     event::{KeyEvent, Modifiers},
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
+use crate::{app::EventQueue, draw_buffer::DrawBuffer};
 
 pub(crate) trait Widget {
     type Response;
@@ -22,7 +20,7 @@ pub(crate) trait Widget {
         &mut self,
         modifiers: &Modifiers,
         key_event: &KeyEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> WidgetResponse<Self::Response>;
 }
 

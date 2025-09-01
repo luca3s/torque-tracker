@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::str::from_utf8;
 use std::{array, io::Write};
 
@@ -7,7 +6,7 @@ use torque_tracker_engine::project::song::SongOperation;
 use torque_tracker_engine::{file::impulse_format::header::PatternOrder, project::song::Song};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 
-use crate::app::{GlobalEvent, send_song_op};
+use crate::app::{EventQueue, GlobalEvent, send_song_op};
 use crate::ui::header::HeaderEvent;
 use crate::ui::widgets::{NextWidget, StandardResponse, Widget};
 use crate::{
@@ -160,24 +159,24 @@ impl OrderListPage {
         self.mode
     }
 
-    fn send_order_position(&self, events: &mut VecDeque<GlobalEvent>) {
-        events.push_back(GlobalEvent::Header(HeaderEvent::SetOrder(
+    fn send_order_position(&self, events: &mut EventQueue<'_>) {
+        events.push(GlobalEvent::Header(HeaderEvent::SetOrder(
             self.order_cursor.order,
         )));
     }
 
-    fn send_order_len(&self, events: &mut VecDeque<GlobalEvent>) {
+    fn send_order_len(&self, events: &mut EventQueue<'_>) {
         let order_len = self
             .pattern_order
             .iter()
             .take_while(|o| **o != PatternOrder::EndOfSong)
             .count();
-        events.push_back(GlobalEvent::Header(HeaderEvent::SetOrderLen(
+        events.push(GlobalEvent::Header(HeaderEvent::SetOrderLen(
             u16::try_from(order_len).unwrap(),
         )));
     }
 
-    fn order_cursor_up(&mut self, count: u16, events: &mut VecDeque<GlobalEvent>) -> PageResponse {
+    fn order_cursor_up(&mut self, count: u16, events: &mut EventQueue<'_>) -> PageResponse {
         debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 0 {
             return PageResponse::None;
@@ -189,11 +188,7 @@ impl OrderListPage {
         PageResponse::RequestRedraw
     }
 
-    fn order_cursor_down(
-        &mut self,
-        count: u16,
-        events: &mut VecDeque<GlobalEvent>,
-    ) -> PageResponse {
+    fn order_cursor_down(&mut self, count: u16, events: &mut EventQueue<'_>) -> PageResponse {
         debug_assert!(count != 0, "why would you do this");
         if self.order_cursor.order == 255 {
             return PageResponse::None;
@@ -369,7 +364,7 @@ impl Page for OrderListPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        events: &mut std::collections::VecDeque<crate::app::GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         match self.cursor {
             Cursor::Order => {

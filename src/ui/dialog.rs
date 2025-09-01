@@ -2,11 +2,9 @@ pub mod confirm;
 pub mod page_menu;
 pub mod slider_dialog;
 
-use std::collections::VecDeque;
-
 use winit::event::{KeyEvent, Modifiers};
 
-use crate::{app::GlobalEvent, draw_buffer::DrawBuffer};
+use crate::{app::EventQueue, draw_buffer::DrawBuffer};
 
 pub enum DialogResponse {
     RequestRedraw,
@@ -24,7 +22,7 @@ pub trait Dialog {
         &mut self,
         key_event: &KeyEvent,
         modifiers: &Modifiers,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> DialogResponse;
 }
 

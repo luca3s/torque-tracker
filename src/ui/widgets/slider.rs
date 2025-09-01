@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     fmt::Debug,
     ops::{AddAssign, Deref, SubAssign},
 };
@@ -7,7 +6,7 @@ use std::{
 use winit::keyboard::{Key, NamedKey};
 
 use crate::{
-    app::GlobalEvent,
+    app::{EventQueue, GlobalEvent},
     coordinates::{CharPosition, CharRect, FONT_SIZE, PixelRect, WINDOW_SIZE_CHARS},
     draw_buffer::DrawBuffer,
     ui::dialog::slider_dialog::SliderDialog,
@@ -176,7 +175,7 @@ impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        event: &mut VecDeque<GlobalEvent>,
+        event: &mut EventQueue<'_>,
     ) -> WidgetResponse<R> {
         if !key_event.state.is_pressed() {
             return WidgetResponse::default();
@@ -235,7 +234,7 @@ impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
             if let Some(first_char) = chars.next() {
                 if first_char.is_ascii_digit() {
                     let dialog = SliderDialog::new(first_char, MIN..=MAX, self.dialog_return);
-                    event.push_back(GlobalEvent::OpenDialog(Box::new(|| Box::new(dialog))));
+                    event.push(GlobalEvent::OpenDialog(Box::new(|| Box::new(dialog))));
                     return WidgetResponse::default();
                 }
             }

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, io::Write, str::from_utf8};
+use std::{io::Write, str::from_utf8};
 
 use torque_tracker_engine::project::{
     event_command::NoteCommand,
@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::{
-    app::{EXECUTOR, GlobalEvent, SONG_MANAGER, send_song_op},
+    app::{EXECUTOR, EventQueue, GlobalEvent, SONG_MANAGER, send_song_op},
     coordinates::{CharPosition, CharRect},
     ui::header::HeaderEvent,
 };
@@ -143,14 +143,14 @@ impl PatternPage {
     pub fn process_event(
         &mut self,
         event: PatternPageEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         match event {
             PatternPageEvent::Loaded(pattern, idx) => {
                 self.pattern = pattern;
                 self.pattern_index = idx;
-                events.push_back(GlobalEvent::Header(HeaderEvent::SetPattern(idx)));
-                events.push_back(GlobalEvent::Header(HeaderEvent::SetMaxCursorRow(
+                events.push(GlobalEvent::Header(HeaderEvent::SetPattern(idx)));
+                events.push(GlobalEvent::Header(HeaderEvent::SetMaxCursorRow(
                     self.pattern.row_count(),
                 )));
                 PageResponse::RequestRedraw
@@ -183,11 +183,7 @@ impl PatternPage {
     }
 
     /// returns true if the position was changed
-    fn set_cursor(
-        &mut self,
-        mut pos: InPatternPosition,
-        events: &mut VecDeque<GlobalEvent>,
-    ) -> bool {
+    fn set_cursor(&mut self, mut pos: InPatternPosition, events: &mut EventQueue<'_>) -> bool {
         if pos.row >= self.pattern.row_count() {
             pos.row = self.pattern.row_count() - 1;
         }
@@ -200,7 +196,7 @@ impl PatternPage {
         }
 
         if pos.row != self.cursor_position.0.row {
-            events.push_back(GlobalEvent::Header(HeaderEvent::SetCursorRow(pos.row)));
+            events.push(GlobalEvent::Header(HeaderEvent::SetCursorRow(pos.row)));
         }
 
         self.cursor_position.0 = pos;
@@ -224,7 +220,7 @@ impl PatternPage {
     }
 
     /// returns true if the cursor was changed
-    fn cursor_next_row(&mut self, events: &mut VecDeque<GlobalEvent>) -> bool {
+    fn cursor_next_row(&mut self, events: &mut EventQueue<'_>) -> bool {
         let mut pos = self.cursor_position.0;
         pos.row = pos.row.saturating_add(1);
         self.set_cursor(pos, events)
@@ -264,9 +260,9 @@ impl PatternPage {
         send_song_op(op);
     }
 
-    pub fn set_sample(&mut self, sample: u8, events: &mut VecDeque<GlobalEvent>) {
+    pub fn set_sample(&mut self, sample: u8, events: &mut EventQueue<'_>) {
         self.selected_sample_instr = sample;
-        events.push_back(GlobalEvent::Page(super::PageEvent::SampleList(
+        events.push(GlobalEvent::Page(super::PageEvent::SampleList(
             super::sample_list::SampleListEvent::SelectSample(sample),
         )));
     }
@@ -466,7 +462,7 @@ impl Page for PatternPage {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         if !key_event.state.is_pressed() {
             return PageResponse::None;

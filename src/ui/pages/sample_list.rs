@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     io::{Cursor, Write},
     iter::zip,
     num::NonZero,
@@ -16,7 +15,7 @@ use torque_tracker_engine::{
 use winit::keyboard::{Key, NamedKey};
 
 use crate::{
-    app::{EXECUTOR, GlobalEvent, SONG_OP_SEND},
+    app::{EXECUTOR, EventQueue, GlobalEvent, SONG_OP_SEND},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::{
@@ -52,7 +51,7 @@ impl SampleList {
     pub fn process_event(
         &mut self,
         event: SampleListEvent,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         match event {
             // this event is from the pattern page, so i don't have to send it there
@@ -82,19 +81,19 @@ impl SampleList {
         };
     }
 
-    fn send_to_header(&self, events: &mut VecDeque<GlobalEvent>) {
+    fn send_to_header(&self, events: &mut EventQueue<'_>) {
         let name: Box<str> = self.samples[usize::from(self.selected)]
             .as_ref()
             .map(|(n, _)| Box::from(n.as_str()))
             .unwrap_or(Box::from(""));
-        events.push_back(GlobalEvent::Header(HeaderEvent::SetSample(
+        events.push(GlobalEvent::Header(HeaderEvent::SetSample(
             self.selected,
             name,
         )));
     }
 
-    fn send_to_pattern(&self, events: &mut VecDeque<GlobalEvent>) {
-        events.push_back(GlobalEvent::Page(PageEvent::Pattern(
+    fn send_to_pattern(&self, events: &mut EventQueue<'_>) {
+        events.push(GlobalEvent::Page(PageEvent::Pattern(
             PatternPageEvent::SetSampleInstr(self.selected),
         )));
     }
@@ -140,7 +139,7 @@ impl Page for SampleList {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        events: &mut VecDeque<crate::app::GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> PageResponse {
         if !key_event.state.is_pressed() {
             return PageResponse::None;

@@ -1,11 +1,9 @@
-use std::collections::VecDeque;
-
 use ascii::{AsciiChar, AsciiString};
 use font8x8::UnicodeFonts;
 use winit::keyboard::{Key, NamedKey};
 
 use crate::{
-    app::GlobalEvent,
+    app::EventQueue,
     coordinates::{CharPosition, WINDOW_SIZE},
     draw_buffer::DrawBuffer,
 };
@@ -50,7 +48,7 @@ impl<R> Widget for TextIn<R> {
         &mut self,
         modifiers: &winit::event::Modifiers,
         key_event: &winit::event::KeyEvent,
-        _: &mut VecDeque<GlobalEvent>,
+        _: &mut EventQueue<'_>,
     ) -> WidgetResponse<R> {
         if !key_event.state.is_pressed() {
             return WidgetResponse::default();

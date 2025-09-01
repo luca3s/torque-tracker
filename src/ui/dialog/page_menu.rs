@@ -1,9 +1,7 @@
-use std::collections::VecDeque;
-
 use winit::keyboard::{Key, NamedKey};
 
 use crate::{
-    app::{GlobalEvent, PlaybackType},
+    app::{EventQueue, GlobalEvent, PlaybackType},
     coordinates::{CharPosition, CharRect, FONT_SIZE, PixelRect},
     draw_buffer::DrawBuffer,
     ui::pages::PagesEnum,
@@ -90,12 +88,12 @@ impl Dialog for PageMenu {
         &mut self,
         key_event: &winit::event::KeyEvent,
         modifiers: &winit::event::Modifiers,
-        event: &mut VecDeque<GlobalEvent>,
+        event: &mut EventQueue<'_>,
     ) -> DialogResponse {
         if key_event.state.is_pressed() && key_event.logical_key == Key::Named(NamedKey::Escape) {
             if self.sub_menu.is_some() {
                 self.sub_menu = None;
-                event.push_back(GlobalEvent::ConstRedraw);
+                event.push(GlobalEvent::ConstRedraw);
                 return DialogResponse::RequestRedraw;
             } else {
                 return DialogResponse::Close;
@@ -125,7 +123,7 @@ impl Dialog for PageMenu {
                         return DialogResponse::RequestRedraw;
                     }
                     Action::Page(page) => {
-                        event.push_back(GlobalEvent::GoToPage(*page));
+                        event.push(GlobalEvent::GoToPage(*page));
                         return DialogResponse::Close;
                     }
                     Action::NotYetImplemented => {
@@ -133,7 +131,7 @@ impl Dialog for PageMenu {
                         return DialogResponse::RequestRedraw;
                     }
                     Action::Event(global_event) => {
-                        event.push_back(global_event.clone());
+                        event.push(global_event.clone());
                         return DialogResponse::Close;
                     }
                 }

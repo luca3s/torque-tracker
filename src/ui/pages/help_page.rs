@@ -1,6 +1,4 @@
-use std::collections::VecDeque;
-
-use crate::{app::GlobalEvent, coordinates::CharRect, draw_buffer::DrawBuffer};
+use crate::{app::EventQueue, coordinates::CharRect, draw_buffer::DrawBuffer};
 
 use super::{Page, PageResponse};
 
@@ -17,7 +15,7 @@ impl Page for HelpPage {
         &mut self,
         _modifiers: &winit::event::Modifiers,
         _key_event: &winit::event::KeyEvent,
-        _events: &mut VecDeque<GlobalEvent>,
+        _events: &mut EventQueue<'_>,
     ) -> PageResponse {
         PageResponse::None
     }

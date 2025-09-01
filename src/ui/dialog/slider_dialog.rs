@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
 use winit::{
     event::{KeyEvent, Modifiers},
@@ -6,7 +6,7 @@ use winit::{
 };
 
 use crate::{
-    app::GlobalEvent,
+    app::{EventQueue, GlobalEvent},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
     ui::widgets::{NextWidget, StandardResponse, Widget, text_in::TextIn},
@@ -33,7 +33,7 @@ impl Dialog for SliderDialog {
         &mut self,
         key_event: &KeyEvent,
         modifiers: &Modifiers,
-        events: &mut VecDeque<GlobalEvent>,
+        events: &mut EventQueue<'_>,
     ) -> DialogResponse {
         if key_event.state.is_pressed() {
             if key_event.logical_key == Key::Named(NamedKey::Escape) {
@@ -42,7 +42,7 @@ impl Dialog for SliderDialog {
                 if let Ok(num) = self.text.get_str().parse::<i16>()
                     && self.range.contains(&num)
                 {
-                    events.push_back((self.return_event)(num));
+                    events.push((self.return_event)(num));
                 }
                 return DialogResponse::Close;
             }
