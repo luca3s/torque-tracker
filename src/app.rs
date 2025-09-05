@@ -19,7 +19,7 @@ use winit::{
     event::{Modifiers, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoopProxy},
     keyboard::{Key, NamedKey},
-    window::{Window, WindowAttributes},
+    window::WindowAttributes,
 };
 
 use cpal::{
@@ -66,6 +66,8 @@ pub enum GlobalEvent {
     GoToPage(PagesEnum),
     // Needed because only in the main app i know which pattern is selected, so i know what to play
     Playback(PlaybackType),
+    #[cfg(feature = "accesskit")]
+    Accesskit(accesskit_winit::WindowEvent),
     CloseRequested,
     CloseApp,
     ConstRedraw,
@@ -83,6 +85,10 @@ impl Clone for GlobalEvent {
             GlobalEvent::CloseApp => GlobalEvent::CloseApp,
             GlobalEvent::ConstRedraw => GlobalEvent::ConstRedraw,
             GlobalEvent::Playback(playback_type) => GlobalEvent::Playback(*playback_type),
+            #[cfg(feature = "accesskit")]
+            GlobalEvent::Accesskit(window_event) => {
+                todo!("https://github.com/AccessKit/accesskit/issues/610")
+            }
         }
     }
 }
@@ -99,8 +105,18 @@ impl Debug for GlobalEvent {
             GlobalEvent::CloseApp => debug.field("CloseApp", &""),
             GlobalEvent::ConstRedraw => debug.field("ConstRedraw", &""),
             GlobalEvent::Playback(playback_type) => debug.field("Playback", &playback_type),
+            #[cfg(feature = "accesskit")]
+            GlobalEvent::Accesskit(window_event) => debug.field("Accesskit", &window_event),
         };
         debug.finish()
+    }
+}
+
+#[cfg(feature = "accesskit")]
+impl From<accesskit_winit::Event> for GlobalEvent {
+    fn from(value: accesskit_winit::Event) -> Self {
+        // ignore window id, because i only have one window
+        Self::Accesskit(value.window_event)
     }
 }
 
@@ -165,8 +181,16 @@ impl EventQueue<'_> {
     }
 }
 
+/// window with all the additional stuff
+struct Window {
+    window: Arc<winit::window::Window>,
+    render_backend: RenderBackend,
+    #[cfg(feature = "accesskit")]
+    adapter: accesskit_winit::Adapter,
+}
+
 pub struct App {
-    window_gpu: Option<(Arc<Window>, RenderBackend)>,
+    window: Option<Window>,
     draw_buffer: DrawBuffer,
     modifiers: Modifiers,
     ui_pages: AllPages,
@@ -236,7 +260,7 @@ impl ApplicationHandler<GlobalEvent> for App {
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
         // my window and GPU state have been invalidated
-        self.window_gpu = None;
+        self.window = None;
     }
 
     fn window_event(
@@ -247,7 +271,7 @@ impl ApplicationHandler<GlobalEvent> for App {
     ) {
         // destructure so i don't have to always type self.
         let Self {
-            window_gpu,
+            window,
             draw_buffer,
             modifiers,
             ui_pages,
@@ -259,10 +283,24 @@ impl ApplicationHandler<GlobalEvent> for App {
             audio_stream: _,
         } = self;
 
-        // panic is fine because when i get a window_event a window exists
-        let (window, render_backend) = window_gpu.as_mut().unwrap();
-        // don't want the window to be mut
+        // i won't get a window_event without having a window, so unwrap is fine
+        let window = window.as_mut().unwrap();
+        #[cfg(not(feature = "accesskit"))]
+        let Window {
+            window,
+            render_backend,
+        } = window;
+        #[cfg(feature = "accesskit")]
+        let Window {
+            window,
+            render_backend,
+            adapter,
+        } = window;
+        // don't want window to be mutable
         let window = window.as_ref();
+
+        #[cfg(feature = "accesskit")]
+        adapter.process_event(window, &event);
         // limit the pages and widgets to only push events and not read or pop
         let event_queue = &mut EventQueue(event_queue);
 
@@ -287,6 +325,9 @@ impl ApplicationHandler<GlobalEvent> for App {
                 header.draw(draw_buffer);
                 ui_pages.draw(draw_buffer);
                 dialog_manager.draw(draw_buffer);
+                #[cfg(feature = "accesskit")]
+                adapter
+                    .update_if_active(|| Self::produce_full_tree(ui_pages, header, dialog_manager));
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU/softbuffer and render it onto the screen
@@ -412,6 +453,27 @@ impl ApplicationHandler<GlobalEvent> for App {
                         .expect("buffer full. either increase size or retry somehow")
                 }
             }
+            #[cfg(feature = "accesskit")]
+            GlobalEvent::Accesskit(window_event) => {
+                use accesskit_winit::WindowEvent;
+                match window_event {
+                    WindowEvent::InitialTreeRequested => {
+                        // there probably should always be a window
+                        // make sure we always respond to this event. I hope it can't be send when there is no window
+                        let window = self.window.as_mut().unwrap();
+                        window.adapter.update_if_active(|| {
+                            Self::produce_full_tree(
+                                &self.ui_pages,
+                                &self.header,
+                                &self.dialog_manager,
+                            )
+                        });
+                    }
+                    WindowEvent::ActionRequested(action_request) => todo!(),
+                    // i don't have any extra state for accessability so i don't need to cleanup anything
+                    WindowEvent::AccessibilityDeactivated => (),
+                }
+            }
         }
     }
 
@@ -429,7 +491,7 @@ impl ApplicationHandler<GlobalEvent> for App {
 impl App {
     pub fn new(proxy: EventLoopProxy<GlobalEvent>) -> Self {
         Self {
-            window_gpu: None,
+            window: None,
             draw_buffer: DrawBuffer::new(),
             modifiers: Modifiers::default(),
             ui_pages: AllPages::new(proxy.clone()),
@@ -455,8 +517,8 @@ impl App {
 
     /// tries to request a redraw. if there currently is no window this fails
     fn try_request_redraw(&self) -> Result<(), ()> {
-        if let Some((window, _)) = &self.window_gpu {
-            window.request_redraw();
+        if let Some(window) = &self.window {
+            window.window.request_redraw();
             Ok(())
         } else {
             Err(())
@@ -464,16 +526,34 @@ impl App {
     }
 
     fn build_window(&mut self, event_loop: &ActiveEventLoop) {
-        self.window_gpu.get_or_insert_with(|| {
+        self.window.get_or_insert_with(|| {
             let mut attributes = WindowAttributes::default();
             attributes.active = true;
             attributes.resizable = true;
             attributes.resize_increments = None;
             attributes.title = String::from("Torque Tracker");
+            // for accesskit
+            attributes.visible = false;
 
             let window = Arc::new(event_loop.create_window(attributes).unwrap());
             let render_backend = RenderBackend::new(window.clone(), Palette::CAMOUFLAGE);
-            (window, render_backend)
+
+            #[cfg(feature = "accesskit")]
+            let adapter = {
+                accesskit_winit::Adapter::with_event_loop_proxy(
+                    event_loop,
+                    &window,
+                    self.event_loop_proxy.clone(),
+                )
+            };
+
+            window.set_visible(true);
+            Window {
+                window,
+                render_backend,
+                #[cfg(feature = "accesskit")]
+                adapter,
+            }
         });
     }
 
@@ -569,6 +649,30 @@ impl App {
         drop(task);
         // lastly kill the audio stream
         drop(stream);
+    }
+
+    #[cfg(feature = "accesskit")]
+    fn produce_full_tree(
+        pages: &AllPages,
+        header: &Header,
+        dialogs: &DialogManager,
+    ) -> accesskit::TreeUpdate {
+        use accesskit::TreeUpdate;
+        use accesskit::{Node, NodeId, Role, Tree};
+        const ROOT_ID: NodeId = NodeId(0);
+
+        let tree = Tree {
+            root: ROOT_ID,
+            toolkit_name: Some(String::from("Torque Tracker Custom")),
+            toolkit_version: None,
+        };
+        let mut root_node = Node::new(Role::Window);
+        let nodes = vec![(ROOT_ID, root_node)];
+        TreeUpdate {
+            nodes,
+            tree: Some(tree),
+            focus: ROOT_ID,
+        }
     }
 }
 
