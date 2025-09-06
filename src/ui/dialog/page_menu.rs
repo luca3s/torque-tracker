@@ -30,10 +30,12 @@ enum Menu {
 pub struct PageMenu {
     name: &'static str,
     rect: CharRect,
-    selected: usize,
+    selected: u8,
     pressed: bool,
     buttons: &'static [(&'static str, Action)],
     sub_menu: Option<Box<Self>>,
+    #[cfg(feature = "accesskit")]
+    node_id: accesskit::NodeId,
 }
 
 impl Dialog for PageMenu {
@@ -58,7 +60,7 @@ impl Dialog for PageMenu {
             1,
         );
         for (num, (name, _)) in self.buttons.iter().enumerate() {
-            let text_color = match self.selected == num {
+            let text_color = match usize::from(self.selected) == num {
                 true => 11,
                 false => 0,
             };
@@ -70,11 +72,12 @@ impl Dialog for PageMenu {
                 Self::BACKGROUND_COLOR,
             );
             let top = top + (3 * num) + 4;
-            let (top_left, bot_right) =
-                match (self.pressed || self.sub_menu.is_some()) && self.selected == num {
-                    true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
-                    false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
-                };
+            let (top_left, bot_right) = match (self.pressed || self.sub_menu.is_some())
+                && usize::from(self.selected) == num
+            {
+                true => (Self::BOTRIGHT_COLOR, Self::TOPLEFT_COLOR),
+                false => (Self::TOPLEFT_COLOR, Self::BOTRIGHT_COLOR),
+            };
             let rect = CharRect::new(top, top + 2, left + 2, left + self.rect.width() - 2);
             draw_buffer.draw_out_border(rect, top_left, bot_right, 1);
             Self::draw_button_corners(rect, draw_buffer);
@@ -110,7 +113,7 @@ impl Dialog for PageMenu {
                 return DialogResponse::RequestRedraw;
             } else if self.pressed {
                 self.pressed = false;
-                match &self.buttons[self.selected].1 {
+                match &self.buttons[usize::from(self.selected)].1 {
                     Action::Menu(menu) => {
                         let menu = match menu {
                             Menu::File => Self::file(),
@@ -144,7 +147,7 @@ impl Dialog for PageMenu {
                 self.pressed = false;
                 return DialogResponse::RequestRedraw;
             } else if key_event.logical_key == Key::Named(NamedKey::ArrowDown)
-                && self.selected < self.buttons.len() - 1
+                && usize::from(self.selected) < self.buttons.len() - 1
             {
                 self.selected += 1;
                 self.pressed = false;
@@ -153,6 +156,50 @@ impl Dialog for PageMenu {
         }
 
         DialogResponse::None
+    }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse {
+        use accesskit::{Action, Node, NodeId, Role};
+
+        use crate::app::AccessResponse;
+        let mut root = Node::new(Role::Dialog);
+        root.set_label(self.name);
+        let mut selected = NodeId(u64::from(self.selected) + self.node_id.0 + 1);
+
+        // root of the sub_menu. Will be set as the child of the selected button
+        let sub_menu = self.sub_menu.as_ref().map(|m| {
+            let resp = m.build_tree(tree);
+
+            selected = resp.selected;
+
+            resp.root
+        });
+
+        for (num, (name, _)) in self.buttons.iter().enumerate() {
+            let mut node = Node::new(Role::Button);
+            node.add_action(Action::Click);
+            node.set_keyboard_shortcut("Enter");
+            node.set_label(*name);
+            if usize::from(self.selected) == num {
+                node.set_selected(true);
+                if let Some(id) = sub_menu {
+                    node.push_child(id);
+                }
+            }
+            let id = NodeId(u64::try_from(num).unwrap() + self.node_id.0 + 1);
+            tree.push((id, node));
+            root.push_child(id);
+        }
+
+        tree.push((self.node_id, root));
+        AccessResponse {
+            root: self.node_id,
+            selected,
+        }
     }
 }
 
@@ -165,6 +212,7 @@ impl PageMenu {
         pos: CharPosition,
         width: usize,
         buttons: &'static [(&'static str, Action)],
+        #[cfg(feature = "accesskit")] node_id: accesskit::NodeId,
     ) -> Self {
         let rect = CharRect::new(
             pos.y(),
@@ -180,6 +228,8 @@ impl PageMenu {
             pressed: false,
             buttons,
             sub_menu: None,
+            #[cfg(feature = "accesskit")]
+            node_id,
         }
     }
 
@@ -227,6 +277,8 @@ impl PageMenu {
                 ("Settings Menu...", Action::Menu(Menu::Settings)),
                 ("Help!                (F1)", Action::Page(PagesEnum::Help)),
             ],
+            #[cfg(feature = "accesskit")]
+            accesskit::NodeId(1_000_000_000),
         )
     }
 
@@ -247,6 +299,8 @@ impl PageMenu {
                     Action::Event(GlobalEvent::CloseRequested),
                 ),
             ],
+            #[cfg(feature = "accesskit")]
+            accesskit::NodeId(1_000_000_100),
         )
     }
 
@@ -278,6 +332,8 @@ impl PageMenu {
                 ("Driver Screen    (Shift-F5)", Action::NotYetImplemented),
                 ("Calculate Length   (Ctrl-P)", Action::NotYetImplemented),
             ],
+            #[cfg(feature = "accesskit")]
+            accesskit::NodeId(1_000_000_200),
         )
     }
 
@@ -293,6 +349,8 @@ impl PageMenu {
                 ),
                 ("Sample Library  (Ctrl-F3)", Action::NotYetImplemented),
             ],
+            #[cfg(feature = "accesskit")]
+            accesskit::NodeId(1_000_000_300),
         )
     }
 
@@ -305,6 +363,8 @@ impl PageMenu {
                 ("Instrument List          (F4)", Action::NotYetImplemented),
                 ("Instrument Library  (Ctrl-F4)", Action::NotYetImplemented),
             ],
+            #[cfg(feature = "accesskit")]
+            accesskit::NodeId(1_000_000_400),
         )
     }
 
@@ -339,6 +399,8 @@ impl PageMenu {
                     Action::NotYetImplemented,
                 ),
             ],
+            #[cfg(feature = "accesskit")]
+            accesskit::NodeId(1_000_000_500),
         )
     }
 }

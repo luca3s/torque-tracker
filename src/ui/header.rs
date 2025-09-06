@@ -186,4 +186,18 @@ impl Header {
         // TODO: Not actually constant as it changes between Sample and Instrument mode
         buffer.draw_string("Sample", CharPosition::new(43, 3), 0, 2);
     }
+
+    /// Returns the ID of the header root. This should be added as a child of the outer node
+    #[cfg(feature = "accesskit")]
+    pub fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> accesskit::NodeId {
+        use accesskit::{Node, NodeId, Role};
+        const HEADER_ID: NodeId = NodeId(1);
+        let root = Node::new(Role::Header);
+
+        tree.push((HEADER_ID, root));
+        HEADER_ID
+    }
 }

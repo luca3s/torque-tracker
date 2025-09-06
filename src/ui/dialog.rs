@@ -24,6 +24,11 @@ pub trait Dialog {
         modifiers: &Modifiers,
         events: &mut EventQueue<'_>,
     ) -> DialogResponse;
+    #[cfg(feature = "accesskit")]
+    fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse;
 }
 
 pub struct DialogManager {
@@ -43,6 +48,10 @@ impl DialogManager {
             Some(dialog) => Some(dialog.as_mut()),
             None => None,
         }
+    }
+
+    pub fn active_dialog(&self) -> Option<&dyn Dialog> {
+        self.stack.last().map(|d| d.as_ref())
     }
 
     pub fn is_active(&self) -> bool {

@@ -667,11 +667,22 @@ impl App {
             toolkit_version: None,
         };
         let mut root_node = Node::new(Role::Window);
-        let nodes = vec![(ROOT_ID, root_node)];
+        let mut nodes = Vec::new();
+        let mut focused = None;
+        let header_id = header.build_tree(&mut nodes);
+        root_node.push_child(header_id);
+
+        if let Some(dialog) = dialogs.active_dialog() {
+            let resp = dialog.build_tree(&mut nodes);
+            root_node.push_child(resp.root);
+            focused = Some(resp.selected);
+        }
+
+        nodes.push((ROOT_ID, root_node));
         TreeUpdate {
             nodes,
             tree: Some(tree),
-            focus: ROOT_ID,
+            focus: focused.unwrap_or(ROOT_ID),
         }
     }
 }
@@ -696,4 +707,10 @@ pub fn run() {
     app.header.draw_constant(&mut app.draw_buffer);
 
     event_loop.run_app(&mut app).unwrap();
+}
+
+#[cfg(feature = "accesskit")]
+pub struct AccessResponse {
+    pub root: accesskit::NodeId,
+    pub selected: accesskit::NodeId,
 }
