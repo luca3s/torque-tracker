@@ -391,4 +391,8 @@ impl GPUState {
 
         Ok(())
     }
+
+    pub fn size(&self) -> winit::dpi::PhysicalSize<u32> {
+        self.size
+    }
 }

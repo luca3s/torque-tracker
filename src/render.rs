@@ -43,6 +43,10 @@ impl RenderBackend {
             Err(e) => eprint!("{:?}", e),
         }
     }
+
+    pub fn get_size(&self) -> PhysicalSize<u32> {
+        self.backend.size()
+    }
 }
 
 #[cfg(feature = "soft_scaling")]
@@ -99,5 +103,12 @@ impl RenderBackend {
             }
         }
         buffer.present().unwrap();
+    }
+
+    pub fn get_size(&self) -> PhysicalSize<u32> {
+        PhysicalSize {
+            width: self.width,
+            height: self.height,
+        }
     }
 }

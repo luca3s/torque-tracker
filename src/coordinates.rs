@@ -80,6 +80,18 @@ impl From<CharPosition> for CharRect {
     }
 }
 
+#[cfg(feature = "accesskit")]
+impl From<CharRect> for accesskit::Rect {
+    fn from(value: CharRect) -> Self {
+        accesskit::Rect {
+            x0: value.left as f64,
+            y0: value.top as f64,
+            x1: value.right as f64,
+            y1: value.bot as f64,
+        }
+    }
+}
+
 /// PixelRect as well as CharRect uses all values inclusive, meaning the borders are included
 #[derive(Debug, Clone, Copy)]
 pub struct PixelRect {

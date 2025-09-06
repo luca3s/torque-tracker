@@ -65,7 +65,29 @@ impl Dialog for SliderDialog {
         &self,
         tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
     ) -> crate::app::AccessResponse {
-        todo!()
+        use accesskit::{Node, NodeId, Role};
+
+        use crate::app::AccessResponse;
+
+        const ROOT_ID: NodeId = NodeId(400_000_000);
+        const TEXT_ID: NodeId = NodeId(400_000_001);
+
+        let mut root_node = Node::new(Role::Dialog);
+        root_node.set_label("Slider Dialog");
+        root_node.push_child(TEXT_ID);
+
+        let mut text_node = Node::new(Role::NumberInput);
+        text_node.set_min_numeric_value(*self.range.start() as f64);
+        text_node.set_max_numeric_value(*self.range.end() as f64);
+        text_node.set_value(self.text.get_str());
+        text_node.set_label("Set Value");
+
+        tree.push((ROOT_ID, root_node));
+        tree.push((TEXT_ID, text_node));
+        AccessResponse {
+            root: ROOT_ID,
+            selected: TEXT_ID,
+        }
     }
 }
 

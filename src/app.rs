@@ -14,6 +14,8 @@ use torque_tracker_engine::{
     project::song::{Song, SongOperation},
 };
 use triple_buffer::triple_buffer;
+#[cfg(feature = "accesskit")]
+use winit::dpi::PhysicalSize;
 use winit::{
     application::ApplicationHandler,
     event::{Modifiers, WindowEvent},
@@ -186,7 +188,7 @@ struct Window {
     window: Arc<winit::window::Window>,
     render_backend: RenderBackend,
     #[cfg(feature = "accesskit")]
-    adapter: accesskit_winit::Adapter,
+    adapter: (accesskit_winit::Adapter, accesskit::Affine),
 }
 
 pub struct App {
@@ -300,7 +302,7 @@ impl ApplicationHandler<GlobalEvent> for App {
         let window = window.as_ref();
 
         #[cfg(feature = "accesskit")]
-        adapter.process_event(window, &event);
+        adapter.0.process_event(window, &event);
         // limit the pages and widgets to only push events and not read or pop
         let event_queue = &mut EventQueue(event_queue);
 
@@ -326,8 +328,9 @@ impl ApplicationHandler<GlobalEvent> for App {
                 ui_pages.draw(draw_buffer);
                 dialog_manager.draw(draw_buffer);
                 #[cfg(feature = "accesskit")]
-                adapter
-                    .update_if_active(|| Self::produce_full_tree(ui_pages, header, dialog_manager));
+                adapter.0.update_if_active(|| {
+                    Self::produce_full_tree(ui_pages, header, dialog_manager, adapter.1)
+                });
                 // notify the windowing system that drawing is done and the new buffer is about to be pushed
                 window.pre_present_notify();
                 // push the framebuffer into GPU/softbuffer and render it onto the screen
@@ -461,11 +464,12 @@ impl ApplicationHandler<GlobalEvent> for App {
                         // there probably should always be a window
                         // make sure we always respond to this event. I hope it can't be send when there is no window
                         let window = self.window.as_mut().unwrap();
-                        window.adapter.update_if_active(|| {
+                        window.adapter.0.update_if_active(|| {
                             Self::produce_full_tree(
                                 &self.ui_pages,
                                 &self.header,
                                 &self.dialog_manager,
+                                window.adapter.1,
                             )
                         });
                     }
@@ -548,11 +552,12 @@ impl App {
             };
 
             window.set_visible(true);
+            let size = render_backend.get_size();
             Window {
                 window,
                 render_backend,
                 #[cfg(feature = "accesskit")]
-                adapter,
+                adapter: (adapter, create_transform(size)),
             }
         });
     }
@@ -656,6 +661,7 @@ impl App {
         pages: &AllPages,
         header: &Header,
         dialogs: &DialogManager,
+        transform: accesskit::Affine,
     ) -> accesskit::TreeUpdate {
         use accesskit::TreeUpdate;
         use accesskit::{Node, NodeId, Role, Tree};
@@ -672,6 +678,7 @@ impl App {
         root_node.set_language("English");
         let header_id = header.build_tree(&mut nodes);
         root_node.push_child(header_id);
+        root_node.set_transform(transform);
 
         let resp = pages.build_tree(&mut nodes);
         let mut focused = resp.selected;
@@ -718,4 +725,12 @@ pub fn run() {
 pub struct AccessResponse {
     pub root: accesskit::NodeId,
     pub selected: accesskit::NodeId,
+}
+
+#[cfg(feature = "accesskit")]
+fn create_transform(size: winit::dpi::PhysicalSize<u32>) -> accesskit::Affine {
+    accesskit::Affine::scale_non_uniform(
+        size.width as f64 / crate::coordinates::WINDOW_SIZE_CHARS.0 as f64,
+        size.height as f64 / crate::coordinates::WINDOW_SIZE_CHARS.1 as f64,
+    )
 }

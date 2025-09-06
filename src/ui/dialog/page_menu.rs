@@ -163,11 +163,12 @@ impl Dialog for PageMenu {
         &self,
         tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
     ) -> crate::app::AccessResponse {
-        use accesskit::{Action, Node, NodeId, Role};
+        use accesskit::{Action, Node, NodeId, Rect, Role};
 
         use crate::app::AccessResponse;
         let mut root = Node::new(Role::Dialog);
         root.set_label(self.name);
+        root.set_bounds(dbg!(Rect::from(self.rect)));
         let mut selected = NodeId(u64::from(self.selected) + self.node_id.0 + 1);
 
         // root of the sub_menu. Will be set as the child of the selected button
