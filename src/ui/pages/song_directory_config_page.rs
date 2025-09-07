@@ -6,7 +6,9 @@ use crate::{
     app::{EventQueue, GlobalEvent, send_song_op},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{NextWidget, StandardResponse, WidgetResponse, slider::Slider, text_in::TextIn},
+    ui::widgets::{
+        NextWidget, StandardResponse, Widget, WidgetResponse, slider::Slider, text_in::TextIn,
+    },
 };
 
 use super::{Page, PageResponse};
@@ -39,43 +41,56 @@ pub enum SDCChange {
     // Seperation(i16),
 }
 
-super::create_widget_list!(
-    response: ();
-    WidgetList
-    {
-        song_name: TextIn<()>,
-        initial_tempo: Slider<31, 255, ()>,
-        initial_speed: Slider<1, 255, ()>,
-        global_volume: Slider<0, 128, ()>
-        // mixing_volume: Slider<0, 128, ()>,
-        // seperation: Slider<0, 128, ()>,
+// super::create_widget_list!(
+//     response: ();
+//     WidgetList
+//     {
+//         song_name: TextIn<()>,
+//         initial_tempo: Slider<31, 255, ()>,
+//         initial_speed: Slider<1, 255, ()>,
+//         global_volume: Slider<0, 128, ()>
+//         // mixing_volume: Slider<0, 128, ()>,
+//         // seperation: Slider<0, 128, ()>,
 
-        // old_effects: Toggle<bool, ()>,
-        // compatible_gxx: Toggle<bool, ()>,
+//         // old_effects: Toggle<bool, ()>,
+//         // compatible_gxx: Toggle<bool, ()>,
 
-        // instruments: ToggleButton<Control, ()>,
-        // samples: ToggleButton<Control, ()>,
+//         // instruments: ToggleButton<Control, ()>,
+//         // samples: ToggleButton<Control, ()>,
 
-        // stereo: ToggleButton<Playback, ()>,
-        // mono: ToggleButton<Playback, ()>,
+//         // stereo: ToggleButton<Playback, ()>,
+//         // mono: ToggleButton<Playback, ()>,
 
-        // linear_slides: ToggleButton<PitchSlides, ()>,
-        // amiga_slides: ToggleButton<PitchSlides, ()>,
+//         // linear_slides: ToggleButton<PitchSlides, ()>,
+//         // amiga_slides: ToggleButton<PitchSlides, ()>,
 
-        // module_path: TextInScroll<()>,
-        // sample_path: TextInScroll<()>,
-        // instrument_path: TextInScroll<()>,
-        // save: Button<()>
-    }
-);
+//         // module_path: TextInScroll<()>,
+//         // sample_path: TextInScroll<()>,
+//         // instrument_path: TextInScroll<()>,
+//         // save: Button<()>
+//     }
+// );
 
 pub struct SongDirectoryConfigPage {
-    widgets: WidgetList,
+    // widgets: WidgetList,
+    song_name: TextIn<()>,
+    initial_tempo: Slider<31, 255, ()>,
+    initial_speed: Slider<1, 255, ()>,
+    global_volume: Slider<0, 128, ()>,
+    selected: u8,
 }
 
 impl Page for SongDirectoryConfigPage {
     fn draw(&mut self, draw_buffer: &mut DrawBuffer) {
-        self.widgets.draw_widgets(draw_buffer);
+        // self.widgets.draw_widgets(draw_buffer);
+        self.song_name
+            .draw(draw_buffer, Self::SONG_NAME == self.selected);
+        self.initial_tempo
+            .draw(draw_buffer, Self::INITIAL_TEMPO == self.selected);
+        self.initial_speed
+            .draw(draw_buffer, Self::INITIAL_SPEED == self.selected);
+        self.global_volume
+            .draw(draw_buffer, Self::GLOBAL_VOLUME == self.selected);
     }
 
     fn draw_constant(&mut self, draw_buffer: &mut DrawBuffer) {
@@ -147,37 +162,45 @@ impl Page for SongDirectoryConfigPage {
         key_event: &winit::event::KeyEvent,
         events: &mut EventQueue<'_>,
     ) -> PageResponse {
-        match self
-            .widgets
-            .process_input(key_event, modifiers, events)
-            .standard
-        {
-            StandardResponse::SwitchFocus(next) => {
-                self.widgets.selected = next;
-                PageResponse::RequestRedraw
-            }
-            StandardResponse::RequestRedraw => PageResponse::RequestRedraw,
-            StandardResponse::None => PageResponse::None,
-        }
+        let resp = match self.selected {
+            Self::SONG_NAME => self.song_name.process_input(modifiers, key_event, events),
+            Self::INITIAL_TEMPO => self
+                .initial_tempo
+                .process_input(modifiers, key_event, events),
+            Self::INITIAL_SPEED => self
+                .initial_speed
+                .process_input(modifiers, key_event, events),
+            Self::GLOBAL_VOLUME => self
+                .global_volume
+                .process_input(modifiers, key_event, events),
+            _ => unreachable!(),
+        };
+
+        resp.standard.to_page_resp(&mut self.selected)
     }
 }
 
 impl SongDirectoryConfigPage {
+    const SONG_NAME: u8 = 0;
+    const INITIAL_TEMPO: u8 = 1;
+    const INITIAL_SPEED: u8 = 2;
+    const GLOBAL_VOLUME: u8 = 3;
+
     pub fn ui_change(&mut self, change: SDCChange) -> PageResponse {
         match change {
-            SDCChange::SetSongName(s) => match self.widgets.song_name.set_string(s) {
+            SDCChange::SetSongName(s) => match self.song_name.set_string(s) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::InitialTempo(n) => match self.widgets.initial_tempo.try_set(n) {
+            SDCChange::InitialTempo(n) => match self.initial_tempo.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::InitialSpeed(n) => match self.widgets.initial_speed.try_set(n) {
+            SDCChange::InitialSpeed(n) => match self.initial_speed.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
-            SDCChange::GlobalVolume(n) => match self.widgets.global_volume.try_set(n) {
+            SDCChange::GlobalVolume(n) => match self.global_volume.try_set(n) {
                 Ok(_) => PageResponse::RequestRedraw,
                 Err(_) => PageResponse::None,
             },
@@ -197,8 +220,8 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 16),
             25,
             NextWidget {
-                down: Some(WidgetList::INITIAL_TEMPO),
-                tab: Some(WidgetList::INITIAL_TEMPO),
+                down: Some(Self::INITIAL_TEMPO),
+                tab: Some(Self::INITIAL_TEMPO),
                 ..Default::default()
             },
             |s| println!("new song name: {}", s),
@@ -208,10 +231,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 19),
             32,
             NextWidget {
-                up: Some(WidgetList::SONG_NAME),
-                shift_tab: Some(WidgetList::SONG_NAME),
-                down: Some(WidgetList::INITIAL_SPEED),
-                tab: Some(WidgetList::INITIAL_SPEED),
+                up: Some(Self::SONG_NAME),
+                shift_tab: Some(Self::SONG_NAME),
+                down: Some(Self::INITIAL_SPEED),
+                tab: Some(Self::INITIAL_SPEED),
                 ..Default::default()
             },
             |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::InitialTempo(n))),
@@ -226,10 +249,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 20),
             32,
             NextWidget {
-                up: Some(WidgetList::INITIAL_TEMPO),
-                shift_tab: Some(WidgetList::INITIAL_TEMPO),
-                down: Some(WidgetList::GLOBAL_VOLUME),
-                tab: Some(WidgetList::GLOBAL_VOLUME),
+                up: Some(Self::INITIAL_TEMPO),
+                shift_tab: Some(Self::INITIAL_TEMPO),
+                down: Some(Self::GLOBAL_VOLUME),
+                tab: Some(Self::GLOBAL_VOLUME),
                 ..Default::default()
             },
             |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::InitialSpeed(n))),
@@ -244,10 +267,10 @@ impl SongDirectoryConfigPage {
             CharPosition::new(17, 23),
             16,
             NextWidget {
-                up: Some(WidgetList::INITIAL_SPEED),
-                shift_tab: Some(WidgetList::INITIAL_SPEED),
-                // down: Some(WidgetList::MIXING_VOLUME),
-                // tab: Some(WidgetList::MIXING_VOLUME),
+                up: Some(Self::INITIAL_SPEED),
+                shift_tab: Some(Self::INITIAL_SPEED),
+                // down: Some(Self::MIXING_VOLUME),
+                // tab: Some(Self::MIXING_VOLUME),
                 ..Default::default()
             },
             |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
@@ -458,27 +481,25 @@ impl SongDirectoryConfigPage {
         //     },
         // );
         Self {
-            widgets: WidgetList {
-                song_name,
-                initial_tempo,
-                initial_speed,
-                global_volume,
-                // mixing_volume,
-                // seperation,
-                // old_effects,
-                // compatible_gxx,
-                // instruments,
-                // samples,
-                // stereo,
-                // mono,
-                // linear_slides,
-                // amiga_slides,
-                // module_path,
-                // sample_path,
-                // instrument_path,
-                // save,
-                selected: WidgetList::SONG_NAME,
-            },
+            song_name,
+            initial_tempo,
+            initial_speed,
+            global_volume,
+            // mixing_volume,
+            // seperation,
+            // old_effects,
+            // compatible_gxx,
+            // instruments,
+            // samples,
+            // stereo,
+            // mono,
+            // linear_slides,
+            // amiga_slides,
+            // module_path,
+            // sample_path,
+            // instrument_path,
+            // save,
+            selected: Self::SONG_NAME,
         }
     }
 }

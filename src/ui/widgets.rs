@@ -10,7 +10,7 @@ use winit::{
     keyboard::{Key, ModifiersState, NamedKey},
 };
 
-use crate::{app::EventQueue, draw_buffer::DrawBuffer};
+use crate::{app::EventQueue, draw_buffer::DrawBuffer, ui::pages::PageResponse};
 
 pub(crate) trait Widget {
     type Response;
@@ -47,7 +47,7 @@ impl<R> WidgetResponse<R> {
         }
     }
 
-    pub fn next_widget(value: usize) -> Self {
+    pub fn next_widget(value: u8) -> Self {
         Self {
             standard: StandardResponse::SwitchFocus(value),
             extra: None,
@@ -58,7 +58,7 @@ impl<R> WidgetResponse<R> {
 // SwitchFocus also has to request a redraw
 #[derive(Debug, Default)]
 pub enum StandardResponse {
-    SwitchFocus(usize),
+    SwitchFocus(u8),
     RequestRedraw,
     // GlobalEvent(GlobalEvent),
     #[default]
@@ -74,14 +74,27 @@ impl<R> From<StandardResponse> for WidgetResponse<R> {
     }
 }
 
+impl StandardResponse {
+    pub fn to_page_resp(self, selected: &mut u8) -> PageResponse {
+        match self {
+            StandardResponse::SwitchFocus(s) => {
+                *selected = s;
+                PageResponse::RequestRedraw
+            }
+            StandardResponse::RequestRedraw => PageResponse::RequestRedraw,
+            StandardResponse::None => PageResponse::None,
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct NextWidget {
-    pub left: Option<usize>,
-    pub right: Option<usize>,
-    pub up: Option<usize>,
-    pub down: Option<usize>,
-    pub tab: Option<usize>,
-    pub shift_tab: Option<usize>,
+    pub left: Option<u8>,
+    pub right: Option<u8>,
+    pub up: Option<u8>,
+    pub down: Option<u8>,
+    pub tab: Option<u8>,
+    pub shift_tab: Option<u8>,
 }
 
 impl NextWidget {
@@ -97,10 +110,10 @@ impl NextWidget {
 
         #[expect(
             non_local_definitions,
-            reason = "this is only valid with these specific Option<usize> not in general"
+            reason = "this is only valid with these specific Option<u8> not in general"
         )]
-        impl<R> From<Option<usize>> for WidgetResponse<R> {
-            fn from(value: Option<usize>) -> Self {
+        impl<R> From<Option<u8>> for WidgetResponse<R> {
+            fn from(value: Option<u8>) -> Self {
                 Self {
                     standard: match value {
                         Some(num) => StandardResponse::SwitchFocus(num),

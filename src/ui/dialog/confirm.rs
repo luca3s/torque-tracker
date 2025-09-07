@@ -4,34 +4,26 @@ use crate::{
     app::GlobalEvent,
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::{
-        pages::create_widget_list,
-        widgets::{NextWidget, StandardResponse, WidgetResponse, button::Button},
-    },
+    ui::widgets::{NextWidget, StandardResponse, Widget, WidgetResponse, button::Button},
 };
 
 use super::{Dialog, DialogResponse};
-
-create_widget_list!(
-    response: Option<GlobalEvent>;
-    WidgetList
-    {
-        ok: Button<Option<GlobalEvent>>,
-        cancel: Button<Option<GlobalEvent>>
-    }
-);
 
 pub struct ConfirmDialog {
     text: &'static str,
     text_pos: CharPosition,
     // computed from the string length
     rect: CharRect,
-    widgets: WidgetList,
+    ok: Button<Option<GlobalEvent>>,
+    cancel: Button<Option<GlobalEvent>>,
+    selected: u8,
 }
 
 impl ConfirmDialog {
     const OK_RECT: CharRect = CharRect::new(29, 31, 41, 50);
     const CANCEL_RECT: CharRect = CharRect::new(29, 31, 30, 39);
+    const OK: u8 = 0;
+    const CANCEL: u8 = 1;
     pub fn new(
         text: &'static str,
         ok_event: fn() -> Option<GlobalEvent>,
@@ -42,33 +34,31 @@ impl ConfirmDialog {
         Self {
             text,
             text_pos: CharPosition::new(40 - per_side + 5, 27),
-            widgets: WidgetList {
-                selected: WidgetList::OK,
-                ok: Button::new(
-                    "  Ok",
-                    Self::OK_RECT,
-                    NextWidget {
-                        left: Some(WidgetList::CANCEL),
-                        right: Some(WidgetList::CANCEL),
-                        tab: Some(WidgetList::CANCEL),
-                        shift_tab: Some(WidgetList::CANCEL),
-                        ..Default::default()
-                    },
-                    ok_event,
-                ),
-                cancel: Button::new(
-                    "Cancel",
-                    Self::CANCEL_RECT,
-                    NextWidget {
-                        left: Some(WidgetList::OK),
-                        right: Some(WidgetList::OK),
-                        tab: Some(WidgetList::OK),
-                        shift_tab: Some(WidgetList::OK),
-                        ..Default::default()
-                    },
-                    cancel_event,
-                ),
-            },
+            selected: Self::OK,
+            ok: Button::new(
+                "  Ok",
+                Self::OK_RECT,
+                NextWidget {
+                    left: Some(Self::CANCEL),
+                    right: Some(Self::CANCEL),
+                    tab: Some(Self::CANCEL),
+                    shift_tab: Some(Self::CANCEL),
+                    ..Default::default()
+                },
+                ok_event,
+            ),
+            cancel: Button::new(
+                "Cancel",
+                Self::CANCEL_RECT,
+                NextWidget {
+                    left: Some(Self::OK),
+                    right: Some(Self::OK),
+                    tab: Some(Self::OK),
+                    shift_tab: Some(Self::OK),
+                    ..Default::default()
+                },
+                cancel_event,
+            ),
             rect: CharRect::new(25, 32, 40 - per_side, 40 + per_side),
         }
     }
@@ -79,7 +69,8 @@ impl Dialog for ConfirmDialog {
         draw_buffer.draw_rect(2, self.rect);
         draw_buffer.draw_out_border(self.rect, 3, 3, 2);
         draw_buffer.draw_string(self.text, self.text_pos, 0, 2);
-        self.widgets.draw_widgets(draw_buffer);
+        self.ok.draw(draw_buffer, self.selected == Self::OK);
+        self.cancel.draw(draw_buffer, self.selected == Self::CANCEL);
     }
 
     fn process_input(
@@ -92,8 +83,11 @@ impl Dialog for ConfirmDialog {
             return DialogResponse::Close;
         }
 
-        let WidgetResponse { standard, extra } =
-            self.widgets.process_input(key_event, modifiers, events);
+        let WidgetResponse { standard, extra } = match self.selected {
+            Self::OK => self.ok.process_input(modifiers, key_event, events),
+            Self::CANCEL => self.cancel.process_input(modifiers, key_event, events),
+            _ => unreachable!(),
+        };
         if let Some(global_option) = extra {
             if let Some(global) = global_option {
                 events.push(global);
@@ -104,7 +98,7 @@ impl Dialog for ConfirmDialog {
 
         match standard {
             StandardResponse::SwitchFocus(next) => {
-                self.widgets.selected = next;
+                self.selected = next;
                 DialogResponse::RequestRedraw
             }
             StandardResponse::RequestRedraw => DialogResponse::RequestRedraw,
