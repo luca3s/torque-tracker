@@ -14,6 +14,8 @@ pub struct Button<R> {
     pressed: bool,
     next_widget: NextWidget,
     callback: fn() -> R,
+    #[cfg(feature = "accesskit")]
+    node_id: accesskit::NodeId,
 }
 
 impl<R> Widget for Button<R> {
@@ -57,13 +59,28 @@ impl<R> Widget for Button<R> {
         }
         WidgetResponse::default()
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        use accesskit::{Node, Role};
+
+        let mut node = Node::new(Role::Button);
+        node.set_label(self.text);
+        tree.push((self.node_id, node));
+    }
 }
 
 impl<R> Button<R> {
     const TOPLEFT_COLOR: u8 = 3;
     const BOTRIGHT_COLOR: u8 = 1;
 
-    pub fn new(text: &'static str, rect: CharRect, next_widget: NextWidget, cb: fn() -> R) -> Self {
+    pub fn new(
+        text: &'static str,
+        rect: CharRect,
+        next_widget: NextWidget,
+        cb: fn() -> R,
+        #[cfg(feature = "accesskit")] node_id: accesskit::NodeId,
+    ) -> Self {
         // is 3 rows high, because bot and top are inclusive
         assert!(
             rect.bot() - rect.top() >= 2,
@@ -75,6 +92,8 @@ impl<R> Button<R> {
             callback: cb,
             pressed: false,
             next_widget,
+            #[cfg(feature = "accesskit")]
+            node_id,
         }
     }
 

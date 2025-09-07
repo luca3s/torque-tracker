@@ -132,6 +132,11 @@ impl<R> Widget for TextInScroll<R> {
         }
         WidgetResponse::default()
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        todo!() // probably very similar / the same as the regular text in
+    }
 }
 
 impl<R> TextInScroll<R> {

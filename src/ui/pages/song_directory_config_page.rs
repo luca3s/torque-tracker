@@ -6,9 +6,7 @@ use crate::{
     app::{EventQueue, GlobalEvent, send_song_op},
     coordinates::{CharPosition, CharRect},
     draw_buffer::DrawBuffer,
-    ui::widgets::{
-        NextWidget, StandardResponse, Widget, WidgetResponse, slider::Slider, text_in::TextIn,
-    },
+    ui::widgets::{NextWidget, Widget, slider::Slider, text_in::TextIn},
 };
 
 use super::{Page, PageResponse};
@@ -178,13 +176,49 @@ impl Page for SongDirectoryConfigPage {
 
         resp.standard.to_page_resp(&mut self.selected)
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse {
+        use accesskit::{Node, NodeId, Role};
+
+        use crate::app::AccessResponse;
+
+        let mut root_node = Node::new(Role::Menu);
+        let nodes = [
+            NodeId(Self::SONG_NAME_ID),
+            NodeId(Self::INITIAL_TEMPO_ID),
+            NodeId(Self::INITIAL_SPEED_ID),
+            NodeId(Self::GLOBAL_VOLUME_ID),
+        ];
+        root_node.set_children(nodes);
+        root_node.set_label("Song Directory Config Page");
+
+        self.song_name.build_tree(tree);
+        self.initial_tempo.build_tree(tree);
+        self.initial_speed.build_tree(tree);
+        self.global_volume.build_tree(tree);
+
+        tree.push((NodeId(Self::PAGE_ID), root_node));
+        AccessResponse {
+            root: NodeId(Self::PAGE_ID),
+            selected: nodes[usize::from(self.selected - 1)],
+        }
+    }
 }
 
 impl SongDirectoryConfigPage {
-    const SONG_NAME: u8 = 0;
-    const INITIAL_TEMPO: u8 = 1;
-    const INITIAL_SPEED: u8 = 2;
-    const GLOBAL_VOLUME: u8 = 3;
+    const PAGE_ID: u64 = 12_000_000_000;
+    const SONG_NAME: u8 = 1;
+    const SONG_NAME_ID: u64 = Self::PAGE_ID + Self::SONG_NAME as u64 * 20;
+    const INITIAL_TEMPO: u8 = 2;
+    const INITIAL_TEMPO_ID: u64 = Self::PAGE_ID + Self::INITIAL_TEMPO as u64 * 20;
+    const INITIAL_SPEED: u8 = 3;
+    const INITIAL_SPEED_ID: u64 = Self::PAGE_ID + Self::INITIAL_SPEED as u64 * 20;
+    const GLOBAL_VOLUME: u8 = 4;
+    const GLOBAL_VOLUME_ID: u64 = Self::PAGE_ID + Self::GLOBAL_VOLUME as u64 * 20;
 
     pub fn ui_change(&mut self, change: SDCChange) -> PageResponse {
         match change {
@@ -225,6 +259,11 @@ impl SongDirectoryConfigPage {
                 ..Default::default()
             },
             |s| println!("new song name: {}", s),
+            #[cfg(feature = "accesskit")]
+            (
+                accesskit::NodeId(Self::PAGE_ID + u64::from(Self::SONG_NAME) * 20),
+                "Song Name",
+            ),
         );
         let initial_tempo = Slider::new(
             125,
@@ -243,6 +282,11 @@ impl SongDirectoryConfigPage {
                     NonZero::new(u8::try_from(value).unwrap()).unwrap(),
                 ));
             },
+            #[cfg(feature = "accesskit")]
+            (
+                accesskit::NodeId(Self::PAGE_ID + u64::from(Self::INITIAL_TEMPO) * 20),
+                "Initial Tempo".into(),
+            ),
         );
         let initial_speed = Slider::new(
             6,
@@ -261,6 +305,11 @@ impl SongDirectoryConfigPage {
                     NonZero::new(u8::try_from(value).unwrap()).unwrap(),
                 ));
             },
+            #[cfg(feature = "accesskit")]
+            (
+                accesskit::NodeId(Self::PAGE_ID + u64::from(Self::INITIAL_SPEED) * 20),
+                "Initial Speed".into(),
+            ),
         );
         let global_volume = Slider::new(
             128,
@@ -275,6 +324,11 @@ impl SongDirectoryConfigPage {
             },
             |n| GlobalEvent::Page(super::PageEvent::Sdc(SDCChange::GlobalVolume(n))),
             |value| send_song_op(SongOperation::SetGlobalVol(u8::try_from(value).unwrap())),
+            #[cfg(feature = "accesskit")]
+            (
+                accesskit::NodeId(Self::PAGE_ID + u64::from(Self::GLOBAL_VOLUME) * 20),
+                "Global Volume".into(),
+            ),
         );
         // let mixing_volume = Slider::new(
         //     48,

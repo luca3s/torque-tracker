@@ -34,6 +34,11 @@ impl<T: Copy + PartialEq, R> Widget for ToggleButton<T, R> {
         });
         WidgetResponse { standard, extra }
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        todo!()
+    }
 }
 
 impl<T: Copy + PartialEq + 'static, R> ToggleButton<T, R> {
@@ -45,7 +50,7 @@ impl<T: Copy + PartialEq + 'static, R> ToggleButton<T, R> {
         state: Rc<Cell<T>>,
         cb: fn(T) -> R,
     ) -> Self {
-        let button = Button::new(text, rect, next_widget, || ());
+        let button = Button::new(text, rect, next_widget, || (), todo!());
         Self {
             button,
             variant,

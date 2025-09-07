@@ -56,6 +56,11 @@ impl<T: Copy, R> Widget for Toggle<T, R> {
             self.next_widget.process_key_event(key_event, modifiers)
         }
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        todo!()
+    }
 }
 
 impl<T: Copy + 'static, R> Toggle<T, R> {

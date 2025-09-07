@@ -70,12 +70,20 @@ impl Dialog for SliderDialog {
 }
 
 impl SliderDialog {
+    const NODE_ID: u64 = 400_000_000;
     pub fn new(
         inital_char: char,
         range: RangeInclusive<i16>,
         return_event: fn(i16) -> GlobalEvent,
     ) -> Self {
-        let mut text_in = TextIn::new(CharPosition::new(45, 26), 3, NextWidget::default(), |_| {});
+        let mut text_in = TextIn::new(
+            CharPosition::new(45, 26),
+            3,
+            NextWidget::default(),
+            |_| {},
+            #[cfg(feature = "accesskit")]
+            (accesskit::NodeId(Self::NODE_ID + 20), "value"),
+        );
         text_in.set_string(inital_char.to_string()).unwrap();
         Self {
             text: text_in,

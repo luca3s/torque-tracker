@@ -363,4 +363,12 @@ impl Page for SampleList {
 
         PageResponse::None
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse {
+        todo!()
+    }
 }

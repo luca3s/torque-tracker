@@ -22,6 +22,9 @@ pub(crate) trait Widget {
         key_event: &KeyEvent,
         events: &mut EventQueue<'_>,
     ) -> WidgetResponse<Self::Response>;
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>);
 }
 
 #[derive(Debug)]

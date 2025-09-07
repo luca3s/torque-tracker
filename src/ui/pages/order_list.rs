@@ -55,6 +55,8 @@ pub struct OrderListPage {
 }
 
 impl OrderListPage {
+    const PAGE_ID: u64 = 11_000_000_000;
+
     pub fn new() -> Self {
         Self {
             cursor: Cursor::Order,
@@ -85,6 +87,11 @@ impl OrderListPage {
                         let vol = u8::try_from(vol).unwrap();
                         send_song_op(SongOperation::SetVolume(idx, vol));
                     },
+                    #[cfg(feature = "accesskit")]
+                    (
+                        accesskit::NodeId(Self::PAGE_ID + u64::try_from(idx).unwrap()),
+                        format!("Volume Channel {idx}").into_boxed_str(),
+                    ),
                 )
             }),
             pan: array::from_fn(|idx| {
@@ -110,6 +117,11 @@ impl OrderListPage {
                         let pan = Pan::Value(u8::try_from(pan).unwrap());
                         send_song_op(SongOperation::SetPan(idx, pan));
                     },
+                    #[cfg(feature = "accesskit")]
+                    (
+                        accesskit::NodeId(Self::PAGE_ID + u64::try_from(idx).unwrap()),
+                        format!("Pan Channel {idx}").into_boxed_str(),
+                    ),
                 )
             }),
         }
@@ -542,5 +554,13 @@ impl Page for OrderListPage {
             }
         }
         PageResponse::None
+    }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse {
+        todo!()
     }
 }

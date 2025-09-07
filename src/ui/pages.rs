@@ -33,6 +33,12 @@ pub trait Page {
         // please give me reborrowing for custom structs rustc :3
         events: &mut EventQueue<'_>,
     ) -> PageResponse;
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse;
 }
 
 pub enum PageResponse {
@@ -229,5 +235,13 @@ impl AllPages {
         } else {
             PageResponse::None
         }
+    }
+
+    #[cfg(feature = "accesskit")]
+    pub fn build_tree(
+        &self,
+        tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
+    ) -> crate::app::AccessResponse {
+        self.get_page().build_tree(tree)
     }
 }

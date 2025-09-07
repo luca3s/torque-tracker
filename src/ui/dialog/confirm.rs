@@ -20,10 +20,12 @@ pub struct ConfirmDialog {
 }
 
 impl ConfirmDialog {
+    const DIALOG_ID: u64 = 600_000_000;
+
     const OK_RECT: CharRect = CharRect::new(29, 31, 41, 50);
     const CANCEL_RECT: CharRect = CharRect::new(29, 31, 30, 39);
-    const OK: u8 = 0;
-    const CANCEL: u8 = 1;
+    const OK: u8 = 1;
+    const CANCEL: u8 = 2;
     pub fn new(
         text: &'static str,
         ok_event: fn() -> Option<GlobalEvent>,
@@ -46,6 +48,8 @@ impl ConfirmDialog {
                     ..Default::default()
                 },
                 ok_event,
+                #[cfg(feature = "accesskit")]
+                accesskit::NodeId(Self::DIALOG_ID + u64::from(Self::OK) * 20),
             ),
             cancel: Button::new(
                 "Cancel",
@@ -58,6 +62,8 @@ impl ConfirmDialog {
                     ..Default::default()
                 },
                 cancel_event,
+                #[cfg(feature = "accesskit")]
+                accesskit::NodeId(Self::DIALOG_ID + u64::from(Self::CANCEL) * 20),
             ),
             rect: CharRect::new(25, 32, 40 - per_side, 40 + per_side),
         }
@@ -111,6 +117,15 @@ impl Dialog for ConfirmDialog {
         &self,
         tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>,
     ) -> crate::app::AccessResponse {
-        todo!()
+        use accesskit::{Node, Role};
+
+        use crate::app::AccessResponse;
+
+        let mut root_node = Node::new(Role::Dialog);
+
+        AccessResponse {
+            root: todo!(),
+            selected: todo!(),
+        }
     }
 }

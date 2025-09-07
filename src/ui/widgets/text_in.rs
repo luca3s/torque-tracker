@@ -20,6 +20,8 @@ pub struct TextIn<R> {
     next_widget: NextWidget,
     callback: Box<dyn Fn(&str) -> R + Send>,
     cursor_pos: usize,
+    #[cfg(feature = "accesskit")]
+    access: (accesskit::NodeId, &'static str),
 }
 
 impl<R> Widget for TextIn<R> {
@@ -125,6 +127,34 @@ impl<R> Widget for TextIn<R> {
         }
         WidgetResponse::default()
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        use accesskit::{Node, NodeId, Role, TextDirection, TextPosition, TextSelection};
+
+        let mut root_node = Node::new(Role::TextInput);
+        root_node.set_label(self.access.1);
+        let mut text_node = Node::new(Role::TextRun);
+        let text_node_id = NodeId(self.access.0.0 + 1);
+        text_node.set_text_direction(TextDirection::LeftToRight);
+        text_node
+            .set_character_lengths(std::iter::repeat_n(1, self.text.len()).collect::<Box<[u8]>>());
+        text_node.set_value(self.text.as_str());
+        text_node.set_text_selection(TextSelection {
+            anchor: TextPosition {
+                node: text_node_id,
+                character_index: self.cursor_pos,
+            },
+            focus: TextPosition {
+                node: text_node_id,
+                character_index: self.cursor_pos + 1,
+            },
+        });
+        root_node.push_child(text_node_id);
+
+        tree.push((self.access.0, root_node));
+        tree.push((text_node_id, text_node));
+    }
 }
 
 impl<R> TextIn<R> {
@@ -133,6 +163,7 @@ impl<R> TextIn<R> {
         width: usize,
         next_widget: NextWidget,
         cb: impl Fn(&str) -> R + Send + 'static,
+        #[cfg(feature = "accesskit")] access: (accesskit::NodeId, &'static str),
     ) -> Self {
         assert!(pos.x() + width < WINDOW_SIZE.0);
         // right and left keys are used in the widget itself. doeesnt make sense to put NextWidget there
@@ -146,6 +177,8 @@ impl<R> TextIn<R> {
             next_widget,
             callback: Box::new(cb),
             cursor_pos: 0,
+            #[cfg(feature = "accesskit")]
+            access,
         }
     }
 

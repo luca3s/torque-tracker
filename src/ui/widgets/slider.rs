@@ -111,6 +111,8 @@ pub struct Slider<const MIN: i16, const MAX: i16, R> {
     next_widget: NextWidget,
     dialog_return: fn(i16) -> GlobalEvent,
     callback: Box<dyn Fn(i16) -> R + Send>,
+    #[cfg(feature = "accesskit")]
+    access: (accesskit::NodeId, Box<str>),
 }
 
 impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
@@ -244,6 +246,19 @@ impl<const MIN: i16, const MAX: i16, R> Widget for Slider<MIN, MAX, R> {
 
         WidgetResponse::default()
     }
+
+    #[cfg(feature = "accesskit")]
+    fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        use accesskit::{Node, Role};
+
+        let mut node = Node::new(Role::Slider);
+        node.set_numeric_value(self.number.inner as f64);
+        node.set_min_numeric_value(MIN as f64);
+        node.set_max_numeric_value(MAX as f64);
+        node.set_label(self.access.1.clone());
+
+        tree.push((self.access.0, node));
+    }
 }
 
 impl<const MIN: i16, const MAX: i16, R> Slider<MIN, MAX, R> {
@@ -255,6 +270,7 @@ impl<const MIN: i16, const MAX: i16, R> Slider<MIN, MAX, R> {
         next_widget: NextWidget,
         dialog_return: fn(i16) -> GlobalEvent,
         callback: impl Fn(i16) -> R + Send + 'static,
+        #[cfg(feature = "accesskit")] access: (accesskit::NodeId, Box<str>),
     ) -> Self {
         assert!(MIN <= MAX, "MIN must be less than or equal to MAX");
         // panic is fine, because this object only is generated with compile time values
@@ -275,6 +291,8 @@ impl<const MIN: i16, const MAX: i16, R> Slider<MIN, MAX, R> {
             next_widget,
             dialog_return,
             callback: Box::new(callback),
+            #[cfg(feature = "accesskit")]
+            access,
         }
     }
 

@@ -668,21 +668,26 @@ impl App {
         };
         let mut root_node = Node::new(Role::Window);
         let mut nodes = Vec::new();
-        let mut focused = None;
+        root_node.set_label("Torque Tracker");
+        root_node.set_language("English");
         let header_id = header.build_tree(&mut nodes);
         root_node.push_child(header_id);
+
+        let resp = pages.build_tree(&mut nodes);
+        let mut focused = resp.selected;
+        root_node.push_child(resp.root);
 
         if let Some(dialog) = dialogs.active_dialog() {
             let resp = dialog.build_tree(&mut nodes);
             root_node.push_child(resp.root);
-            focused = Some(resp.selected);
+            focused = resp.selected;
         }
 
         nodes.push((ROOT_ID, root_node));
         TreeUpdate {
             nodes,
             tree: Some(tree),
-            focus: focused.unwrap_or(ROOT_ID),
+            focus: focused,
         }
     }
 }
