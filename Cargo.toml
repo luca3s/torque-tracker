@@ -15,7 +15,7 @@ font8x8 = "0.3.1"
 wgpu = { version = "26.0.0", optional = true }
 ascii = "1.1.0"
 winit = "0.30.11"
-torque-tracker-engine = "0.1.0"
+torque-tracker-engine = { path = "../torque-tracker-engine" }
 smol = "2.0.2"
 paste = "1.0.15"
 cpal = "0.16.0"
@@ -39,3 +39,9 @@ default = ["gpu_scaling", "accesskit"]
 
 [lints.clippy]
 uninlined_format_args = "allow"
+
+[package.metadata.bundle]
+name = "Torque Tracker"
+identifier = "ing.inkreas.torque-tracker"
+copyright = "GPL-3.0"
+category = "Music"
