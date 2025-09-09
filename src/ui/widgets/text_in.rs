@@ -130,6 +130,8 @@ impl<R> Widget for TextIn<R> {
 
     #[cfg(feature = "accesskit")]
     fn build_tree(&self, tree: &mut Vec<(accesskit::NodeId, accesskit::Node)>) {
+        use std::iter::repeat_n;
+
         use accesskit::{Node, NodeId, Role, TextDirection, TextPosition, TextSelection};
 
         let mut root_node = Node::new(Role::TextInput);
@@ -137,17 +139,30 @@ impl<R> Widget for TextIn<R> {
         let mut text_node = Node::new(Role::TextRun);
         let text_node_id = NodeId(self.access.0.0 + 1);
         text_node.set_text_direction(TextDirection::LeftToRight);
-        text_node
-            .set_character_lengths(std::iter::repeat_n(1, self.text.len()).collect::<Box<[u8]>>());
+        text_node.set_character_lengths(repeat_n(1, self.text.len()).collect::<Box<[u8]>>());
+        // text_node.set_character_widths(repeat_n(1., self.text.len()).collect::<Box<[f32]>>());
+        // text_node.set_character_positions(
+        //     (0..self.text.len())
+        //         .map(|n| n as f32)
+        //         .collect::<Box<[f32]>>(),
+        // );
         text_node.set_value(self.text.as_str());
-        text_node.set_text_selection(TextSelection {
+        // text_node.set_word_lengths(
+        //     self.text
+        //         .as_str()
+        //         .split_whitespace()
+        //         .map(|w| u8::try_from(w.len()).unwrap())
+        //         .collect::<Box<[u8]>>(),
+        // );
+        root_node.set_text_selection(TextSelection {
             anchor: TextPosition {
                 node: text_node_id,
                 character_index: self.cursor_pos,
             },
             focus: TextPosition {
                 node: text_node_id,
-                character_index: self.cursor_pos + 1,
+                character_index: self.cursor_pos,
+                // character_index: self.text.as_str().len().min(self.cursor_pos + 1),
             },
         });
         root_node.push_child(text_node_id);
